@@ -1,0 +1,392 @@
+// Prisma schema for Inventario Ganaderia
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  ADMIN
+  VETERINARIO
+  OPERADOR
+  AUDITOR
+}
+
+enum AnimalSex {
+  MALE
+  FEMALE
+}
+
+enum AnimalCategory {
+  TERNERO
+  VAQUILLA
+  VACA
+  TORO
+  NOVILLO
+}
+
+enum AnimalStatus {
+  ACTIVO
+  VENDIDO
+  MUERTO
+  FAENADO
+  PERDIDO
+}
+
+enum AnimalOrigin {
+  BORN
+  BOUGHT
+}
+
+enum EventType {
+  PESO
+  NACIMIENTO
+  DESTETE
+  CELO
+  PRENEZ
+  PARTO
+  VACUNACION
+  DESPARASITACION
+  ENFERMEDAD
+  MUERTE
+  VENTA
+  COMPRA
+  OBSERVACION
+}
+
+enum MovementType {
+  INTERNAL
+  EXTERNAL
+  SALE
+  SLAUGHTER
+}
+
+enum InventoryTxType {
+  IN
+  OUT
+  ADJUST
+}
+
+enum TreatmentStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+}
+
+enum AlertType {
+  STOCK
+  EXPIRY
+  WITHDRAWAL
+}
+
+model User {
+  id           String         @id @default(uuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  isActive     Boolean        @default(true)
+  roles        UserRole[]
+  auditLogs    AuditLog[]
+  refreshTokens RefreshToken[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Role {
+  id          String     @id @default(uuid())
+  name        RoleName   @unique
+  description String
+  users       UserRole[]
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Establishment {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  address   String?
+  lat       Float?
+  lng       Float?
+  animals   Animal[]
+  events    AnimalEvent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  animals   Animal[]
+  batches   Batch[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Animal {
+  id              String        @id @default(uuid())
+  internalCode    String        @unique
+  tag             String        @unique
+  sex             AnimalSex
+  breed           String
+  birthDate       DateTime
+  birthEstimated  Boolean       @default(false)
+  category        AnimalCategory
+  status          AnimalStatus  @default(ACTIVO)
+  origin          AnimalOrigin
+  supplierId      String?
+  motherId        String?
+  fatherId        String?
+  establishmentId String?
+  notes           String?
+  photos          AnimalPhoto[]
+  events          AnimalEvent[]
+  movements       Movement[]
+  treatments      Treatment[]
+  labResults      LabResult[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  supplier      Supplier?     @relation(fields: [supplierId], references: [id])
+  establishment Establishment? @relation(fields: [establishmentId], references: [id])
+
+  @@index([tag])
+  @@index([establishmentId])
+}
+
+model AnimalPhoto {
+  id        String   @id @default(uuid())
+  animalId  String
+  url       String
+  createdAt DateTime @default(now())
+
+  animal Animal @relation(fields: [animalId], references: [id])
+}
+
+model AnimalEvent {
+  id              String     @id @default(uuid())
+  animalId        String
+  type            EventType
+  occurredAt      DateTime
+  establishmentId String?
+  valueNumber     Float?
+  valueText       String?
+  notes           String?
+  createdBy       String?
+  createdAt       DateTime   @default(now())
+
+  animal        Animal        @relation(fields: [animalId], references: [id])
+  establishment Establishment? @relation(fields: [establishmentId], references: [id])
+
+  @@index([occurredAt])
+}
+
+model Movement {
+  id             String        @id @default(uuid())
+  animalId       String
+  occurredAt     DateTime
+  originId       String?
+  destinationId  String?
+  movementType   MovementType
+  transporter    String?
+  notes          String?
+  createdBy      String?
+  createdAt      DateTime      @default(now())
+
+  animal Animal @relation(fields: [animalId], references: [id])
+
+  @@index([occurredAt])
+}
+
+model Product {
+  id                   String   @id @default(uuid())
+  name                 String
+  activeIngredient     String
+  presentation         String
+  concentration        String
+  unit                 String
+  species              String   @default("bovinos")
+  meatWithdrawalDays   Int
+  milkWithdrawalDays   Int
+  requiresPrescription Boolean @default(false)
+  recommendedRoute     String?
+  typicalDose          String?
+  notes                String?
+  minStock             Int      @default(0)
+  batches              Batch[]
+  inventoryTransactions InventoryTransaction[]
+  administrations      Administration[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  deletedAt            DateTime?
+
+  @@index([name])
+}
+
+model Batch {
+  id                String   @id @default(uuid())
+  productId         String
+  batchNumber       String
+  expiresAt         DateTime
+  supplierId        String?
+  receivedAt        DateTime
+  cost              Decimal? @db.Decimal(10, 2)
+  quantityInitial   Float
+  quantityAvailable Float
+  transactions      InventoryTransaction[]
+  administrations   Administration[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  product  Product  @relation(fields: [productId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+  @@index([expiresAt])
+  @@unique([productId, batchNumber])
+}
+
+model InventoryTransaction {
+  id         String           @id @default(uuid())
+  batchId    String
+  productId  String
+  type       InventoryTxType
+  quantity   Float
+  unit       String
+  occurredAt DateTime
+  reason     String?
+  refType    String?
+  refId      String?
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  batch   Batch   @relation(fields: [batchId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([occurredAt])
+}
+
+model Treatment {
+  id         String         @id @default(uuid())
+  animalId   String
+  diagnosis  String
+  vetId      String?
+  startedAt  DateTime
+  endedAt    DateTime?
+  status     TreatmentStatus @default(ACTIVE)
+  notes      String?
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  animal Animal @relation(fields: [animalId], references: [id])
+  administrations Administration[]
+
+  @@index([startedAt])
+}
+
+model Administration {
+  id                  String   @id @default(uuid())
+  treatmentId         String
+  batchId             String
+  productId           String
+  administeredAt      DateTime
+  dose                Float
+  doseUnit            String
+  route               String
+  site                String?
+  notes               String?
+  meatWithdrawalUntil DateTime
+  milkWithdrawalUntil DateTime
+  createdBy           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  treatment Treatment @relation(fields: [treatmentId], references: [id])
+  batch     Batch     @relation(fields: [batchId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@index([administeredAt])
+}
+
+model LabResult {
+  id          String   @id @default(uuid())
+  animalId    String
+  name        String
+  result      String
+  collectedAt DateTime
+
+  animal Animal @relation(fields: [animalId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+}
+
+model Alert {
+  id        String    @id @default(uuid())
+  type      AlertType
+  title     String
+  message   String
+  dueAt     DateTime
+  status    TaskStatus @default(OPEN)
+  createdAt DateTime  @default(now())
+}
+
+model Task {
+  id        String    @id @default(uuid())
+  title     String
+  taskType  String
+  dueAt     DateTime
+  status    TaskStatus @default(OPEN)
+  notes     String?
+  createdAt DateTime  @default(now())
+}

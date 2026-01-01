@@ -1,0 +1,40 @@
+import { Router } from "express";
+import auth from "./auth";
+import animals from "./animals";
+import events from "./events";
+import movements from "./movements";
+import establishments from "./establishments";
+import products from "./products";
+import batches from "./batches";
+import suppliers from "./suppliers";
+import inventory from "./inventory";
+import treatments from "./treatments";
+import administrations from "./administrations";
+import reports from "./reports";
+import users from "./users";
+import audit from "./audit";
+import alerts from "./alerts";
+import tasks from "./tasks";
+import search from "./search";
+
+const router = Router();
+
+router.use("/auth", auth);
+router.use("/animals", animals);
+router.use("/events", events);
+router.use("/movements", movements);
+router.use("/establishments", establishments);
+router.use("/products", products);
+router.use("/suppliers", suppliers);
+router.use("/batches", batches);
+router.use("/inventory", inventory);
+router.use("/treatments", treatments);
+router.use("/administrations", administrations);
+router.use("/reports", reports);
+router.use("/users", users);
+router.use("/audit", audit);
+router.use("/alerts", alerts);
+router.use("/tasks", tasks);
+router.use("/search", search);
+
+export default router;

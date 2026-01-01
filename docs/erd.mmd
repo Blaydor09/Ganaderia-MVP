@@ -1,0 +1,187 @@
+erDiagram
+  USERS ||--o{ USER_ROLES : has
+  USERS ||--o{ REFRESH_TOKENS : owns
+  ROLES ||--o{ USER_ROLES : assigned
+  ESTABLISHMENTS ||--o{ ANIMALS : houses
+  SUPPLIERS ||--o{ BATCHES : supplies
+  PRODUCTS ||--o{ BATCHES : has
+  BATCHES ||--o{ INVENTORY_TRANSACTIONS : moves
+  ANIMALS ||--o{ ANIMAL_EVENTS : logs
+  ANIMALS ||--o{ MOVEMENTS : moves
+  ANIMALS ||--o{ TREATMENTS : has
+  TREATMENTS ||--o{ ADMINISTRATIONS : has
+  PRODUCTS ||--o{ ADMINISTRATIONS : used
+  BATCHES ||--o{ ADMINISTRATIONS : consumed
+  USERS ||--o{ AUDIT_LOGS : writes
+  ANIMALS ||--o{ ANIMAL_PHOTOS : has
+  ANIMALS ||--o{ LAB_RESULTS : has
+
+  USERS {
+    uuid id PK
+    string name
+    string email
+    string password_hash
+    boolean is_active
+    datetime created_at
+    datetime updated_at
+  }
+  ROLES {
+    uuid id PK
+    string name
+    string description
+  }
+  USER_ROLES {
+    uuid id PK
+    uuid user_id FK
+    uuid role_id FK
+    datetime assigned_at
+  }
+  REFRESH_TOKENS {
+    uuid id PK
+    uuid user_id FK
+    string token_hash
+    datetime expires_at
+    datetime revoked_at
+  }
+  ESTABLISHMENTS {
+    uuid id PK
+    string name
+    string type
+    string address
+    float lat
+    float lng
+    datetime created_at
+    datetime updated_at
+  }
+  ANIMALS {
+    uuid id PK
+    string internal_code
+    string tag UK
+    string sex
+    string breed
+    date birth_date
+    boolean birth_estimated
+    string category
+    string status
+    string origin
+    uuid supplier_id FK
+    uuid mother_id FK
+    uuid father_id FK
+    uuid establishment_id FK
+    datetime created_at
+    datetime updated_at
+    datetime deleted_at
+  }
+  ANIMAL_EVENTS {
+    uuid id PK
+    uuid animal_id FK
+    string type
+    datetime occurred_at
+    uuid establishment_id FK
+    float value_number
+    string value_text
+    string notes
+    uuid created_by FK
+  }
+  MOVEMENTS {
+    uuid id PK
+    uuid animal_id FK
+    datetime occurred_at
+    uuid origin_id FK
+    uuid destination_id FK
+    string movement_type
+    string transporter
+    string notes
+    uuid created_by FK
+  }
+  PRODUCTS {
+    uuid id PK
+    string name
+    string active_ingredient
+    string presentation
+    string concentration
+    string unit
+    int meat_withdrawal_days
+    int milk_withdrawal_days
+    boolean requires_prescription
+    int min_stock
+    datetime created_at
+    datetime updated_at
+    datetime deleted_at
+  }
+  BATCHES {
+    uuid id PK
+    uuid product_id FK
+    string batch_number
+    date expires_at
+    uuid supplier_id FK
+    date received_at
+    decimal cost
+    float quantity_initial
+    float quantity_available
+    datetime created_at
+    datetime updated_at
+    datetime deleted_at
+  }
+  INVENTORY_TRANSACTIONS {
+    uuid id PK
+    uuid batch_id FK
+    uuid product_id FK
+    string type
+    float quantity
+    string unit
+    datetime occurred_at
+    string reason
+    string ref_type
+    uuid ref_id
+    uuid created_by FK
+  }
+  TREATMENTS {
+    uuid id PK
+    uuid animal_id FK
+    string diagnosis
+    uuid vet_id FK
+    datetime started_at
+    datetime ended_at
+    string status
+    string notes
+    uuid created_by FK
+  }
+  ADMINISTRATIONS {
+    uuid id PK
+    uuid treatment_id FK
+    uuid batch_id FK
+    uuid product_id FK
+    datetime administered_at
+    float dose
+    string dose_unit
+    string route
+    string site
+    datetime meat_withdrawal_until
+    datetime milk_withdrawal_until
+    uuid created_by FK
+  }
+  AUDIT_LOGS {
+    uuid id PK
+    uuid user_id FK
+    string action
+    string entity
+    uuid entity_id
+    json before
+    json after
+    string ip
+    datetime created_at
+  }
+  ANIMAL_PHOTOS {
+    uuid id PK
+    uuid animal_id FK
+    string url
+    datetime created_at
+  }
+  LAB_RESULTS {
+    uuid id PK
+    uuid animal_id FK
+    string name
+    string result
+    datetime collected_at
+  }

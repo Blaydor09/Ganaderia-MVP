@@ -1,0 +1,10 @@
+node_modules
+.env
+.DS_Store
+apps/**/node_modules
+apps/**/dist
+apps/**/.env
+apps/**/.env.*
+apps/**/coverage
+apps/**/.turbo
+apps/**/.vite

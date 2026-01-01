@@ -1,0 +1,126 @@
+import { Router } from "express";
+import { prisma } from "../config/prisma";
+import { asyncHandler } from "../utils/asyncHandler";
+import { authenticate } from "../middleware/auth";
+
+const router = Router();
+
+router.get(
+  "/withdrawals-active",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const now = new Date();
+    const establishmentId = (req.query.establishmentId as string | undefined) ?? undefined;
+    const administrations = await prisma.administration.findMany({
+      where: {
+        OR: [
+          { meatWithdrawalUntil: { gt: now } },
+          { milkWithdrawalUntil: { gt: now } },
+        ],
+        treatment: establishmentId
+          ? { animal: { establishmentId } }
+          : undefined,
+      },
+      include: {
+        treatment: { include: { animal: true } },
+        product: true,
+      },
+    });
+
+    const map = new Map<string, any>();
+    for (const admin of administrations) {
+      const animal = admin.treatment.animal;
+      if (!animal) continue;
+      const existing = map.get(animal.id) ?? {
+        animal,
+        meatUntil: admin.meatWithdrawalUntil,
+        milkUntil: admin.milkWithdrawalUntil,
+        productNames: new Set<string>(),
+      };
+
+      existing.productNames.add(admin.product.name);
+      if (admin.meatWithdrawalUntil > existing.meatUntil) {
+        existing.meatUntil = admin.meatWithdrawalUntil;
+      }
+      if (admin.milkWithdrawalUntil > existing.milkUntil) {
+        existing.milkUntil = admin.milkWithdrawalUntil;
+      }
+      map.set(animal.id, existing);
+    }
+
+    const items = Array.from(map.values()).map((row) => ({
+      animal: row.animal,
+      meatUntil: row.meatUntil,
+      milkUntil: row.milkUntil,
+      products: Array.from(row.productNames),
+    }));
+
+    res.json({ items, total: items.length });
+  })
+);
+
+router.get(
+  "/inventory-expiring",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const days = Number(req.query.days ?? 30);
+    const now = new Date();
+    const limit = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+    const batches = await prisma.batch.findMany({
+      where: {
+        expiresAt: { lte: limit },
+        deletedAt: null,
+      },
+      include: { product: true },
+      orderBy: { expiresAt: "asc" },
+    });
+
+    res.json({ items: batches, total: batches.length });
+  })
+);
+
+router.get(
+  "/consumption",
+  authenticate,
+  asyncHandler(async (_req, res) => {
+    const transactions = await prisma.inventoryTransaction.groupBy({
+      by: ["productId"],
+      where: { type: "OUT" },
+      _sum: { quantity: true },
+    });
+
+    type TxRow = { productId: string; _sum: { quantity: number | null } };
+    const txRows = transactions as TxRow[];
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: txRows.map((t: TxRow) => t.productId) } },
+    });
+
+    const items = txRows.map((row: TxRow) => ({
+      product: products.find((p: { id: string }) => p.id === row.productId),
+      total: row._sum.quantity ?? 0,
+    }));
+
+    res.json({ items });
+  })
+);
+
+router.get(
+  "/weights",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const animalId = req.query.animalId as string | undefined;
+    const where: Record<string, unknown> = { type: "PESO" };
+    if (animalId) where.animalId = animalId;
+
+    const events = await prisma.animalEvent.findMany({
+      where,
+      orderBy: { occurredAt: "asc" },
+    });
+
+    res.json({ items: events });
+  })
+);
+
+export default router;
