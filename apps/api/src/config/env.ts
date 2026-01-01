@@ -18,4 +18,5 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "15m",
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  trustProxy: process.env.TRUST_PROXY === "true",
 };

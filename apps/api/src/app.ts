@@ -14,6 +14,10 @@ import swaggerUi from "swagger-ui-express";
 export const createApp = () => {
   const app = express();
 
+  if (env.trustProxy) {
+    app.set("trust proxy", 1);
+  }
+
   app.use(pinoHttp());
   app.use(helmet());
   app.use(cors({ origin: env.corsOrigin, credentials: true }));
