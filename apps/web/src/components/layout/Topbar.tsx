@@ -1,7 +1,17 @@
 import { Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { Button } from "@/components/ui/button";
+import { clearTokens } from "@/lib/auth";
 
 export const Topbar = () => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    clearTokens();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
       <div className="flex items-center gap-3">
@@ -20,6 +30,9 @@ export const Topbar = () => {
           </span>
           <span className="text-slate-700">Admin</span>
         </div>
+        <Button variant="outline" onClick={handleLogout}>
+          Cerrar sesion
+        </Button>
       </div>
     </div>
   );
