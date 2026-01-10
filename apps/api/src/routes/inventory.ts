@@ -9,6 +9,36 @@ import { createInventoryTransaction, getInventoryAlerts } from "../services/inve
 const router = Router();
 
 router.get(
+  "/summary",
+  authenticate,
+  asyncHandler(async (_req, res) => {
+    const products = await prisma.product.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, minStock: true, unit: true },
+      orderBy: { name: "asc" },
+    });
+
+    const totals = await prisma.batch.groupBy({
+      by: ["productId"],
+      where: { deletedAt: null },
+      _sum: { quantityAvailable: true },
+    });
+
+    const totalMap = new Map<string, number>();
+    for (const row of totals) {
+      totalMap.set(row.productId, row._sum.quantityAvailable ?? 0);
+    }
+
+    const items = products.map((product) => ({
+      product,
+      total: totalMap.get(product.id) ?? 0,
+    }));
+
+    res.json({ items });
+  })
+);
+
+router.get(
   "/",
   authenticate,
   asyncHandler(async (_req, res) => {

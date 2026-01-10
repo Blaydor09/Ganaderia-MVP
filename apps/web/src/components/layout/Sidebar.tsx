@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
+import logo from "@/assets/logo.png";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: Access.dashboard },
@@ -40,9 +41,13 @@ export const Sidebar = () => {
 
   return (
     <aside className="hidden h-screen w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
-      <div className="mb-8 flex items-center gap-2">
-        <div className="h-10 w-10 rounded-2xl bg-brand-600 text-white grid place-items-center font-bold">
-          IG
+      <div className="mb-8 flex items-center gap-3">
+        <div className="h-11 w-11 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm">
+          <img
+            src={logo}
+            alt="Inventario Ganaderia"
+            className="h-full w-full object-contain"
+          />
         </div>
         <div>
           <p className="text-sm text-slate-500">Inventario</p>

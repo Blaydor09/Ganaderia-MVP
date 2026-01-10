@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import logo from "@/assets/logo.png";
 
 const schema = z.object({
   email: z.string().email(),
@@ -38,6 +39,23 @@ const LoginPage = () => {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto grid min-h-screen max-w-5xl grid-cols-1 gap-8 px-6 lg:grid-cols-2 lg:items-center">
         <div className="space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm">
+              <img
+                src={logo}
+                alt="Inventario Ganaderia"
+                className="h-full w-full object-contain"
+              />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Inventario Ganaderia
+              </p>
+              <p className="font-display text-lg font-semibold text-slate-900">
+                Plataforma ganadera
+              </p>
+            </div>
+          </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs text-brand-700">
             Plataforma sanitaria y de inventario
           </div>

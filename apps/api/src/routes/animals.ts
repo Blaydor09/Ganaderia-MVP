@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
@@ -27,6 +28,45 @@ const ensureAssignableEstablishment = async (establishmentId?: string) => {
     throw new ApiError(400, "Establishment must be potrero or corral");
   }
 };
+
+router.get(
+  "/summary",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const where: Prisma.AnimalWhereInput = { deletedAt: null };
+    if (req.query.establishmentId) {
+      where.establishmentId = String(req.query.establishmentId);
+    }
+    if (req.query.fincaId) {
+      where.establishment = { fincaId: String(req.query.fincaId) };
+    }
+
+    const [total, byCategory, bySex, byStatus, byOrigin] = await Promise.all([
+      prisma.animal.count({ where }),
+      prisma.animal.groupBy({ by: ["category"], where, _count: { _all: true } }),
+      prisma.animal.groupBy({ by: ["sex"], where, _count: { _all: true } }),
+      prisma.animal.groupBy({ by: ["status"], where, _count: { _all: true } }),
+      prisma.animal.groupBy({ by: ["origin"], where, _count: { _all: true } }),
+    ]);
+
+    res.json({
+      total,
+      byCategory: byCategory.map((row) => ({
+        category: row.category,
+        count: row._count._all,
+      })),
+      bySex: bySex.map((row) => ({ sex: row.sex, count: row._count._all })),
+      byStatus: byStatus.map((row) => ({
+        status: row.status,
+        count: row._count._all,
+      })),
+      byOrigin: byOrigin.map((row) => ({
+        origin: row.origin,
+        count: row._count._all,
+      })),
+    });
+  })
+);
 
 router.get(
   "/",

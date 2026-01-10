@@ -16,6 +16,7 @@
 
 ## Animals
 - GET /animals (filters, search)
+- GET /animals/summary
 - POST /animals
 - GET /animals/:id
 - PATCH /animals/:id
@@ -25,6 +26,7 @@
 
 ## Events
 - GET /events
+- GET /events/lifecycle-summary
 - POST /events
 - GET /events/:id
 - PATCH /events/:id
@@ -65,6 +67,7 @@
 ## Inventory
 - GET /inventory
 - POST /inventory/transactions
+- GET /inventory/summary
 - GET /inventory/alerts
 
 ## Treatments

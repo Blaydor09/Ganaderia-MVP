@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -8,6 +9,52 @@ import { getPagination } from "../utils/pagination";
 import { writeAudit } from "../utils/audit";
 
 const router = Router();
+
+router.get(
+  "/lifecycle-summary",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const monthsParam = Number(req.query.months ?? 12);
+    const months = Math.min(Math.max(monthsParam, 1), 24);
+    const now = dayjs();
+    const start = now.subtract(months - 1, "month").startOf("month");
+    const end = now.endOf("month");
+
+    const events = await prisma.animalEvent.findMany({
+      where: {
+        type: { in: ["NACIMIENTO", "MUERTE", "VENTA"] },
+        occurredAt: { gte: start.toDate(), lte: end.toDate() },
+      },
+      select: { type: true, occurredAt: true },
+    });
+
+    const buckets: { month: string; births: number; deaths: number; sales: number }[] =
+      [];
+    const map = new Map<string, (typeof buckets)[number]>();
+
+    for (let i = 0; i < months; i += 1) {
+      const monthKey = start.add(i, "month").format("YYYY-MM");
+      const bucket = { month: monthKey, births: 0, deaths: 0, sales: 0 };
+      buckets.push(bucket);
+      map.set(monthKey, bucket);
+    }
+
+    for (const event of events) {
+      const key = dayjs(event.occurredAt).format("YYYY-MM");
+      const bucket = map.get(key);
+      if (!bucket) continue;
+      if (event.type === "NACIMIENTO") {
+        bucket.births += 1;
+      } else if (event.type === "MUERTE") {
+        bucket.deaths += 1;
+      } else if (event.type === "VENTA") {
+        bucket.sales += 1;
+      }
+    }
+
+    res.json({ items: buckets, total: events.length, months });
+  })
+);
 
 router.get(
   "/",
