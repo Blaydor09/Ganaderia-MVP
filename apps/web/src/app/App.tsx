@@ -7,6 +7,7 @@ import { hasAnyRole, isAuthenticated } from "@/lib/auth";
 import type { Role } from "@/lib/auth";
 import { Access } from "@/lib/access";
 import LoginPage from "@/app/pages/LoginPage";
+import LandingPage from "@/app/pages/LandingPage";
 import DashboardPage from "@/app/pages/DashboardPage";
 import AnimalsPage from "@/app/pages/AnimalsPage";
 import AnimalCreatePage from "@/app/pages/AnimalCreatePage";
@@ -62,6 +63,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => (
 
 const App = () => (
   <Routes>
+    <Route path="/landing" element={<LandingPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route
       path="/"

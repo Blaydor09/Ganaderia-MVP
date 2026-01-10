@@ -40,6 +40,14 @@ npm run dev
 Frontend: http://localhost:5173
 API: http://localhost:4000/api/v1
 Docs API: http://localhost:4000/api/v1/docs
+Landing page: http://localhost:5173/landing
+
+## Landing page
+```bash
+cd apps/web
+npm run dev
+```
+Abrir: http://localhost:5173/landing
 
 ## Usuarios demo
 - admin@demo.com / admin123

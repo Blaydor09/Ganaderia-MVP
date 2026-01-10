@@ -16,3 +16,14 @@ body {
 .font-display {
   font-family: 'Space Grotesk', system-ui, sans-serif;
 }
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

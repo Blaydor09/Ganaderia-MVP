@@ -6,7 +6,7 @@ import { setTokens } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo.png";
 
 const schema = z.object({
@@ -93,6 +93,12 @@ const LoginPage = () => {
               {isSubmitting ? "Ingresando..." : "Ingresar"}
             </Button>
           </form>
+          <div className="mt-6 flex items-center justify-between text-xs text-slate-500">
+            <span>Conoce la plataforma antes de entrar.</span>
+            <Link className="text-brand-600 hover:underline" to="/landing">
+              Ver landing
+            </Link>
+          </div>
         </div>
       </div>
     </div>
