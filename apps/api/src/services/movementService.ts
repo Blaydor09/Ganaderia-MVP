@@ -4,6 +4,10 @@ import { getActiveWithdrawalForAnimal } from "./withdrawalService";
 import { isWithdrawalActive } from "./rules";
 import { writeAudit } from "../utils/audit";
 
+type Establishment = NonNullable<
+  Awaited<ReturnType<typeof prisma.establishment.findUnique>>
+>;
+
 export type CreateMovementInput = {
   animalId: string;
   occurredAt: Date;
@@ -52,7 +56,10 @@ export const createMovement = async (input: CreateMovementInput) => {
   let nextEstablishmentId: string | null | undefined;
   let nextStatus: "VENDIDO" | "FAENADO" | undefined;
 
-  const ensureAssignable = (est: any, label: string) => {
+  const ensureAssignable: (
+    est: Establishment | null,
+    label: string
+  ) => asserts est is Establishment = (est, label) => {
     if (!est) {
       throw new ApiError(400, `${label} is required`);
     }

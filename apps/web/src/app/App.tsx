@@ -32,7 +32,14 @@ import AccessDeniedPage from "@/app/pages/AccessDeniedPage";
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   if (!isAuthenticated()) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
+
+const RedirectIfAuth = ({ children }: { children: JSX.Element }) => {
+  if (isAuthenticated()) {
+    return <Navigate to="/" replace />;
   }
   return children;
 };
@@ -61,22 +68,38 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
+const HomeRoute = () => {
+  if (!isAuthenticated()) {
+    return <LandingPage />;
+  }
+  return (
+    <DashboardLayout>
+      <RequireRole allowed={Access.dashboard}>
+        <DashboardPage />
+      </RequireRole>
+    </DashboardLayout>
+  );
+};
+
 const App = () => (
   <Routes>
-    <Route path="/landing" element={<LandingPage />} />
-    <Route path="/login" element={<LoginPage />} />
     <Route
-      path="/"
+      path="/landing"
       element={
-        <RequireAuth>
-          <DashboardLayout>
-            <RequireRole allowed={Access.dashboard}>
-              <DashboardPage />
-            </RequireRole>
-          </DashboardLayout>
-        </RequireAuth>
+        <RedirectIfAuth>
+          <LandingPage />
+        </RedirectIfAuth>
       }
     />
+    <Route
+      path="/login"
+      element={
+        <RedirectIfAuth>
+          <LoginPage />
+        </RedirectIfAuth>
+      }
+    />
+    <Route path="/" element={<HomeRoute />} />
     <Route
       path="/animals"
       element={

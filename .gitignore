@@ -8,3 +8,4 @@ apps/**/.env.*
 apps/**/coverage
 apps/**/.turbo
 apps/**/.vite
+VPS_UPDATE.md

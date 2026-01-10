@@ -3,15 +3,42 @@ const REFRESH_KEY = "ig_refresh_token";
 
 export type Role = "ADMIN" | "VETERINARIO" | "OPERADOR" | "AUDITOR";
 
-export const getAccessToken = () => localStorage.getItem(ACCESS_KEY);
-export const getRefreshToken = () => localStorage.getItem(REFRESH_KEY);
+const migrateTokens = () => {
+  if (typeof window === "undefined") return;
+  const sessionAccess = sessionStorage.getItem(ACCESS_KEY);
+  const sessionRefresh = sessionStorage.getItem(REFRESH_KEY);
+  const localAccess = localStorage.getItem(ACCESS_KEY);
+  const localRefresh = localStorage.getItem(REFRESH_KEY);
+
+  if (!sessionAccess && localAccess) {
+    sessionStorage.setItem(ACCESS_KEY, localAccess);
+  }
+  if (!sessionRefresh && localRefresh) {
+    sessionStorage.setItem(REFRESH_KEY, localRefresh);
+  }
+  if (localAccess || localRefresh) {
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+  }
+};
+
+migrateTokens();
+
+export const getAccessToken = () =>
+  typeof window === "undefined" ? null : sessionStorage.getItem(ACCESS_KEY);
+export const getRefreshToken = () =>
+  typeof window === "undefined" ? null : sessionStorage.getItem(REFRESH_KEY);
 
 export const setTokens = (accessToken: string, refreshToken: string) => {
-  localStorage.setItem(ACCESS_KEY, accessToken);
-  localStorage.setItem(REFRESH_KEY, refreshToken);
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(ACCESS_KEY, accessToken);
+  sessionStorage.setItem(REFRESH_KEY, refreshToken);
 };
 
 export const clearTokens = () => {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(ACCESS_KEY);
+  sessionStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
 };
