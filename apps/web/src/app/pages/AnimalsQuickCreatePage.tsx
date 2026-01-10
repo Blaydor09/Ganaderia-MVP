@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
@@ -15,33 +15,46 @@ import {
   animalOriginOptions,
   animalSexOptions,
   animalStatusOptions,
+  getAnimalCategoryLabel,
 } from "@/lib/animals";
 import { getEstablishmentTypeLabel } from "@/lib/establishments";
 
-const optionalTagSchema = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
-  z.string().min(1, "Requerido").optional()
-);
+const defaultSexByCategory: Record<string, "MALE" | "FEMALE"> = {
+  VACA: "FEMALE",
+  VAQUILLA: "FEMALE",
+  TORO: "MALE",
+  TORILLO: "MALE",
+  TERNERO: "MALE",
+};
 
-const schema = z.object({
-  tag: optionalTagSchema,
-  sex: z.enum(["MALE", "FEMALE"]),
-  breed: z.string().min(1, "Requerido"),
-  birthDate: z.string().min(1, "Requerido"),
-  birthEstimated: z.boolean().optional(),
+const lineSchema = z.object({
   category: z.enum(["TERNERO", "VAQUILLA", "VACA", "TORO", "TORILLO"]),
-  origin: z.enum(["BORN", "BOUGHT"]),
-  status: z.enum(["ACTIVO", "VENDIDO", "MUERTO", "FAENADO", "PERDIDO"]).optional(),
-  establishmentId: z.string().optional(),
-  notes: z.string().optional(),
+  sex: z.enum(["MALE", "FEMALE"]),
+  count: z.number().int().min(0),
 });
+
+const schema = z
+  .object({
+    lines: z.array(lineSchema),
+    breed: z.string().min(1, "Requerido"),
+    birthDate: z.string().optional(),
+    birthEstimated: z.boolean().optional(),
+    origin: z.enum(["BORN", "BOUGHT"]),
+    status: z.enum(["ACTIVO", "VENDIDO", "MUERTO", "FAENADO", "PERDIDO"]).optional(),
+    establishmentId: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .refine((values) => values.lines.some((line) => line.count > 0), {
+    message: "Ingresa al menos una cantidad.",
+    path: ["lines"],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
-const AnimalCreatePage = () => {
+const AnimalsQuickCreatePage = () => {
   const navigate = useNavigate();
   const { data: establishments } = useQuery({
-    queryKey: ["establishments", "create"],
+    queryKey: ["establishments", "quick-create"],
     queryFn: async () => (await api.get("/establishments?tree=true")).data,
   });
 
@@ -61,15 +74,25 @@ const AnimalCreatePage = () => {
     return options;
   }, [establishments]);
 
+  const defaultLines = useMemo(
+    () =>
+      animalCategoryOptions.map((option) => ({
+        category: option.value,
+        sex: defaultSexByCategory[option.value] ?? "FEMALE",
+        count: 0,
+      })),
+    []
+  );
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    control,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      sex: "FEMALE",
-      category: "TERNERO",
+      lines: defaultLines,
       origin: "BORN",
       status: "ACTIVO",
       birthEstimated: false,
@@ -77,34 +100,50 @@ const AnimalCreatePage = () => {
     },
   });
 
+  const lines = useWatch({ control, name: "lines" }) ?? [];
+  const totalCount = lines.reduce((acc, line) => acc + (line?.count ?? 0), 0);
+
   const onSubmit = async (values: FormValues) => {
-    const birthDateIso = new Date(`${values.birthDate}T00:00:00Z`).toISOString();
-    const tag = values.tag?.trim();
+    const items = values.lines
+      .filter((line) => line.count > 0)
+      .map((line) => ({
+        category: line.category,
+        sex: line.sex,
+        count: line.count,
+      }));
+
+    if (!items.length) {
+      toast.error("Ingresa al menos una cantidad.");
+      return;
+    }
+
+    const birthDateIso = values.birthDate
+      ? new Date(`${values.birthDate}T00:00:00Z`).toISOString()
+      : undefined;
+
     try {
-      const response = await api.post("/animals", {
-        tag: tag || undefined,
-        sex: values.sex,
+      const response = await api.post("/animals/quick", {
+        items,
         breed: values.breed.trim(),
         birthDate: birthDateIso,
         birthEstimated: values.birthEstimated ?? false,
-        category: values.category,
-        status: values.status || undefined,
         origin: values.origin,
+        status: values.status || undefined,
         establishmentId: values.establishmentId || undefined,
         notes: values.notes?.trim() || undefined,
       });
-      toast.success("Animal registrado");
-      navigate(`/animals/${response.data.id}`);
+      toast.success(`Registro rapido completado (${response.data.count} animales)`);
+      navigate("/animals");
     } catch (error: any) {
-      toast.error(error?.response?.data?.message ?? "Error al registrar animal");
+      toast.error(error?.response?.data?.message ?? "Error al registrar animales");
     }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Registrar animal"
-        subtitle="Registro manual en el sistema"
+        title="Registro rapido"
+        subtitle="Carga masiva por categoria y sexo"
         actions={
           <Button variant="outline" asChild>
             <Link to="/animals">Volver</Link>
@@ -112,24 +151,66 @@ const AnimalCreatePage = () => {
         }
       />
 
-      <Card>
-        <CardHeader>
-          <p className="text-xs text-slate-500">Datos basicos</p>
-          <h3 className="font-display text-lg font-semibold">Informacion del animal</h3>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+      <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <Card>
+          <CardHeader>
+            <p className="text-xs text-slate-500">Paso 1</p>
+            <h3 className="font-display text-lg font-semibold">Distribucion por categoria</h3>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2">
+              <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-400">
+                <span className="col-span-5">Categoria</span>
+                <span className="col-span-3">Sexo</span>
+                <span className="col-span-4 text-right">Cantidad</span>
+              </div>
+              {lines.map((line, index) => (
+                <div key={line.category} className="grid grid-cols-12 items-center gap-2">
+                  <input type="hidden" {...register(`lines.${index}.category`)} />
+                  <span className="col-span-5 text-sm text-slate-700">
+                    {getAnimalCategoryLabel(line.category)}
+                  </span>
+                  <select
+                    className="col-span-3 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                    {...register(`lines.${index}.sex`)}
+                  >
+                    {animalSexOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="col-span-4 text-right"
+                    {...register(`lines.${index}.count`, {
+                      setValueAs: (value) => (value === "" ? 0 : Number(value)),
+                    })}
+                  />
+                </div>
+              ))}
+            </div>
+            {errors.lines ? (
+              <p className="text-xs text-red-500">{errors.lines.message as string}</p>
+            ) : null}
+            <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-2 text-sm">
+              <span className="text-slate-500">Total a registrar</span>
+              <span className="font-medium text-slate-900">{totalCount}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <p className="text-xs text-slate-500">Paso 2</p>
+            <h3 className="font-display text-lg font-semibold">Datos generales</h3>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Arete (opcional)</label>
-                <Input placeholder="TAG-1007" {...register("tag")} />
-                {errors.tag ? (
-                  <p className="text-xs text-red-500">{errors.tag.message}</p>
-                ) : null}
-              </div>
-              <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Raza</label>
-                <Input placeholder="Brahman" {...register("breed")} />
+                <Input placeholder="Brahman o Mixto" {...register("breed")} />
                 {errors.breed ? (
                   <p className="text-xs text-red-500">{errors.breed.message}</p>
                 ) : null}
@@ -137,41 +218,6 @@ const AnimalCreatePage = () => {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Fecha nacimiento</label>
                 <Input type="date" {...register("birthDate")} />
-                {errors.birthDate ? (
-                  <p className="text-xs text-red-500">{errors.birthDate.message}</p>
-                ) : null}
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Sexo</label>
-                <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
-                  {...register("sex")}
-                >
-                  {animalSexOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.sex ? (
-                  <p className="text-xs text-red-500">{errors.sex.message}</p>
-                ) : null}
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Categoria</label>
-                <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
-                  {...register("category")}
-                >
-                  {animalCategoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.category ? (
-                  <p className="text-xs text-red-500">{errors.category.message}</p>
-                ) : null}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Origen</label>
@@ -185,9 +231,6 @@ const AnimalCreatePage = () => {
                     </option>
                   ))}
                 </select>
-                {errors.origin ? (
-                  <p className="text-xs text-red-500">{errors.origin.message}</p>
-                ) : null}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Estado</label>
@@ -201,11 +244,8 @@ const AnimalCreatePage = () => {
                     </option>
                   ))}
                 </select>
-                {errors.status ? (
-                  <p className="text-xs text-red-500">{errors.status.message}</p>
-                ) : null}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 md:col-span-2">
                 <label className="text-xs font-medium text-slate-600">Establecimiento</label>
                 <select
                   className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
@@ -232,23 +272,26 @@ const AnimalCreatePage = () => {
               <label className="text-xs font-medium text-slate-600">Notas</label>
               <textarea
                 className="min-h-[96px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
-                placeholder="Observaciones adicionales"
+                placeholder="Observaciones generales para el lote"
                 {...register("notes")}
               />
             </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+              Los animales se registran sin arete. Puedes agregarlo luego desde la ficha individual.
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Guardando..." : "Guardar animal"}
+                {isSubmitting ? "Registrando..." : "Registrar animales"}
               </Button>
               <Button variant="outline" type="button" asChild>
                 <Link to="/animals">Cancelar</Link>
               </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </form>
     </div>
   );
 };
 
-export default AnimalCreatePage;
+export default AnimalsQuickCreatePage;

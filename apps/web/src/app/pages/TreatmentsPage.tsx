@@ -86,7 +86,7 @@ const TreatmentsPage = () => {
                       <option value="">Selecciona</option>
                       {(animals?.items ?? []).map((animal: any) => (
                         <option key={animal.id} value={animal.id}>
-                          {animal.tag} - {animal.breed}
+                          {(animal.tag || "Sin arete")} - {animal.breed}
                         </option>
                       ))}
                     </select>
@@ -131,7 +131,7 @@ const TreatmentsPage = () => {
           <TBody>
             {(data?.items ?? []).map((treatment: any) => (
               <TR key={treatment.id}>
-                <TD>{treatment.animal?.tag ?? "-"}</TD>
+                <TD>{treatment.animal?.tag || "Sin arete"}</TD>
                 <TD>{treatment.diagnosis}</TD>
                 <TD>{new Date(treatment.startedAt).toLocaleDateString()}</TD>
                 <TD>{treatment.status}</TD>

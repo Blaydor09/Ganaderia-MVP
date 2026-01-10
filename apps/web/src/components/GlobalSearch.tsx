@@ -28,7 +28,7 @@ export const GlobalSearch = () => {
           <div className="space-y-2 py-2 text-sm">
             {(data?.animals ?? []).map((animal: any) => (
               <Link key={animal.id} to={`/animals/${animal.id}`} className="block hover:text-brand-600">
-                {animal.tag} - {animal.breed}
+                {(animal.tag || "Sin arete")} - {animal.breed}
               </Link>
             ))}
             {(data?.animals ?? []).length === 0 ? (

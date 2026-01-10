@@ -35,11 +35,17 @@ const AnimalsPage = () => {
       {
         header: "Arete",
         accessorKey: "tag",
-        cell: (info) => (
-          <Link className="text-brand-700 hover:underline" to={`/animals/${info.row.original.id}`}>
-            {info.getValue() as string}
-          </Link>
-        ),
+        cell: (info) => {
+          const tag = info.getValue() as string | null;
+          return (
+            <Link
+              className={tag ? "text-brand-700 hover:underline" : "text-slate-400 hover:underline"}
+              to={`/animals/${info.row.original.id}`}
+            >
+              {tag || "Sin arete"}
+            </Link>
+          );
+        },
       },
       {
         header: "Categoria",
@@ -75,8 +81,13 @@ const AnimalsPage = () => {
         subtitle="Gestion y trazabilidad individual"
         actions={
           <div className="flex gap-2">
-            {canImportAnimals ? (
+            {canManageAnimals ? (
               <Button asChild>
+                <Link to="/animals/quick">Registro rapido</Link>
+              </Button>
+            ) : null}
+            {canImportAnimals ? (
+              <Button variant="outline" asChild>
                 <Link to="/animals/import">Importar CSV</Link>
               </Button>
             ) : null}
@@ -86,7 +97,7 @@ const AnimalsPage = () => {
                 downloadCsv(
                   "animales.csv",
                   (data?.items ?? []).map((animal: any) => ({
-                    tag: animal.tag,
+                    tag: animal.tag ?? "",
                     category: animal.category,
                     breed: animal.breed,
                     status: animal.status,
@@ -149,9 +160,14 @@ const AnimalsPage = () => {
                   <div className="flex flex-col items-center gap-2 py-8 text-slate-500">
                     <span>No hay animales registrados.</span>
                     {canManageAnimals ? (
-                      <Button size="sm" asChild>
-                        <Link to="/animals/new">Registrar animal</Link>
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button size="sm" asChild>
+                          <Link to="/animals/quick">Registro rapido</Link>
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/animals/new">Registrar animal</Link>
+                        </Button>
+                      </div>
                     ) : null}
                   </div>
                 </TD>

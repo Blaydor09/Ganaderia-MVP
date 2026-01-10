@@ -29,7 +29,7 @@ const WithdrawalsPage = () => {
           <TBody>
             {(data?.items ?? []).map((row: any) => (
               <TR key={row.animal.id}>
-                <TD>{row.animal.tag}</TD>
+                <TD>{row.animal.tag || "Sin arete"}</TD>
                 <TD>{row.products.join(", ")}</TD>
                 <TD>{new Date(row.meatUntil).toLocaleDateString()}</TD>
                 <TD>{new Date(row.milkUntil).toLocaleDateString()}</TD>

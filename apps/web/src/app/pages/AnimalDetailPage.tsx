@@ -22,10 +22,12 @@ const AnimalDetailPage = () => {
     return <div>Cargando...</div>;
   }
 
+  const tagLabel = data.tag || "Sin arete";
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Ficha ${data.tag}`}
+        title={`Ficha ${tagLabel}`}
         subtitle={`Categoria ${getAnimalCategoryLabel(data.category)} - Estado ${data.status}`}
         actions={
           <div className="flex gap-2">
@@ -59,7 +61,9 @@ const AnimalDetailPage = () => {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-slate-200 p-4">
               <p className="text-xs text-slate-500">Nacimiento</p>
-              <p className="text-sm font-medium">{new Date(data.birthDate).toLocaleDateString()}</p>
+              <p className="text-sm font-medium">
+                {data.birthDate ? new Date(data.birthDate).toLocaleDateString() : "Sin fecha"}
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200 p-4">
               <p className="text-xs text-slate-500">Ubicacion</p>

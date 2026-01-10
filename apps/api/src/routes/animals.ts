@@ -6,7 +6,11 @@ import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
-import { animalCreateSchema, animalUpdateSchema } from "../validators/animalSchemas";
+import {
+  animalCreateSchema,
+  animalQuickCreateSchema,
+  animalUpdateSchema,
+} from "../validators/animalSchemas";
 import { getPagination } from "../utils/pagination";
 import { generateAnimalCode } from "../utils/code";
 import { writeAudit } from "../utils/audit";
@@ -15,6 +19,17 @@ import { ApiError } from "../utils/errors";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+const normalizeOptionalString = (value?: string | null) => {
+  if (typeof value !== "string") return value ?? null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+};
+
+const parseOptionalDate = (value?: string | null) => {
+  if (!value) return null;
+  return new Date(value);
+};
 
 const ensureAssignableEstablishment = async (establishmentId?: string) => {
   if (!establishmentId) return;
@@ -104,13 +119,15 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = animalCreateSchema.parse(req.body);
     await ensureAssignableEstablishment(data.establishmentId);
+    const tag = normalizeOptionalString(data.tag);
+    const birthDate = parseOptionalDate(data.birthDate);
     const animal = await prisma.animal.create({
       data: {
         internalCode: generateAnimalCode(),
-        tag: data.tag,
+        tag,
         sex: data.sex,
         breed: data.breed,
-        birthDate: new Date(data.birthDate),
+        birthDate,
         birthEstimated: data.birthEstimated ?? false,
         category: data.category,
         status: data.status ?? "ACTIVO",
@@ -133,6 +150,70 @@ router.post(
     });
 
     res.status(201).json(animal);
+  })
+);
+
+router.post(
+  "/quick",
+  authenticate,
+  requireRoles("ADMIN", "OPERADOR"),
+  asyncHandler(async (req, res) => {
+    const data = animalQuickCreateSchema.parse(req.body);
+    await ensureAssignableEstablishment(data.establishmentId);
+
+    const birthDate = parseOptionalDate(data.birthDate);
+    const breed = data.breed.trim();
+    const notes = data.notes?.trim();
+    const status = data.status ?? "ACTIVO";
+    const birthEstimated = data.birthEstimated ?? false;
+
+    const animals: Prisma.AnimalCreateManyInput[] = [];
+    for (const item of data.items) {
+      for (let i = 0; i < item.count; i += 1) {
+        const record: Prisma.AnimalCreateManyInput = {
+          internalCode: generateAnimalCode(),
+          tag: null,
+          sex: item.sex,
+          breed,
+          birthDate,
+          birthEstimated,
+          category: item.category,
+          status,
+          origin: data.origin,
+        };
+        if (data.establishmentId) {
+          record.establishmentId = data.establishmentId;
+        }
+        if (notes) {
+          record.notes = notes;
+        }
+        animals.push(record);
+      }
+    }
+
+    const chunkSize = 500;
+    let count = 0;
+    for (let i = 0; i < animals.length; i += chunkSize) {
+      const chunk = animals.slice(i, i + chunkSize);
+      const created = await prisma.animal.createMany({ data: chunk });
+      count += created.count;
+    }
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "BULK_CREATE",
+      entity: "animal",
+      after: {
+        count,
+        items: data.items,
+        origin: data.origin,
+        status,
+        establishmentId: data.establishmentId ?? null,
+      },
+      ip: req.ip,
+    });
+
+    res.status(201).json({ count });
   })
 );
 
@@ -201,23 +282,31 @@ router.patch(
       await ensureAssignableEstablishment(data.establishmentId);
     }
 
+    const updateData: Prisma.AnimalUpdateInput = {
+      sex: data.sex,
+      breed: data.breed,
+      birthEstimated: data.birthEstimated,
+      category: data.category,
+      status: data.status,
+      origin: data.origin,
+      supplierId: data.supplierId,
+      motherId: data.motherId,
+      fatherId: data.fatherId,
+      establishmentId: data.establishmentId,
+      notes: data.notes,
+    };
+
+    if (data.tag !== undefined) {
+      updateData.tag = normalizeOptionalString(data.tag);
+    }
+
+    if (data.birthDate !== undefined) {
+      updateData.birthDate = parseOptionalDate(data.birthDate);
+    }
+
     const updated = await prisma.animal.update({
       where: { id: req.params.id },
-      data: {
-        tag: data.tag,
-        sex: data.sex,
-        breed: data.breed,
-        birthDate: data.birthDate ? new Date(data.birthDate) : undefined,
-        birthEstimated: data.birthEstimated,
-        category: data.category,
-        status: data.status,
-        origin: data.origin,
-        supplierId: data.supplierId,
-        motherId: data.motherId,
-        fatherId: data.fatherId,
-        establishmentId: data.establishmentId,
-        notes: data.notes,
-      },
+      data: updateData,
     });
 
     await writeAudit({
@@ -298,13 +387,15 @@ router.post(
 
     const created: string[] = [];
     for (const row of rows) {
+      const tag = normalizeOptionalString(row.tag);
+      const birthDate = parseOptionalDate(row.birth_date);
       const animal = await prisma.animal.create({
         data: {
           internalCode: generateAnimalCode(),
-          tag: row.tag,
+          tag,
           sex: row.sex as "MALE" | "FEMALE",
-          breed: row.breed,
-          birthDate: new Date(row.birth_date),
+          breed: row.breed.trim(),
+          birthDate,
           birthEstimated: row.birth_estimated === "true",
           category: row.category as any,
           status: (row.status as any) ?? "ACTIVO",

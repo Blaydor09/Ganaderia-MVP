@@ -174,10 +174,10 @@ model Supplier {
 model Animal {
   id              String        @id @default(uuid())
   internalCode    String        @unique
-  tag             String        @unique
+  tag             String?       @unique
   sex             AnimalSex
   breed           String
-  birthDate       DateTime
+  birthDate       DateTime?
   birthEstimated  Boolean       @default(false)
   category        AnimalCategory
   status          AnimalStatus  @default(ACTIVO)

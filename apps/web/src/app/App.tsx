@@ -11,6 +11,7 @@ import LandingPage from "@/app/pages/LandingPage";
 import DashboardPage from "@/app/pages/DashboardPage";
 import AnimalsPage from "@/app/pages/AnimalsPage";
 import AnimalCreatePage from "@/app/pages/AnimalCreatePage";
+import AnimalsQuickCreatePage from "@/app/pages/AnimalsQuickCreatePage";
 import AnimalDetailPage from "@/app/pages/AnimalDetailPage";
 import AnimalPrintPage from "@/app/pages/AnimalPrintPage";
 import AnimalsImportPage from "@/app/pages/AnimalsImportPage";
@@ -119,6 +120,18 @@ const App = () => (
           <DashboardLayout>
             <RequireRole allowed={Access.animalsCreate}>
               <AnimalCreatePage />
+            </RequireRole>
+          </DashboardLayout>
+        </RequireAuth>
+      }
+    />
+    <Route
+      path="/animals/quick"
+      element={
+        <RequireAuth>
+          <DashboardLayout>
+            <RequireRole allowed={Access.animalsCreate}>
+              <AnimalsQuickCreatePage />
             </RequireRole>
           </DashboardLayout>
         </RequireAuth>

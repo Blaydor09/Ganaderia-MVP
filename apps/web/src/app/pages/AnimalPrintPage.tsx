@@ -21,11 +21,13 @@ const AnimalPrintPage = () => {
     return <div className="p-6">Cargando ficha...</div>;
   }
 
+  const tagLabel = data.tag || "Sin arete";
+
   return (
     <div className="p-8 text-slate-900">
       <h1 className="text-2xl font-semibold">Ficha del animal</h1>
       <div className="mt-4 grid gap-2 text-sm">
-        <p><strong>Arete:</strong> {data.tag}</p>
+        <p><strong>Arete:</strong> {tagLabel}</p>
         <p><strong>Categoria:</strong> {getAnimalCategoryLabel(data.category)}</p>
         <p><strong>Raza:</strong> {data.breed}</p>
         <p><strong>Sexo:</strong> {data.sex}</p>
