@@ -26,7 +26,7 @@ enum AnimalCategory {
   VAQUILLA
   VACA
   TORO
-  NOVILLO
+  TORILLO
 }
 
 enum AnimalStatus {
@@ -63,6 +63,12 @@ enum MovementType {
   EXTERNAL
   SALE
   SLAUGHTER
+}
+
+enum EstablishmentType {
+  FINCA
+  POTRERO
+  CORRAL
 }
 
 enum InventoryTxType {
@@ -137,14 +143,20 @@ model RefreshToken {
 model Establishment {
   id        String   @id @default(uuid())
   name      String
-  type      String
-  address   String?
-  lat       Float?
-  lng       Float?
+  type      EstablishmentType
+  parentId  String?
+  fincaId   String?
   animals   Animal[]
   events    AnimalEvent[]
+  parent    Establishment? @relation("EstablishmentHierarchy", fields: [parentId], references: [id])
+  children  Establishment[] @relation("EstablishmentHierarchy")
+  originMovements      Movement[] @relation("MovementOrigin")
+  destinationMovements Movement[] @relation("MovementDestination")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([fincaId])
 }
 
 model Supplier {
@@ -230,9 +242,13 @@ model Movement {
   createdBy      String?
   createdAt      DateTime      @default(now())
 
-  animal Animal @relation(fields: [animalId], references: [id])
+  animal      Animal         @relation(fields: [animalId], references: [id])
+  origin      Establishment? @relation("MovementOrigin", fields: [originId], references: [id])
+  destination Establishment? @relation("MovementDestination", fields: [destinationId], references: [id])
 
   @@index([occurredAt])
+  @@index([originId])
+  @@index([destinationId])
 }
 
 model Product {

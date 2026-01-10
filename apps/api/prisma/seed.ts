@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { randomUUID } from "crypto";
 import { hashPassword } from "../src/utils/password";
 
 const prisma = new PrismaClient();
@@ -68,13 +69,95 @@ const run = async () => {
     },
   });
 
-  const establishment = await prisma.establishment.create({
-    data: {
-      name: "Finca Central",
-      type: "finca",
-      address: "Km 10",
-    },
+  const existingFinca = await prisma.establishment.findFirst({
+    where: { name: "Finca Central", type: "FINCA" },
   });
+  const fincaId = existingFinca?.id ?? randomUUID();
+  const finca = existingFinca
+    ? await prisma.establishment.update({
+        where: { id: fincaId },
+        data: {
+          name: "Finca Central",
+          type: "FINCA",
+          parentId: null,
+          fincaId,
+        },
+      })
+    : await prisma.establishment.create({
+        data: {
+          id: fincaId,
+          name: "Finca Central",
+          type: "FINCA",
+          parentId: null,
+          fincaId,
+        },
+      });
+
+  const potreroNorteExisting = await prisma.establishment.findFirst({
+    where: { name: "Potrero Norte", type: "POTRERO", parentId: finca.id },
+  });
+  const potreroNorte = potreroNorteExisting
+    ? await prisma.establishment.update({
+        where: { id: potreroNorteExisting.id },
+        data: {
+          name: "Potrero Norte",
+          type: "POTRERO",
+          parentId: finca.id,
+          fincaId: finca.id,
+        },
+      })
+    : await prisma.establishment.create({
+        data: {
+          name: "Potrero Norte",
+          type: "POTRERO",
+          parentId: finca.id,
+          fincaId: finca.id,
+        },
+      });
+
+  const potreroSurExisting = await prisma.establishment.findFirst({
+    where: { name: "Potrero Sur", type: "POTRERO", parentId: finca.id },
+  });
+  const potreroSur = potreroSurExisting
+    ? await prisma.establishment.update({
+        where: { id: potreroSurExisting.id },
+        data: {
+          name: "Potrero Sur",
+          type: "POTRERO",
+          parentId: finca.id,
+          fincaId: finca.id,
+        },
+      })
+    : await prisma.establishment.create({
+        data: {
+          name: "Potrero Sur",
+          type: "POTRERO",
+          parentId: finca.id,
+          fincaId: finca.id,
+        },
+      });
+
+  const corralExisting = await prisma.establishment.findFirst({
+    where: { name: "Corral Principal", type: "CORRAL", fincaId: finca.id },
+  });
+  const corral = corralExisting
+    ? await prisma.establishment.update({
+        where: { id: corralExisting.id },
+        data: {
+          name: "Corral Principal",
+          type: "CORRAL",
+          parentId: finca.id,
+          fincaId: finca.id,
+        },
+      })
+    : await prisma.establishment.create({
+        data: {
+          name: "Corral Principal",
+          type: "CORRAL",
+          parentId: finca.id,
+          fincaId: finca.id,
+        },
+      });
 
   const supplier = await prisma.supplier.create({
     data: { name: "Proveedor Vet" },
@@ -106,8 +189,10 @@ const run = async () => {
     },
   });
 
-  const animal = await prisma.animal.create({
-    data: {
+  const animal = await prisma.animal.upsert({
+    where: { internalCode: "AN-DEMO-001" },
+    update: {},
+    create: {
       internalCode: "AN-DEMO-001",
       tag: "TAG-1001",
       sex: "FEMALE",
@@ -116,8 +201,73 @@ const run = async () => {
       category: "VACA",
       status: "ACTIVO",
       origin: "BORN",
-      establishmentId: establishment.id,
+      establishmentId: corral.id,
     },
+  });
+
+  const extraAnimals = [
+    {
+      internalCode: "AN-DEMO-002",
+      tag: "TAG-1002",
+      sex: "FEMALE",
+      breed: "Angus",
+      birthDate: new Date("2023-05-12"),
+        category: "VAQUILLA",
+        status: "ACTIVO",
+        origin: "BORN",
+        establishmentId: potreroNorte.id,
+      },
+    {
+      internalCode: "AN-DEMO-003",
+      tag: "TAG-1003",
+      sex: "MALE",
+      breed: "Brahman",
+      birthDate: new Date("2024-02-01"),
+        category: "TERNERO",
+        status: "ACTIVO",
+        origin: "BORN",
+        establishmentId: potreroSur.id,
+      },
+    {
+      internalCode: "AN-DEMO-004",
+      tag: "TAG-1004",
+      sex: "MALE",
+      breed: "Nelore",
+      birthDate: new Date("2022-09-18"),
+        category: "TORO",
+        status: "ACTIVO",
+        origin: "BOUGHT",
+        supplierId: supplier.id,
+        establishmentId: corral.id,
+      },
+    {
+      internalCode: "AN-DEMO-005",
+      tag: "TAG-1005",
+      sex: "MALE",
+      breed: "Hereford",
+      birthDate: new Date("2023-07-22"),
+        category: "TORILLO",
+        status: "ACTIVO",
+        origin: "BORN",
+        establishmentId: potreroNorte.id,
+      },
+    {
+      internalCode: "AN-DEMO-006",
+      tag: "TAG-1006",
+      sex: "FEMALE",
+      breed: "Holstein",
+      birthDate: new Date("2021-08-05"),
+        category: "VACA",
+        status: "ACTIVO",
+        origin: "BOUGHT",
+        supplierId: supplier.id,
+        establishmentId: potreroSur.id,
+      },
+  ];
+
+  await prisma.animal.createMany({
+    data: extraAnimals,
+    skipDuplicates: true,
   });
 
   const treatment = await prisma.treatment.create({

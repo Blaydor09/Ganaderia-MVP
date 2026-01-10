@@ -19,7 +19,7 @@ router.get(
 router.post(
   "/",
   authenticate,
-  requireRoles("ADMIN", "VETERINARIO"),
+  requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = alertCreateSchema.parse(req.body);
     const created = await prisma.alert.create({

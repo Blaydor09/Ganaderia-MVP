@@ -1,2 +1,7 @@
 tag,sex,breed,birth_date,birth_estimated,category,status,origin,establishment_id
 TAG-1002,FEMALE,Angus,2023-02-10,false,VACA,ACTIVO,BORN,
+TAG-1003,MALE,Brahman,2024-02-01,false,TERNERO,ACTIVO,BORN,
+TAG-1004,MALE,Nelore,2022-09-18,false,TORO,ACTIVO,BOUGHT,
+TAG-1005,MALE,Hereford,2023-07-22,false,TORILLO,ACTIVO,BORN,
+TAG-1006,FEMALE,Holstein,2021-08-05,false,VACA,ACTIVO,BOUGHT,
+TAG-1007,FEMALE,Gyr,2022-11-02,true,VAQUILLA,ACTIVO,BORN,

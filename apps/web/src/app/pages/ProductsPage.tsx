@@ -3,8 +3,11 @@ import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
 
 const ProductsPage = () => {
+  const canCreate = hasAnyRole(Access.productsCreate);
   const { data } = useQuery({
     queryKey: ["products"],
     queryFn: async () => (await api.get("/products?page=1&pageSize=50")).data,
@@ -15,7 +18,7 @@ const ProductsPage = () => {
       <PageHeader
         title="Medicamentos"
         subtitle="Catalogo de productos y retiros"
-        actions={<Button>Nuevo producto</Button>}
+        actions={canCreate ? <Button>Nuevo producto</Button> : undefined}
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

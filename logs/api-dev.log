@@ -1,0 +1,5 @@
+
+> inventario-ganaderia-api@1.0.0 dev
+> tsx watch src/index.ts
+
+API running on port 4000

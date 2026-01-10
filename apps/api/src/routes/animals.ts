@@ -10,9 +10,23 @@ import { getPagination } from "../utils/pagination";
 import { generateAnimalCode } from "../utils/code";
 import { writeAudit } from "../utils/audit";
 import { getActiveWithdrawalForAnimal } from "../services/withdrawalService";
+import { ApiError } from "../utils/errors";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+const ensureAssignableEstablishment = async (establishmentId?: string) => {
+  if (!establishmentId) return;
+  const establishment = await prisma.establishment.findUnique({
+    where: { id: establishmentId },
+  });
+  if (!establishment) {
+    throw new ApiError(400, "Establishment not found");
+  }
+  if (establishment.type === "FINCA") {
+    throw new ApiError(400, "Establishment must be potrero or corral");
+  }
+};
 
 router.get(
   "/",
@@ -24,6 +38,9 @@ router.get(
     if (req.query.category) where.category = req.query.category;
     if (req.query.status) where.status = req.query.status;
     if (req.query.establishmentId) where.establishmentId = req.query.establishmentId;
+    if (req.query.fincaId) {
+      where.establishment = { fincaId: req.query.fincaId };
+    }
 
     const [items, total] = await Promise.all([
       prisma.animal.findMany({
@@ -31,7 +48,7 @@ router.get(
         skip,
         take: pageSize,
         orderBy: { createdAt: "desc" },
-        include: { establishment: true },
+        include: { establishment: { include: { parent: true } } },
       }),
       prisma.animal.count({ where }),
     ]);
@@ -46,6 +63,7 @@ router.post(
   requireRoles("ADMIN", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = animalCreateSchema.parse(req.body);
+    await ensureAssignableEstablishment(data.establishmentId);
     const animal = await prisma.animal.create({
       data: {
         internalCode: generateAnimalCode(),
@@ -85,7 +103,7 @@ router.get(
     const animal = await prisma.animal.findUnique({
       where: { id: req.params.id },
       include: {
-        establishment: true,
+        establishment: { include: { parent: true } },
         events: { orderBy: { occurredAt: "desc" } },
         movements: { orderBy: { occurredAt: "desc" } },
         treatments: { include: { administrations: true } },
@@ -131,12 +149,16 @@ router.get(
 router.patch(
   "/:id",
   authenticate,
-  requireRoles("ADMIN", "OPERADOR"),
+  requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const data = animalUpdateSchema.parse(req.body);
     const existing = await prisma.animal.findUnique({ where: { id: req.params.id } });
     if (!existing) {
       return res.status(404).json({ message: "Animal not found" });
+    }
+
+    if (data.establishmentId !== undefined) {
+      await ensureAssignableEstablishment(data.establishmentId);
     }
 
     const updated = await prisma.animal.update({
@@ -216,6 +238,23 @@ router.post(
       skip_empty_lines: true,
       trim: true,
     }) as Record<string, string>[];
+
+    const establishmentIds = Array.from(
+      new Set(rows.map((row) => row.establishment_id).filter(Boolean))
+    ) as string[];
+
+    if (establishmentIds.length) {
+      const establishments = await prisma.establishment.findMany({
+        where: { id: { in: establishmentIds } },
+      });
+      if (establishments.length !== establishmentIds.length) {
+        throw new ApiError(400, "Invalid establishment_id in CSV");
+      }
+      const invalid = establishments.find((est) => est.type === "FINCA");
+      if (invalid) {
+        throw new ApiError(400, "Establishment must be potrero or corral");
+      }
+    }
 
     const created: string[] = [];
     for (const row of rows) {

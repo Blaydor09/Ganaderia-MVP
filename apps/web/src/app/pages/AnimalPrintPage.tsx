@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { getAnimalCategoryLabel } from "@/lib/animals";
 
 const AnimalPrintPage = () => {
   const params = useParams();
@@ -25,11 +26,15 @@ const AnimalPrintPage = () => {
       <h1 className="text-2xl font-semibold">Ficha del animal</h1>
       <div className="mt-4 grid gap-2 text-sm">
         <p><strong>Arete:</strong> {data.tag}</p>
-        <p><strong>Categoria:</strong> {data.category}</p>
+        <p><strong>Categoria:</strong> {getAnimalCategoryLabel(data.category)}</p>
         <p><strong>Raza:</strong> {data.breed}</p>
         <p><strong>Sexo:</strong> {data.sex}</p>
         <p><strong>Estado:</strong> {data.status}</p>
-        <p><strong>Ubicacion:</strong> {data.establishment?.name ?? "-"}</p>
+        <p><strong>Ubicacion:</strong> {data.establishment
+          ? data.establishment.parent
+            ? `${data.establishment.parent.name} / ${data.establishment.name}`
+            : data.establishment.name
+          : "-"}</p>
       </div>
     </div>
   );

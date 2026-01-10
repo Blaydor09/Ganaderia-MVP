@@ -9,8 +9,13 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { downloadCsv } from "@/lib/csv";
+import { getAnimalCategoryLabel } from "@/lib/animals";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
 
 const AnimalsPage = () => {
+  const canManageAnimals = hasAnyRole(Access.animalsCreate);
+  const canImportAnimals = hasAnyRole(Access.animalsImport);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -39,13 +44,19 @@ const AnimalsPage = () => {
       {
         header: "Categoria",
         accessorKey: "category",
-        cell: (info) => <Badge>{info.getValue() as string}</Badge>,
+        cell: (info) => <Badge>{getAnimalCategoryLabel(info.getValue() as string)}</Badge>,
       },
       { header: "Raza", accessorKey: "breed" },
       { header: "Estado", accessorKey: "status" },
       {
         header: "Ubicacion",
-        accessorFn: (row) => row.establishment?.name ?? "-",
+        accessorFn: (row) => {
+          if (!row.establishment) return "-";
+          if (row.establishment.parent) {
+            return `${row.establishment.parent.name} / ${row.establishment.name}`;
+          }
+          return row.establishment.name;
+        },
       },
     ],
     []
@@ -64,9 +75,11 @@ const AnimalsPage = () => {
         subtitle="Gestion y trazabilidad individual"
         actions={
           <div className="flex gap-2">
-            <Button asChild>
-              <Link to="/animals/import">Importar CSV</Link>
-            </Button>
+            {canImportAnimals ? (
+              <Button asChild>
+                <Link to="/animals/import">Importar CSV</Link>
+              </Button>
+            ) : null}
             <Button
               variant="outline"
               onClick={() =>
@@ -83,7 +96,11 @@ const AnimalsPage = () => {
             >
               Exportar CSV
             </Button>
-            <Button variant="secondary">Registrar animal</Button>
+            {canManageAnimals ? (
+              <Button variant="secondary" asChild>
+                <Link to="/animals/new">Registrar animal</Link>
+              </Button>
+            ) : null}
           </div>
         }
       />
@@ -131,7 +148,11 @@ const AnimalsPage = () => {
                 <TD colSpan={columns.length}>
                   <div className="flex flex-col items-center gap-2 py-8 text-slate-500">
                     <span>No hay animales registrados.</span>
-                    <Button size="sm">Registrar animal</Button>
+                    {canManageAnimals ? (
+                      <Button size="sm" asChild>
+                        <Link to="/animals/new">Registrar animal</Link>
+                      </Button>
+                    ) : null}
                   </div>
                 </TD>
               </TR>

@@ -19,7 +19,7 @@ router.get(
 router.post(
   "/",
   authenticate,
-  requireRoles("ADMIN", "VETERINARIO"),
+  requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = taskCreateSchema.parse(req.body);
     const created = await prisma.task.create({

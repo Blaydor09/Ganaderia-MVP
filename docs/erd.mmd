@@ -3,6 +3,7 @@ erDiagram
   USERS ||--o{ REFRESH_TOKENS : owns
   ROLES ||--o{ USER_ROLES : assigned
   ESTABLISHMENTS ||--o{ ANIMALS : houses
+  ESTABLISHMENTS ||--o{ ESTABLISHMENTS : parent
   SUPPLIERS ||--o{ BATCHES : supplies
   PRODUCTS ||--o{ BATCHES : has
   BATCHES ||--o{ INVENTORY_TRANSACTIONS : moves
@@ -47,9 +48,8 @@ erDiagram
     uuid id PK
     string name
     string type
-    string address
-    float lat
-    float lng
+    uuid parent_id FK
+    uuid finca_id
     datetime created_at
     datetime updated_at
   }

@@ -15,25 +15,29 @@ import {
   MapPinned,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/animals", label: "Animales", icon: PawPrint },
-  { to: "/events", label: "Eventos", icon: ClipboardList },
-  { to: "/treatments", label: "Tratamientos", icon: Stethoscope },
-  { to: "/withdrawals", label: "Retiros", icon: ShieldCheck },
-  { to: "/products", label: "Medicamentos", icon: Pill },
-  { to: "/inventory", label: "Inventario", icon: Boxes },
-  { to: "/batches", label: "Lotes", icon: ClipboardList },
-  { to: "/movements", label: "Movimientos", icon: Truck },
-  { to: "/establishments", label: "Establecimientos", icon: MapPinned },
-  { to: "/reports", label: "Reportes", icon: BarChart3 },
-  { to: "/alerts", label: "Alertas", icon: AlertTriangle },
-  { to: "/users", label: "Usuarios", icon: Users },
-  { to: "/settings", label: "Ajustes", icon: Settings },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: Access.dashboard },
+  { to: "/animals", label: "Animales", icon: PawPrint, roles: Access.animals },
+  { to: "/events", label: "Eventos", icon: ClipboardList, roles: Access.events },
+  { to: "/treatments", label: "Tratamientos", icon: Stethoscope, roles: Access.treatments },
+  { to: "/withdrawals", label: "Retiros", icon: ShieldCheck, roles: Access.withdrawals },
+  { to: "/products", label: "Medicamentos", icon: Pill, roles: Access.products },
+  { to: "/inventory", label: "Inventario", icon: Boxes, roles: Access.inventory },
+  { to: "/batches", label: "Lotes", icon: ClipboardList, roles: Access.batches },
+  { to: "/movements", label: "Movimientos", icon: Truck, roles: Access.movements },
+  { to: "/establishments", label: "Establecimientos", icon: MapPinned, roles: Access.establishments },
+  { to: "/reports", label: "Reportes", icon: BarChart3, roles: Access.reports },
+  { to: "/alerts", label: "Alertas", icon: AlertTriangle, roles: Access.alerts },
+  { to: "/users", label: "Usuarios", icon: Users, roles: Access.users },
+  { to: "/settings", label: "Ajustes", icon: Settings, roles: Access.settings },
 ];
 
 export const Sidebar = () => {
+  const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));
+
   return (
     <aside className="hidden h-screen w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
       <div className="mb-8 flex items-center gap-2">
@@ -46,7 +50,7 @@ export const Sidebar = () => {
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink

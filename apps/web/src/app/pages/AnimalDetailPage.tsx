@@ -1,13 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+ï»¿import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { getAnimalCategoryLabel } from "@/lib/animals";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
 
 const AnimalDetailPage = () => {
   const params = useParams();
+  const canCreateEvents = hasAnyRole(Access.eventsCreate);
+  const canCreateTreatments = hasAnyRole(Access.treatmentsCreate);
   const { data } = useQuery({
     queryKey: ["animal", params.id],
     queryFn: async () => (await api.get(`/animals/${params.id}`)).data,
@@ -21,21 +26,21 @@ const AnimalDetailPage = () => {
     <div className="space-y-6">
       <PageHeader
         title={`Ficha ${data.tag}`}
-        subtitle={`Categoria ${data.category} · Estado ${data.status}`}
+        subtitle={`Categoria ${getAnimalCategoryLabel(data.category)} - Estado ${data.status}`}
         actions={
           <div className="flex gap-2">
             <Button asChild>
               <Link to={`/animals/${data.id}/print`}>Imprimir ficha</Link>
             </Button>
-            <Button variant="secondary">Agregar evento</Button>
-            <Button variant="outline">Agregar tratamiento</Button>
+            {canCreateEvents ? <Button variant="secondary">Agregar evento</Button> : null}
+            {canCreateTreatments ? <Button variant="outline">Agregar tratamiento</Button> : null}
           </div>
         }
       />
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6">
         <div className="flex flex-wrap items-center gap-4">
-          <Badge>{data.category}</Badge>
+          <Badge>{getAnimalCategoryLabel(data.category)}</Badge>
           <span className="text-sm text-slate-500">Raza: {data.breed}</span>
           <span className="text-sm text-slate-500">Sexo: {data.sex}</span>
         </div>
@@ -59,7 +64,11 @@ const AnimalDetailPage = () => {
             <div className="rounded-xl border border-slate-200 p-4">
               <p className="text-xs text-slate-500">Ubicacion</p>
               <p className="text-sm font-medium">
-                {data.establishment?.name ?? "Sin asignar"}
+                {data.establishment
+                  ? data.establishment.parent
+                    ? `${data.establishment.parent.name} / ${data.establishment.name}`
+                    : data.establishment.name
+                  : "Sin asignar"}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 p-4">

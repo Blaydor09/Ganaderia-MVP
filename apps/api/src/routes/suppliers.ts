@@ -18,7 +18,7 @@ router.get(
 router.post(
   "/",
   authenticate,
-  requireRoles("ADMIN", "VETERINARIO"),
+  requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const created = await prisma.supplier.create({ data: req.body });
     res.status(201).json(created);

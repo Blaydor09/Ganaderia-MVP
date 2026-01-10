@@ -35,7 +35,7 @@ router.get(
 router.post(
   "/",
   authenticate,
-  requireRoles("ADMIN", "VETERINARIO"),
+  requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = treatmentCreateSchema.parse(req.body);
     const created = await prisma.treatment.create({

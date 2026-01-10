@@ -1,0 +1,27 @@
+import type { Role } from "@/lib/auth";
+
+export const Access = {
+  dashboard: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
+  animals: ["ADMIN", "OPERADOR", "AUDITOR"] as Role[],
+  animalsCreate: ["ADMIN", "OPERADOR"] as Role[],
+  animalsImport: ["ADMIN", "OPERADOR"] as Role[],
+  events: ["ADMIN", "OPERADOR", "AUDITOR"] as Role[],
+  treatments: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
+  treatmentsCreate: ["ADMIN", "VETERINARIO", "OPERADOR"] as Role[],
+  withdrawals: ["ADMIN", "AUDITOR"] as Role[],
+  reports: ["ADMIN", "AUDITOR"] as Role[],
+  products: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
+  productsCreate: ["ADMIN", "VETERINARIO", "OPERADOR"] as Role[],
+  batches: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
+  batchesCreate: ["ADMIN", "VETERINARIO", "OPERADOR"] as Role[],
+  inventory: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
+  alerts: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
+  tasks: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
+  movements: ["ADMIN", "OPERADOR", "AUDITOR"] as Role[],
+  establishments: ["ADMIN", "AUDITOR"] as Role[],
+  establishmentsCreate: ["ADMIN"] as Role[],
+  users: ["ADMIN"] as Role[],
+  audit: ["ADMIN", "AUDITOR"] as Role[],
+  settings: ["ADMIN"] as Role[],
+  eventsCreate: ["ADMIN", "OPERADOR"] as Role[],
+} as const;

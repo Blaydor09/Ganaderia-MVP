@@ -75,7 +75,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  requireRoles("ADMIN", "OPERADOR", "VETERINARIO"),
+  requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = eventUpdateSchema.parse(req.body);
     const existing = await prisma.animalEvent.findUnique({ where: { id: req.params.id } });

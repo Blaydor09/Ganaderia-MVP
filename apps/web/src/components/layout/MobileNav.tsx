@@ -1,18 +1,22 @@
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, PawPrint, Stethoscope, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
 
 const items = [
-  { to: "/", label: "Inicio", icon: LayoutDashboard },
-  { to: "/animals", label: "Animales", icon: PawPrint },
-  { to: "/treatments", label: "Salud", icon: Stethoscope },
-  { to: "/inventory", label: "Stock", icon: Boxes },
+  { to: "/", label: "Inicio", icon: LayoutDashboard, roles: Access.dashboard },
+  { to: "/animals", label: "Animales", icon: PawPrint, roles: Access.animals },
+  { to: "/treatments", label: "Salud", icon: Stethoscope, roles: Access.treatments },
+  { to: "/inventory", label: "Stock", icon: Boxes, roles: Access.inventory },
 ];
 
 export const MobileNav = () => {
+  const visibleItems = items.filter((item) => hasAnyRole(item.roles));
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white py-2 lg:hidden">
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const Icon = item.icon;
         return (
           <NavLink

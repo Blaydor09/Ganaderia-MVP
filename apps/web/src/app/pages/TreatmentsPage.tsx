@@ -15,6 +15,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
 
 const schema = z.object({
   animalId: z.string().min(1),
@@ -26,6 +28,7 @@ type FormValues = z.infer<typeof schema>;
 
 const TreatmentsPage = () => {
   const queryClient = useQueryClient();
+  const canCreate = hasAnyRole(Access.treatmentsCreate);
   const { data } = useQuery({
     queryKey: ["treatments"],
     queryFn: async () => (await api.get("/treatments?page=1&pageSize=50")).data,
@@ -64,52 +67,54 @@ const TreatmentsPage = () => {
         title="Tratamientos"
         subtitle="Control sanitario y aplicaciones"
         actions={
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>Nuevo tratamiento</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nuevo tratamiento</DialogTitle>
-              </DialogHeader>
-              <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
-                <div className="space-y-1 text-sm">
-                  <label className="text-xs text-slate-500">Animal</label>
-                  <select
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
-                    {...register("animalId")}
-                  >
-                    <option value="">Selecciona</option>
-                    {(animals?.items ?? []).map((animal: any) => (
-                      <option key={animal.id} value={animal.id}>
-                        {animal.tag} - {animal.breed}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.animalId ? (
-                    <p className="text-xs text-red-500">{errors.animalId.message}</p>
-                  ) : null}
-                </div>
-                <div className="space-y-1 text-sm">
-                  <label className="text-xs text-slate-500">Diagnostico</label>
-                  <Input placeholder="Ej: Desparasitacion" {...register("diagnosis")} />
-                  {errors.diagnosis ? (
-                    <p className="text-xs text-red-500">{errors.diagnosis.message}</p>
-                  ) : null}
-                </div>
-                <div className="space-y-1 text-sm">
-                  <label className="text-xs text-slate-500">Fecha inicio</label>
-                  <Input type="datetime-local" {...register("startedAt")} />
-                  {errors.startedAt ? (
-                    <p className="text-xs text-red-500">{errors.startedAt.message}</p>
-                  ) : null}
-                </div>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Guardando..." : "Crear"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          canCreate ? (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button>Nuevo tratamiento</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Nuevo tratamiento</DialogTitle>
+                </DialogHeader>
+                <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
+                  <div className="space-y-1 text-sm">
+                    <label className="text-xs text-slate-500">Animal</label>
+                    <select
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+                      {...register("animalId")}
+                    >
+                      <option value="">Selecciona</option>
+                      {(animals?.items ?? []).map((animal: any) => (
+                        <option key={animal.id} value={animal.id}>
+                          {animal.tag} - {animal.breed}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.animalId ? (
+                      <p className="text-xs text-red-500">{errors.animalId.message}</p>
+                    ) : null}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <label className="text-xs text-slate-500">Diagnostico</label>
+                    <Input placeholder="Ej: Desparasitacion" {...register("diagnosis")} />
+                    {errors.diagnosis ? (
+                      <p className="text-xs text-red-500">{errors.diagnosis.message}</p>
+                    ) : null}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <label className="text-xs text-slate-500">Fecha inicio</label>
+                    <Input type="datetime-local" {...register("startedAt")} />
+                    {errors.startedAt ? (
+                      <p className="text-xs text-red-500">{errors.startedAt.message}</p>
+                    ) : null}
+                  </div>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Guardando..." : "Crear"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          ) : undefined
         }
       />
 

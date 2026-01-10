@@ -3,8 +3,11 @@ import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
 
 const BatchesPage = () => {
+  const canCreate = hasAnyRole(Access.batchesCreate);
   const { data } = useQuery({
     queryKey: ["batches"],
     queryFn: async () => (await api.get("/batches?page=1&pageSize=50")).data,
@@ -15,7 +18,7 @@ const BatchesPage = () => {
       <PageHeader
         title="Lotes"
         subtitle="Control por batch y vencimientos"
-        actions={<Button>Agregar lote</Button>}
+        actions={canCreate ? <Button>Agregar lote</Button> : undefined}
       />
 
       <div className="rounded-2xl border border-slate-200 bg-white">

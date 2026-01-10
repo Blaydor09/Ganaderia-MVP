@@ -2,24 +2,30 @@ import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
+import { requireRoles } from "../middleware/rbac";
 
 const router = Router();
 
 router.get(
   "/withdrawals-active",
   authenticate,
+  requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
     const now = new Date();
     const establishmentId = (req.query.establishmentId as string | undefined) ?? undefined;
+    const fincaId = (req.query.fincaId as string | undefined) ?? undefined;
+    const treatmentFilter = establishmentId
+      ? { animal: { establishmentId } }
+      : fincaId
+        ? { animal: { establishment: { fincaId } } }
+        : undefined;
     const administrations = await prisma.administration.findMany({
       where: {
         OR: [
           { meatWithdrawalUntil: { gt: now } },
           { milkWithdrawalUntil: { gt: now } },
         ],
-        treatment: establishmentId
-          ? { animal: { establishmentId } }
-          : undefined,
+        treatment: treatmentFilter,
       },
       include: {
         treatment: { include: { animal: true } },
@@ -62,6 +68,7 @@ router.get(
 router.get(
   "/inventory-expiring",
   authenticate,
+  requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
     const days = Number(req.query.days ?? 30);
     const now = new Date();
@@ -83,6 +90,7 @@ router.get(
 router.get(
   "/consumption",
   authenticate,
+  requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (_req, res) => {
     const transactions = await prisma.inventoryTransaction.groupBy({
       by: ["productId"],
@@ -109,6 +117,7 @@ router.get(
 router.get(
   "/weights",
   authenticate,
+  requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
     const animalId = req.query.animalId as string | undefined;
     const where: Record<string, unknown> = { type: "PESO" };

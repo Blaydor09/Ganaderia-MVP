@@ -24,7 +24,7 @@ router.get(
 router.post(
   "/transactions",
   authenticate,
-  requireRoles("ADMIN", "VETERINARIO"),
+  requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = inventoryTxSchema.parse(req.body);
     const tx = await createInventoryTransaction({

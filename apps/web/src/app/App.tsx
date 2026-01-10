@@ -3,10 +3,13 @@ import type { ReactNode } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { isAuthenticated } from "@/lib/auth";
+import { hasAnyRole, isAuthenticated } from "@/lib/auth";
+import type { Role } from "@/lib/auth";
+import { Access } from "@/lib/access";
 import LoginPage from "@/app/pages/LoginPage";
 import DashboardPage from "@/app/pages/DashboardPage";
 import AnimalsPage from "@/app/pages/AnimalsPage";
+import AnimalCreatePage from "@/app/pages/AnimalCreatePage";
 import AnimalDetailPage from "@/app/pages/AnimalDetailPage";
 import AnimalPrintPage from "@/app/pages/AnimalPrintPage";
 import AnimalsImportPage from "@/app/pages/AnimalsImportPage";
@@ -24,10 +27,24 @@ import EstablishmentsPage from "@/app/pages/EstablishmentsPage";
 import UsersPage from "@/app/pages/UsersPage";
 import AuditPage from "@/app/pages/AuditPage";
 import SettingsPage from "@/app/pages/SettingsPage";
+import AccessDeniedPage from "@/app/pages/AccessDeniedPage";
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+const RequireRole = ({
+  allowed,
+  children,
+}: {
+  allowed: Role[];
+  children: JSX.Element;
+}) => {
+  if (!hasAnyRole(allowed)) {
+    return <AccessDeniedPage />;
   }
   return children;
 };
@@ -51,7 +68,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <DashboardPage />
+            <RequireRole allowed={Access.dashboard}>
+              <DashboardPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -61,7 +80,21 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <AnimalsPage />
+            <RequireRole allowed={Access.animals}>
+              <AnimalsPage />
+            </RequireRole>
+          </DashboardLayout>
+        </RequireAuth>
+      }
+    />
+    <Route
+      path="/animals/new"
+      element={
+        <RequireAuth>
+          <DashboardLayout>
+            <RequireRole allowed={Access.animalsCreate}>
+              <AnimalCreatePage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -71,7 +104,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <AnimalsImportPage />
+            <RequireRole allowed={Access.animalsImport}>
+              <AnimalsImportPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -81,7 +116,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <EventsPage />
+            <RequireRole allowed={Access.events}>
+              <EventsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -91,7 +128,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <AnimalDetailPage />
+            <RequireRole allowed={Access.animals}>
+              <AnimalDetailPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -100,7 +139,9 @@ const App = () => (
       path="/animals/:id/print"
       element={
         <RequireAuth>
-          <AnimalPrintPage />
+          <RequireRole allowed={Access.animals}>
+            <AnimalPrintPage />
+          </RequireRole>
         </RequireAuth>
       }
     />
@@ -109,7 +150,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <ProductsPage />
+            <RequireRole allowed={Access.products}>
+              <ProductsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -119,7 +162,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <BatchesPage />
+            <RequireRole allowed={Access.batches}>
+              <BatchesPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -129,7 +174,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <InventoryPage />
+            <RequireRole allowed={Access.inventory}>
+              <InventoryPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -139,7 +186,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <TreatmentsPage />
+            <RequireRole allowed={Access.treatments}>
+              <TreatmentsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -149,7 +198,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <WithdrawalsPage />
+            <RequireRole allowed={Access.withdrawals}>
+              <WithdrawalsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -159,7 +210,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <ReportsPage />
+            <RequireRole allowed={Access.reports}>
+              <ReportsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -169,7 +222,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <AlertsPage />
+            <RequireRole allowed={Access.alerts}>
+              <AlertsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -179,7 +234,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <TasksPage />
+            <RequireRole allowed={Access.tasks}>
+              <TasksPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -189,7 +246,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <MovementsPage />
+            <RequireRole allowed={Access.movements}>
+              <MovementsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -199,7 +258,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <EstablishmentsPage />
+            <RequireRole allowed={Access.establishments}>
+              <EstablishmentsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -209,7 +270,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <UsersPage />
+            <RequireRole allowed={Access.users}>
+              <UsersPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -219,7 +282,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <AuditPage />
+            <RequireRole allowed={Access.audit}>
+              <AuditPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
@@ -229,7 +294,9 @@ const App = () => (
       element={
         <RequireAuth>
           <DashboardLayout>
-            <SettingsPage />
+            <RequireRole allowed={Access.settings}>
+              <SettingsPage />
+            </RequireRole>
           </DashboardLayout>
         </RequireAuth>
       }
