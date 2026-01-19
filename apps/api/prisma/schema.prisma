@@ -93,6 +93,13 @@ enum AlertType {
   WITHDRAWAL
 }
 
+enum ProductType {
+  VITAMINAS
+  ANTIBIOTICOS
+  DESPARASITANTE
+  VACUNAS
+}
+
 model User {
   id           String         @id @default(uuid())
   name         String
@@ -254,6 +261,8 @@ model Movement {
 model Product {
   id                   String   @id @default(uuid())
   name                 String
+  type                 ProductType?
+  vaccineTypes         String[] @default([])
   activeIngredient     String
   presentation         String
   concentration        String

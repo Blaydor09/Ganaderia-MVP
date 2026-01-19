@@ -34,3 +34,14 @@ export const animalStatusOptions = [
   { value: "FAENADO", label: "Faenado" },
   { value: "PERDIDO", label: "Perdido" },
 ] as const;
+
+const animalStatusLabels = animalStatusOptions.reduce<Record<string, string>>(
+  (acc, option) => {
+    acc[option.value] = option.label;
+    return acc;
+  },
+  {}
+);
+
+export const getAnimalStatusLabel = (value?: string) =>
+  (value && animalStatusLabels[value]) || value || "-";

@@ -1,11 +1,13 @@
 import { Bell } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { Button } from "@/components/ui/button";
 import { clearTokens } from "@/lib/auth";
 
 export const Topbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const showGlobalSearch = location.pathname !== "/animals";
 
   const handleLogout = () => {
     clearTokens();
@@ -15,10 +17,14 @@ export const Topbar = () => {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
       <div className="flex items-center gap-3">
-        <GlobalSearch />
-        <span className="hidden text-xs text-slate-500 md:block">
-          Acceso rapido con / o Ctrl+K
-        </span>
+        {showGlobalSearch ? (
+          <>
+            <GlobalSearch />
+            <span className="hidden text-xs text-slate-500 md:block">
+              Acceso rapido con / o Ctrl+K
+            </span>
+          </>
+        ) : null}
       </div>
       <div className="flex items-center gap-3">
         <button className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100">

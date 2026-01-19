@@ -108,7 +108,7 @@ const AnimalsQuickCreatePage = () => {
       .filter((line) => line.count > 0)
       .map((line) => ({
         category: line.category,
-        sex: line.sex,
+        sex: line.category === "TERNERO" ? line.sex : (defaultSexByCategory[line.category] ?? line.sex),
         count: line.count,
       }));
 
@@ -170,16 +170,31 @@ const AnimalsQuickCreatePage = () => {
                   <span className="col-span-5 text-sm text-slate-700">
                     {getAnimalCategoryLabel(line.category)}
                   </span>
-                  <select
-                    className="col-span-3 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
-                    {...register(`lines.${index}.sex`)}
-                  >
-                    {animalSexOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  {line.category === "TERNERO" ? (
+                    <select
+                      className="col-span-3 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                      {...register(`lines.${index}.sex`)}
+                    >
+                      {animalSexOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <>
+                      <input
+                        type="hidden"
+                        value={defaultSexByCategory[line.category] ?? "FEMALE"}
+                        {...register(`lines.${index}.sex`)}
+                      />
+                      <div className="col-span-3 flex h-10 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+                        {(defaultSexByCategory[line.category] ?? "FEMALE") === "MALE"
+                          ? "Macho"
+                          : "Hembra"}
+                      </div>
+                    </>
+                  )}
                   <Input
                     type="number"
                     min={0}

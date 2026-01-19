@@ -166,6 +166,7 @@ const run = async () => {
   const product = await prisma.product.create({
     data: {
       name: "Ivermectina",
+      type: "DESPARASITANTE",
       activeIngredient: "Ivermectina",
       presentation: "Frasco 50ml",
       concentration: "1%",
