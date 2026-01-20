@@ -282,7 +282,7 @@ router.patch(
       await ensureAssignableEstablishment(data.establishmentId);
     }
 
-    const updateData: Prisma.AnimalUpdateInput = {
+    const updateData: Prisma.AnimalUncheckedUpdateInput = {
       sex: data.sex,
       breed: data.breed,
       birthEstimated: data.birthEstimated,

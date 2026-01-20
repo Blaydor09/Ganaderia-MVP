@@ -28,11 +28,13 @@ export const createApp = () => {
     res.json({ status: "ok" });
   });
 
-  const docsPath = path.join(process.cwd(), "docs", "openapi.yaml");
-  if (fs.existsSync(docsPath)) {
-    const raw = fs.readFileSync(docsPath, "utf-8");
-    const spec = YAML.parse(raw);
-    app.use("/api/v1/docs", swaggerUi.serve, swaggerUi.setup(spec));
+  if (env.enableDocs) {
+    const docsPath = path.join(process.cwd(), "docs", "openapi.yaml");
+    if (fs.existsSync(docsPath)) {
+      const raw = fs.readFileSync(docsPath, "utf-8");
+      const spec = YAML.parse(raw);
+      app.use("/api/v1/docs", swaggerUi.serve, swaggerUi.setup(spec));
+    }
   }
 
   app.use("/api/v1", apiRoutes);

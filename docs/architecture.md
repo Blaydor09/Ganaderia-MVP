@@ -62,4 +62,10 @@
 - Reglas criticas en servicios con transacciones Prisma.
 - Auditoria para cambios criticos.
 - Soft delete en entidades clave.
-- Seguridad: bcrypt, rate limit, helmet, CORS.
+- Seguridad: bcrypt, rate limit, helmet, CORS estricto y docs deshabilitables en prod.
+
+## Ambientes y configuracion
+- La API carga `.env` y luego `.env.<ambiente>` usando `APP_ENV` o `NODE_ENV`.
+- En produccion, `CORS_ORIGIN` es obligatorio (lista separada por coma y sin `*`).
+- Swagger se controla con `ENABLE_DOCS` (activo en dev, recomendado en `false` para prod).
+- El frontend usa `VITE_API_URL`; en prod puede apuntar a `"/api/v1"` con nginx.

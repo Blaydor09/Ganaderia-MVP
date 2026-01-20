@@ -1,8 +1,12 @@
 import axios from "axios";
 import { getAccessToken } from "./auth";
 
+const defaultBaseUrl = import.meta.env.PROD
+  ? "/api/v1"
+  : "http://localhost:4000/api/v1";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:4000/api/v1",
+  baseURL: import.meta.env.VITE_API_URL ?? defaultBaseUrl,
 });
 
 api.interceptors.request.use((config) => {

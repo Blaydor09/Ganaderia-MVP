@@ -5,6 +5,9 @@ apps/**/node_modules
 apps/**/dist
 apps/**/.env
 apps/**/.env.*
+!apps/**/.env.example
+!apps/**/.env.production.example
+!apps/**/.env.development.example
 apps/**/coverage
 apps/**/.turbo
 apps/**/.vite

@@ -76,6 +76,15 @@ Abrir: http://localhost:5173/landing
 - Rutas app: `docs/routes.md`
 - Wireframe: `docs/wireframe.md`
 - Guia rapida: `docs/guide.md`
+- Deploy (systemd + nginx): `docs/deploy.md`
+
+## Entornos dev/prod
+- La API carga `.env` y luego sobreescribe con `.env.<ambiente>` usando `APP_ENV` o `NODE_ENV` (por defecto `development`).
+- Desarrollo: copia `apps/api/.env.example` -> `apps/api/.env` y `apps/web/.env.example` -> `apps/web/.env`.
+- Produccion: copia `apps/api/.env.production.example` -> `apps/api/.env.production` y `apps/web/.env.production.example` -> `apps/web/.env.production`, con `NODE_ENV=production`.
+- `CORS_ORIGIN` es obligatorio en prod (lista separada por coma, sin `*`).
+- `ENABLE_DOCS` esta activo en dev y recomendado en `false` para prod.
+- En prod, `VITE_API_URL` puede quedar en `"/api/v1"` si usas nginx como proxy.
 
 ## Notas
 - Las reglas criticas de retiro e inventario estan implementadas en servicios del backend.
