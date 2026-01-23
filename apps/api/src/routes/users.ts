@@ -13,7 +13,9 @@ router.get(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (_req, res) => {
+    const organizationId = _req.user!.organizationId;
     const users = await prisma.user.findMany({
+      where: { organizationId },
       include: { roles: { include: { role: true } } },
       orderBy: { createdAt: "desc" },
     });
@@ -45,6 +47,7 @@ router.post(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = userCreateSchema.parse(req.body);
     const passwordHash = await hashPassword(data.password);
 
@@ -52,6 +55,7 @@ router.post(
       data: {
         name: data.name,
         email: data.email,
+        organizationId,
         passwordHash,
         roles: {
           create: data.roles.map((roleName) => ({
@@ -76,7 +80,15 @@ router.patch(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = userUpdateSchema.parse(req.body);
+
+    const existing = await prisma.user.findFirst({
+      where: { id: req.params.id, organizationId },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const updateData: any = {
       name: data.name,
@@ -127,6 +139,13 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
+    const existing = await prisma.user.findFirst({
+      where: { id: req.params.id, organizationId },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "User not found" });
+    }
     await prisma.user.update({
       where: { id: req.params.id },
       data: { isActive: false },

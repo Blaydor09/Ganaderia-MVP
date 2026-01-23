@@ -10,6 +10,7 @@ type Establishment = NonNullable<
 
 export type CreateMovementInput = {
   animalId: string;
+  organizationId: string;
   occurredAt: Date;
   originId?: string;
   destinationId?: string;
@@ -21,8 +22,8 @@ export type CreateMovementInput = {
 };
 
 export const createMovement = async (input: CreateMovementInput) => {
-  const animal = await prisma.animal.findUnique({
-    where: { id: input.animalId },
+  const animal = await prisma.animal.findFirst({
+    where: { id: input.animalId, organizationId: input.organizationId },
   });
   if (!animal) {
     throw new ApiError(404, "Animal not found");
@@ -30,10 +31,14 @@ export const createMovement = async (input: CreateMovementInput) => {
 
   const [origin, destination] = await Promise.all([
     input.originId
-      ? prisma.establishment.findUnique({ where: { id: input.originId } })
+      ? prisma.establishment.findFirst({
+          where: { id: input.originId, organizationId: input.organizationId },
+        })
       : Promise.resolve(null),
     input.destinationId
-      ? prisma.establishment.findUnique({ where: { id: input.destinationId } })
+      ? prisma.establishment.findFirst({
+          where: { id: input.destinationId, organizationId: input.organizationId },
+        })
       : Promise.resolve(null),
   ]);
 
@@ -46,7 +51,10 @@ export const createMovement = async (input: CreateMovementInput) => {
   }
 
   if (input.movementType === "SALE" || input.movementType === "SLAUGHTER") {
-    const withdrawal = await getActiveWithdrawalForAnimal(input.animalId);
+    const withdrawal = await getActiveWithdrawalForAnimal(
+      input.animalId,
+      input.organizationId
+    );
     if (isWithdrawalActive(withdrawal.meatUntil)) {
       throw new ApiError(400, "Animal has active meat withdrawal");
     }
@@ -146,6 +154,7 @@ export const createMovement = async (input: CreateMovementInput) => {
     prisma.movement.create({
       data: {
         animalId: input.animalId,
+        organizationId: input.organizationId,
         occurredAt: input.occurredAt,
         originId: input.originId,
         destinationId: input.destinationId,
@@ -173,6 +182,7 @@ export const createMovement = async (input: CreateMovementInput) => {
   const [movement] = await prisma.$transaction(operations);
 
   await writeAudit({
+    organizationId: input.organizationId,
     userId: input.createdBy,
     action: "CREATE",
     entity: "movement",

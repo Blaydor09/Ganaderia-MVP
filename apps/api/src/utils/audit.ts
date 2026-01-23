@@ -1,6 +1,7 @@
 import { prisma } from "../config/prisma";
 
 export type AuditInput = {
+  organizationId: string;
   userId?: string;
   action: string;
   entity: string;
@@ -13,6 +14,7 @@ export type AuditInput = {
 export const writeAudit = async (input: AuditInput) => {
   return prisma.auditLog.create({
     data: {
+      organizationId: input.organizationId,
       userId: input.userId,
       action: input.action,
       entity: input.entity,

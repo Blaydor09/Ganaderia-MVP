@@ -8,6 +8,7 @@ import { writeAudit } from "../utils/audit";
 export type CreateAdministrationInput = {
   treatmentId: string;
   batchId: string;
+  organizationId: string;
   administeredAt: Date;
   dose: number;
   doseUnit: string;
@@ -19,8 +20,8 @@ export type CreateAdministrationInput = {
 };
 
 export const createAdministration = async (input: CreateAdministrationInput) => {
-  const batch = await prisma.batch.findUnique({
-    where: { id: input.batchId },
+  const batch = await prisma.batch.findFirst({
+    where: { id: input.batchId, organizationId: input.organizationId },
     include: { product: true },
   });
 
@@ -40,8 +41,8 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
     throw new ApiError(400, "Insufficient stock");
   }
 
-  const treatment = await prisma.treatment.findUnique({
-    where: { id: input.treatmentId },
+  const treatment = await prisma.treatment.findFirst({
+    where: { id: input.treatmentId, organizationId: input.organizationId },
   });
 
   if (!treatment) {
@@ -60,6 +61,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
         treatmentId: input.treatmentId,
         batchId: batch.id,
         productId: batch.productId,
+        organizationId: input.organizationId,
         administeredAt: input.administeredAt,
         dose: input.dose,
         doseUnit: input.doseUnit,
@@ -81,6 +83,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
       data: {
         batchId: batch.id,
         productId: batch.productId,
+        organizationId: input.organizationId,
         type: "OUT",
         quantity: input.dose,
         unit: input.doseUnit,
@@ -96,6 +99,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
   });
 
   await writeAudit({
+    organizationId: input.organizationId,
     userId: input.createdBy,
     action: "CREATE",
     entity: "administration",

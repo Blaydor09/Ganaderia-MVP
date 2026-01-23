@@ -13,8 +13,9 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { organizationId };
     if (req.query.animalId) where.animalId = req.query.animalId;
 
     const [items, total] = await Promise.all([
@@ -36,9 +37,11 @@ router.post(
   authenticate,
   requireRoles("ADMIN", "OPERADOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = movementCreateSchema.parse(req.body);
     const movement = await createMovement({
       animalId: data.animalId,
+      organizationId,
       occurredAt: new Date(data.occurredAt),
       originId: data.originId,
       destinationId: data.destinationId,
@@ -58,6 +61,13 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
+    const existing = await prisma.movement.findFirst({
+      where: { id: req.params.id, organizationId },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "Movement not found" });
+    }
     await prisma.movement.delete({ where: { id: req.params.id } });
     res.json({ success: true });
   })

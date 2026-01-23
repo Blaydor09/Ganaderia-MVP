@@ -11,6 +11,7 @@ router.get(
   authenticate,
   requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const now = new Date();
     const establishmentId = (req.query.establishmentId as string | undefined) ?? undefined;
     const fincaId = (req.query.fincaId as string | undefined) ?? undefined;
@@ -21,6 +22,7 @@ router.get(
         : undefined;
     const administrations = await prisma.administration.findMany({
       where: {
+        organizationId,
         OR: [
           { meatWithdrawalUntil: { gt: now } },
           { milkWithdrawalUntil: { gt: now } },
@@ -70,12 +72,14 @@ router.get(
   authenticate,
   requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const days = Number(req.query.days ?? 30);
     const now = new Date();
     const limit = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
     const batches = await prisma.batch.findMany({
       where: {
+        organizationId,
         expiresAt: { lte: limit },
         deletedAt: null,
       },
@@ -92,9 +96,10 @@ router.get(
   authenticate,
   requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (_req, res) => {
+    const organizationId = _req.user!.organizationId;
     const transactions = await prisma.inventoryTransaction.groupBy({
       by: ["productId"],
-      where: { type: "OUT" },
+      where: { type: "OUT", organizationId },
       _sum: { quantity: true },
     });
 
@@ -102,7 +107,10 @@ router.get(
     const txRows = transactions as TxRow[];
 
     const products = await prisma.product.findMany({
-      where: { id: { in: txRows.map((t: TxRow) => t.productId) } },
+      where: {
+        id: { in: txRows.map((t: TxRow) => t.productId) },
+        organizationId,
+      },
     });
 
     const items = txRows.map((row: TxRow) => ({
@@ -119,8 +127,9 @@ router.get(
   authenticate,
   requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const animalId = req.query.animalId as string | undefined;
-    const where: Record<string, unknown> = { type: "PESO" };
+    const where: Record<string, unknown> = { type: "PESO", organizationId };
     if (animalId) where.animalId = animalId;
 
     const events = await prisma.animalEvent.findMany({

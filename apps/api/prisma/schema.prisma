@@ -100,8 +100,34 @@ enum ProductType {
   VACUNAS
 }
 
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  users     User[]
+  establishments Establishment[]
+  suppliers Supplier[]
+  animals   Animal[]
+  animalEvents AnimalEvent[]
+  movements Movement[]
+  products  Product[]
+  batches   Batch[]
+  inventoryTransactions InventoryTransaction[]
+  treatments Treatment[]
+  administrations Administration[]
+  animalPhotos AnimalPhoto[]
+  labResults LabResult[]
+  auditLogs AuditLog[]
+  alerts    Alert[]
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model User {
   id           String         @id @default(uuid())
+  organizationId String
   name         String
   email        String         @unique
   passwordHash String
@@ -109,8 +135,11 @@ model User {
   roles        UserRole[]
   auditLogs    AuditLog[]
   refreshTokens RefreshToken[]
+  organization Organization @relation(fields: [organizationId], references: [id])
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+
+  @@index([organizationId])
 }
 
 model Role {
@@ -151,10 +180,12 @@ model Establishment {
   id        String   @id @default(uuid())
   name      String
   type      EstablishmentType
+  organizationId String
   parentId  String?
   fincaId   String?
   animals   Animal[]
   events    AnimalEvent[]
+  organization Organization @relation(fields: [organizationId], references: [id])
   parent    Establishment? @relation("EstablishmentHierarchy", fields: [parentId], references: [id])
   children  Establishment[] @relation("EstablishmentHierarchy")
   originMovements      Movement[] @relation("MovementOrigin")
@@ -162,6 +193,7 @@ model Establishment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([organizationId])
   @@index([parentId])
   @@index([fincaId])
 }
@@ -169,19 +201,24 @@ model Establishment {
 model Supplier {
   id        String   @id @default(uuid())
   name      String
+  organizationId String
   contact   String?
   phone     String?
   email     String?
   animals   Animal[]
   batches   Batch[]
+  organization Organization @relation(fields: [organizationId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 model Animal {
   id              String        @id @default(uuid())
-  internalCode    String        @unique
-  tag             String?       @unique
+  internalCode    String
+  tag             String?
+  organizationId  String
   sex             AnimalSex
   breed           String
   birthDate       DateTime?
@@ -205,8 +242,11 @@ model Animal {
 
   supplier      Supplier?     @relation(fields: [supplierId], references: [id])
   establishment Establishment? @relation(fields: [establishmentId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
-  @@index([tag])
+  @@index([organizationId])
+  @@unique([organizationId, internalCode])
+  @@unique([organizationId, tag])
   @@index([establishmentId])
 }
 
@@ -214,14 +254,19 @@ model AnimalPhoto {
   id        String   @id @default(uuid())
   animalId  String
   url       String
+  organizationId String
   createdAt DateTime @default(now())
 
   animal Animal @relation(fields: [animalId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }
 
 model AnimalEvent {
   id              String     @id @default(uuid())
   animalId        String
+  organizationId  String
   type            EventType
   occurredAt      DateTime
   establishmentId String?
@@ -233,13 +278,16 @@ model AnimalEvent {
 
   animal        Animal        @relation(fields: [animalId], references: [id])
   establishment Establishment? @relation(fields: [establishmentId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
+  @@index([organizationId])
   @@index([occurredAt])
 }
 
 model Movement {
   id             String        @id @default(uuid())
   animalId       String
+  organizationId String
   occurredAt     DateTime
   originId       String?
   destinationId  String?
@@ -252,7 +300,9 @@ model Movement {
   animal      Animal         @relation(fields: [animalId], references: [id])
   origin      Establishment? @relation("MovementOrigin", fields: [originId], references: [id])
   destination Establishment? @relation("MovementDestination", fields: [destinationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
+  @@index([organizationId])
   @@index([occurredAt])
   @@index([originId])
   @@index([destinationId])
@@ -261,6 +311,7 @@ model Movement {
 model Product {
   id                   String   @id @default(uuid())
   name                 String
+  organizationId       String
   type                 ProductType?
   vaccineTypes         String[] @default([])
   activeIngredient     String
@@ -278,16 +329,19 @@ model Product {
   batches              Batch[]
   inventoryTransactions InventoryTransaction[]
   administrations      Administration[]
+  organization Organization @relation(fields: [organizationId], references: [id])
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   deletedAt            DateTime?
 
+  @@index([organizationId])
   @@index([name])
 }
 
 model Batch {
   id                String   @id @default(uuid())
   productId         String
+  organizationId    String
   batchNumber       String
   expiresAt         DateTime
   supplierId        String?
@@ -297,6 +351,7 @@ model Batch {
   quantityAvailable Float
   transactions      InventoryTransaction[]
   administrations   Administration[]
+  organization Organization @relation(fields: [organizationId], references: [id])
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   deletedAt         DateTime?
@@ -304,6 +359,7 @@ model Batch {
   product  Product  @relation(fields: [productId], references: [id])
   supplier Supplier? @relation(fields: [supplierId], references: [id])
 
+  @@index([organizationId])
   @@index([expiresAt])
   @@unique([productId, batchNumber])
 }
@@ -312,6 +368,7 @@ model InventoryTransaction {
   id         String           @id @default(uuid())
   batchId    String
   productId  String
+  organizationId String
   type       InventoryTxType
   quantity   Float
   unit       String
@@ -324,13 +381,16 @@ model InventoryTransaction {
 
   batch   Batch   @relation(fields: [batchId], references: [id])
   product Product @relation(fields: [productId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
+  @@index([organizationId])
   @@index([occurredAt])
 }
 
 model Treatment {
   id         String         @id @default(uuid())
   animalId   String
+  organizationId String
   diagnosis  String
   vetId      String?
   startedAt  DateTime
@@ -342,7 +402,9 @@ model Treatment {
 
   animal Animal @relation(fields: [animalId], references: [id])
   administrations Administration[]
+  organization Organization @relation(fields: [organizationId], references: [id])
 
+  @@index([organizationId])
   @@index([startedAt])
 }
 
@@ -351,6 +413,7 @@ model Administration {
   treatmentId         String
   batchId             String
   productId           String
+  organizationId      String
   administeredAt      DateTime
   dose                Float
   doseUnit            String
@@ -366,23 +429,30 @@ model Administration {
   treatment Treatment @relation(fields: [treatmentId], references: [id])
   batch     Batch     @relation(fields: [batchId], references: [id])
   product   Product   @relation(fields: [productId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
+  @@index([organizationId])
   @@index([administeredAt])
 }
 
 model LabResult {
   id          String   @id @default(uuid())
   animalId    String
+  organizationId String
   name        String
   result      String
   collectedAt DateTime
 
   animal Animal @relation(fields: [animalId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }
 
 model AuditLog {
   id        String   @id @default(uuid())
   userId    String?
+  organizationId String
   action    String
   entity    String
   entityId  String?
@@ -392,26 +462,38 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
+  @@index([organizationId])
   @@index([createdAt])
 }
 
 model Alert {
   id        String    @id @default(uuid())
   type      AlertType
+  organizationId String
   title     String
   message   String
   dueAt     DateTime
   status    TaskStatus @default(OPEN)
   createdAt DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }
 
 model Task {
   id        String    @id @default(uuid())
   title     String
   taskType  String
+  organizationId String
   dueAt     DateTime
   status    TaskStatus @default(OPEN)
   notes     String?
   createdAt DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }

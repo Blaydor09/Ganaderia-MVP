@@ -31,10 +31,13 @@ const parseOptionalDate = (value?: string | null) => {
   return new Date(value);
 };
 
-const ensureAssignableEstablishment = async (establishmentId?: string) => {
+const ensureAssignableEstablishment = async (
+  organizationId: string,
+  establishmentId?: string
+) => {
   if (!establishmentId) return;
-  const establishment = await prisma.establishment.findUnique({
-    where: { id: establishmentId },
+  const establishment = await prisma.establishment.findFirst({
+    where: { id: establishmentId, organizationId },
   });
   if (!establishment) {
     throw new ApiError(400, "Establishment not found");
@@ -44,16 +47,44 @@ const ensureAssignableEstablishment = async (establishmentId?: string) => {
   }
 };
 
+const ensureSupplier = async (organizationId: string, supplierId?: string) => {
+  if (!supplierId) return;
+  const supplier = await prisma.supplier.findFirst({
+    where: { id: supplierId, organizationId },
+  });
+  if (!supplier) {
+    throw new ApiError(400, "Supplier not found");
+  }
+};
+
+const ensureRelatedAnimal = async (
+  organizationId: string,
+  animalId: string | undefined,
+  label: string
+) => {
+  if (!animalId) return;
+  const animal = await prisma.animal.findFirst({
+    where: { id: animalId, organizationId, deletedAt: null },
+  });
+  if (!animal) {
+    throw new ApiError(400, `${label} not found`);
+  }
+};
+
 router.get(
   "/summary",
   authenticate,
   asyncHandler(async (req, res) => {
-    const where: Prisma.AnimalWhereInput = { deletedAt: null };
+    const organizationId = req.user!.organizationId;
+    const where: Prisma.AnimalWhereInput = { deletedAt: null, organizationId };
     if (req.query.establishmentId) {
       where.establishmentId = String(req.query.establishmentId);
     }
     if (req.query.fincaId) {
-      where.establishment = { fincaId: String(req.query.fincaId) };
+      where.establishment = {
+        fincaId: String(req.query.fincaId),
+        organizationId,
+      };
     }
 
     const [total, byCategory, bySex, byStatus, byOrigin] = await Promise.all([
@@ -87,14 +118,15 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = { deletedAt: null };
+    const where: Record<string, unknown> = { deletedAt: null, organizationId };
     if (req.query.tag) where.tag = { contains: req.query.tag, mode: "insensitive" };
     if (req.query.category) where.category = req.query.category;
     if (req.query.status) where.status = req.query.status;
     if (req.query.establishmentId) where.establishmentId = req.query.establishmentId;
     if (req.query.fincaId) {
-      where.establishment = { fincaId: req.query.fincaId };
+      where.establishment = { fincaId: req.query.fincaId, organizationId };
     }
 
     const [items, total] = await Promise.all([
@@ -117,14 +149,21 @@ router.post(
   authenticate,
   requireRoles("ADMIN", "OPERADOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = animalCreateSchema.parse(req.body);
-    await ensureAssignableEstablishment(data.establishmentId);
+    await Promise.all([
+      ensureAssignableEstablishment(organizationId, data.establishmentId),
+      ensureSupplier(organizationId, data.supplierId),
+      ensureRelatedAnimal(organizationId, data.motherId, "Mother animal"),
+      ensureRelatedAnimal(organizationId, data.fatherId, "Father animal"),
+    ]);
     const tag = normalizeOptionalString(data.tag);
     const birthDate = parseOptionalDate(data.birthDate);
     const animal = await prisma.animal.create({
       data: {
         internalCode: generateAnimalCode(),
         tag,
+        organizationId,
         sex: data.sex,
         breed: data.breed,
         birthDate,
@@ -141,6 +180,7 @@ router.post(
     });
 
     await writeAudit({
+      organizationId,
       userId: req.user?.id,
       action: "CREATE",
       entity: "animal",
@@ -158,8 +198,9 @@ router.post(
   authenticate,
   requireRoles("ADMIN", "OPERADOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = animalQuickCreateSchema.parse(req.body);
-    await ensureAssignableEstablishment(data.establishmentId);
+    await ensureAssignableEstablishment(organizationId, data.establishmentId);
 
     const birthDate = parseOptionalDate(data.birthDate);
     const breed = data.breed.trim();
@@ -173,6 +214,7 @@ router.post(
         const record: Prisma.AnimalCreateManyInput = {
           internalCode: generateAnimalCode(),
           tag: null,
+          organizationId,
           sex: item.sex,
           breed,
           birthDate,
@@ -200,6 +242,7 @@ router.post(
     }
 
     await writeAudit({
+      organizationId,
       userId: req.user?.id,
       action: "BULK_CREATE",
       entity: "animal",
@@ -221,8 +264,9 @@ router.get(
   "/:id",
   authenticate,
   asyncHandler(async (req, res) => {
-    const animal = await prisma.animal.findUnique({
-      where: { id: req.params.id },
+    const organizationId = req.user!.organizationId;
+    const animal = await prisma.animal.findFirst({
+      where: { id: req.params.id, organizationId },
       include: {
         establishment: { include: { parent: true } },
         events: { orderBy: { occurredAt: "desc" } },
@@ -244,8 +288,9 @@ router.get(
   "/:id/summary",
   authenticate,
   asyncHandler(async (req, res) => {
-    const animal = await prisma.animal.findUnique({
-      where: { id: req.params.id },
+    const organizationId = req.user!.organizationId;
+    const animal = await prisma.animal.findFirst({
+      where: { id: req.params.id, organizationId },
     });
 
     if (!animal) {
@@ -253,11 +298,14 @@ router.get(
     }
 
     const lastWeight = await prisma.animalEvent.findFirst({
-      where: { animalId: animal.id, type: "PESO" },
+      where: { animalId: animal.id, type: "PESO", organizationId },
       orderBy: { occurredAt: "desc" },
     });
 
-    const withdrawal = await getActiveWithdrawalForAnimal(animal.id);
+    const withdrawal = await getActiveWithdrawalForAnimal(
+      animal.id,
+      organizationId
+    );
 
     res.json({
       animal,
@@ -272,14 +320,26 @@ router.patch(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = animalUpdateSchema.parse(req.body);
-    const existing = await prisma.animal.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.animal.findFirst({
+      where: { id: req.params.id, organizationId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Animal not found" });
     }
 
     if (data.establishmentId !== undefined) {
-      await ensureAssignableEstablishment(data.establishmentId);
+      await ensureAssignableEstablishment(organizationId, data.establishmentId);
+    }
+    if (data.supplierId !== undefined) {
+      await ensureSupplier(organizationId, data.supplierId);
+    }
+    if (data.motherId !== undefined) {
+      await ensureRelatedAnimal(organizationId, data.motherId, "Mother animal");
+    }
+    if (data.fatherId !== undefined) {
+      await ensureRelatedAnimal(organizationId, data.fatherId, "Father animal");
     }
 
     const updateData: Prisma.AnimalUncheckedUpdateInput = {
@@ -310,6 +370,7 @@ router.patch(
     });
 
     await writeAudit({
+      organizationId,
       userId: req.user?.id,
       action: "UPDATE",
       entity: "animal",
@@ -328,7 +389,10 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
-    const existing = await prisma.animal.findUnique({ where: { id: req.params.id } });
+    const organizationId = req.user!.organizationId;
+    const existing = await prisma.animal.findFirst({
+      where: { id: req.params.id, organizationId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Animal not found" });
     }
@@ -339,6 +403,7 @@ router.delete(
     });
 
     await writeAudit({
+      organizationId,
       userId: req.user?.id,
       action: "DELETE",
       entity: "animal",
@@ -358,6 +423,7 @@ router.post(
   requireRoles("ADMIN", "OPERADOR"),
   upload.single("file"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     if (!req.file) {
       return res.status(400).json({ message: "Missing file" });
     }
@@ -374,7 +440,7 @@ router.post(
 
     if (establishmentIds.length) {
       const establishments = await prisma.establishment.findMany({
-        where: { id: { in: establishmentIds } },
+        where: { id: { in: establishmentIds }, organizationId },
       });
       if (establishments.length !== establishmentIds.length) {
         throw new ApiError(400, "Invalid establishment_id in CSV");
@@ -393,6 +459,7 @@ router.post(
         data: {
           internalCode: generateAnimalCode(),
           tag,
+          organizationId,
           sex: row.sex as "MALE" | "FEMALE",
           breed: row.breed.trim(),
           birthDate,

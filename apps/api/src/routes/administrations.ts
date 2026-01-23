@@ -20,8 +20,9 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { organizationId };
     if (req.query.animalId) {
       where.treatment = { animalId: req.query.animalId };
     }
@@ -46,10 +47,12 @@ router.post(
   authenticate,
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = administrationCreateSchema.parse(req.body);
     const created = await createAdministration({
       treatmentId: data.treatmentId,
       batchId: data.batchId,
+      organizationId,
       administeredAt: new Date(data.administeredAt),
       dose: data.dose,
       doseUnit: data.doseUnit,
@@ -68,9 +71,10 @@ router.patch(
   authenticate,
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = administrationUpdateSchema.parse(req.body);
-    const existing = await prisma.administration.findUnique({
-      where: { id: req.params.id },
+    const existing = await prisma.administration.findFirst({
+      where: { id: req.params.id, organizationId },
       include: { batch: { include: { product: true } } },
     });
 
@@ -110,6 +114,7 @@ router.patch(
           data: {
             batchId: existing.batchId,
             productId: existing.productId,
+            organizationId,
             type: "ADJUST",
             quantity: Math.abs(doseDiff),
             unit: data.doseUnit ?? existing.doseUnit,
@@ -138,6 +143,7 @@ router.patch(
     });
 
     await writeAudit({
+      organizationId,
       userId: req.user?.id,
       action: "UPDATE",
       entity: "administration",

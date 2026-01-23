@@ -12,8 +12,9 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = { deletedAt: null };
+    const where: Record<string, unknown> = { deletedAt: null, organizationId };
     if (req.query.search) {
       where.name = { contains: req.query.search, mode: "insensitive" };
     }
@@ -37,8 +38,11 @@ router.post(
   authenticate,
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = productCreateSchema.parse(req.body);
-    const created = await prisma.product.create({ data });
+    const created = await prisma.product.create({
+      data: { ...data, organizationId },
+    });
     res.status(201).json(created);
   })
 );
@@ -48,7 +52,14 @@ router.patch(
   authenticate,
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = productUpdateSchema.parse(req.body);
+    const existing = await prisma.product.findFirst({
+      where: { id: req.params.id, organizationId },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "Product not found" });
+    }
     const updated = await prisma.product.update({
       where: { id: req.params.id },
       data,
@@ -62,6 +73,13 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
+    const existing = await prisma.product.findFirst({
+      where: { id: req.params.id, organizationId },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "Product not found" });
+    }
     const deleted = await prisma.product.update({
       where: { id: req.params.id },
       data: { deletedAt: new Date() },

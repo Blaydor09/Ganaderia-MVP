@@ -5,6 +5,7 @@ import { writeAudit } from "../utils/audit";
 
 export type CreateInventoryTxInput = {
   batchId: string;
+  organizationId: string;
   type: "IN" | "OUT" | "ADJUST";
   quantity: number;
   unit: string;
@@ -15,8 +16,8 @@ export type CreateInventoryTxInput = {
 };
 
 export const createInventoryTransaction = async (input: CreateInventoryTxInput) => {
-  const batch = await prisma.batch.findUnique({
-    where: { id: input.batchId },
+  const batch = await prisma.batch.findFirst({
+    where: { id: input.batchId, organizationId: input.organizationId },
     include: { product: true },
   });
 
@@ -43,6 +44,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
       data: {
         batchId: batch.id,
         productId: batch.productId,
+        organizationId: input.organizationId,
         type: input.type,
         quantity: input.quantity,
         unit: input.unit,
@@ -56,6 +58,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
   });
 
   await writeAudit({
+    organizationId: input.organizationId,
     userId: input.createdBy,
     action: "CREATE",
     entity: "inventory_transaction",
@@ -67,7 +70,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
   return updated.txItem;
 };
 
-export const getInventoryAlerts = async () => {
+export const getInventoryAlerts = async (organizationId: string) => {
   const now = new Date();
   const soon7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const soon15 = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
@@ -75,6 +78,7 @@ export const getInventoryAlerts = async () => {
 
   const expiringAll = await prisma.batch.findMany({
     where: {
+      organizationId,
       expiresAt: { lte: soon30 },
       deletedAt: null,
     },
@@ -90,7 +94,7 @@ export const getInventoryAlerts = async () => {
   );
 
   const lowStock = await prisma.product.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: null, organizationId },
     include: { batches: true },
   });
 

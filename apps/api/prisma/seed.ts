@@ -5,6 +5,12 @@ import { hashPassword } from "../src/utils/password";
 const prisma = new PrismaClient();
 
 const run = async () => {
+  const organization = await prisma.organization.upsert({
+    where: { slug: "demo" },
+    update: { name: "Demo Organization", isActive: true },
+    create: { name: "Demo Organization", slug: "demo" },
+  });
+
   const roles = [
     { name: "ADMIN", description: "Admin" },
     { name: "VETERINARIO", description: "Veterinario" },
@@ -27,10 +33,11 @@ const run = async () => {
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@demo.com" },
-    update: {},
+    update: { organizationId: organization.id },
     create: {
       name: "Admin Demo",
       email: "admin@demo.com",
+      organizationId: organization.id,
       passwordHash: adminPassword,
       roles: { create: [{ role: { connect: { name: "ADMIN" } } }] },
     },
@@ -38,10 +45,11 @@ const run = async () => {
 
   await prisma.user.upsert({
     where: { email: "vet@demo.com" },
-    update: {},
+    update: { organizationId: organization.id },
     create: {
       name: "Vet Demo",
       email: "vet@demo.com",
+      organizationId: organization.id,
       passwordHash: vetPassword,
       roles: { create: [{ role: { connect: { name: "VETERINARIO" } } }] },
     },
@@ -49,10 +57,11 @@ const run = async () => {
 
   await prisma.user.upsert({
     where: { email: "oper@demo.com" },
-    update: {},
+    update: { organizationId: organization.id },
     create: {
       name: "Operador Demo",
       email: "oper@demo.com",
+      organizationId: organization.id,
       passwordHash: operatorPassword,
       roles: { create: [{ role: { connect: { name: "OPERADOR" } } }] },
     },
@@ -60,17 +69,18 @@ const run = async () => {
 
   await prisma.user.upsert({
     where: { email: "audit@demo.com" },
-    update: {},
+    update: { organizationId: organization.id },
     create: {
       name: "Auditor Demo",
       email: "audit@demo.com",
+      organizationId: organization.id,
       passwordHash: auditorPassword,
       roles: { create: [{ role: { connect: { name: "AUDITOR" } } }] },
     },
   });
 
   const existingFinca = await prisma.establishment.findFirst({
-    where: { name: "Finca Central", type: "FINCA" },
+    where: { name: "Finca Central", type: "FINCA", organizationId: organization.id },
   });
   const fincaId = existingFinca?.id ?? randomUUID();
   const finca = existingFinca
@@ -79,6 +89,7 @@ const run = async () => {
         data: {
           name: "Finca Central",
           type: "FINCA",
+          organizationId: organization.id,
           parentId: null,
           fincaId,
         },
@@ -88,13 +99,19 @@ const run = async () => {
           id: fincaId,
           name: "Finca Central",
           type: "FINCA",
+          organizationId: organization.id,
           parentId: null,
           fincaId,
         },
       });
 
   const potreroNorteExisting = await prisma.establishment.findFirst({
-    where: { name: "Potrero Norte", type: "POTRERO", parentId: finca.id },
+    where: {
+      name: "Potrero Norte",
+      type: "POTRERO",
+      parentId: finca.id,
+      organizationId: organization.id,
+    },
   });
   const potreroNorte = potreroNorteExisting
     ? await prisma.establishment.update({
@@ -102,6 +119,7 @@ const run = async () => {
         data: {
           name: "Potrero Norte",
           type: "POTRERO",
+          organizationId: organization.id,
           parentId: finca.id,
           fincaId: finca.id,
         },
@@ -110,13 +128,19 @@ const run = async () => {
         data: {
           name: "Potrero Norte",
           type: "POTRERO",
+          organizationId: organization.id,
           parentId: finca.id,
           fincaId: finca.id,
         },
       });
 
   const potreroSurExisting = await prisma.establishment.findFirst({
-    where: { name: "Potrero Sur", type: "POTRERO", parentId: finca.id },
+    where: {
+      name: "Potrero Sur",
+      type: "POTRERO",
+      parentId: finca.id,
+      organizationId: organization.id,
+    },
   });
   const potreroSur = potreroSurExisting
     ? await prisma.establishment.update({
@@ -124,6 +148,7 @@ const run = async () => {
         data: {
           name: "Potrero Sur",
           type: "POTRERO",
+          organizationId: organization.id,
           parentId: finca.id,
           fincaId: finca.id,
         },
@@ -132,13 +157,19 @@ const run = async () => {
         data: {
           name: "Potrero Sur",
           type: "POTRERO",
+          organizationId: organization.id,
           parentId: finca.id,
           fincaId: finca.id,
         },
       });
 
   const corralExisting = await prisma.establishment.findFirst({
-    where: { name: "Corral Principal", type: "CORRAL", fincaId: finca.id },
+    where: {
+      name: "Corral Principal",
+      type: "CORRAL",
+      fincaId: finca.id,
+      organizationId: organization.id,
+    },
   });
   const corral = corralExisting
     ? await prisma.establishment.update({
@@ -146,6 +177,7 @@ const run = async () => {
         data: {
           name: "Corral Principal",
           type: "CORRAL",
+          organizationId: organization.id,
           parentId: finca.id,
           fincaId: finca.id,
         },
@@ -154,19 +186,21 @@ const run = async () => {
         data: {
           name: "Corral Principal",
           type: "CORRAL",
+          organizationId: organization.id,
           parentId: finca.id,
           fincaId: finca.id,
         },
       });
 
   const supplier = await prisma.supplier.create({
-    data: { name: "Proveedor Vet" },
+    data: { name: "Proveedor Vet", organizationId: organization.id },
   });
 
   const product = await prisma.product.create({
     data: {
       name: "Ivermectina",
       type: "DESPARASITANTE",
+      organizationId: organization.id,
       activeIngredient: "Ivermectina",
       presentation: "Frasco 50ml",
       concentration: "1%",
@@ -181,6 +215,7 @@ const run = async () => {
     data: {
       productId: product.id,
       batchNumber: "BATCH-001",
+      organizationId: organization.id,
       expiresAt: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
       supplierId: supplier.id,
       receivedAt: new Date(),
@@ -191,11 +226,17 @@ const run = async () => {
   });
 
   const animal = await prisma.animal.upsert({
-    where: { internalCode: "AN-DEMO-001" },
+    where: {
+      organizationId_internalCode: {
+        organizationId: organization.id,
+        internalCode: "AN-DEMO-001",
+      },
+    },
     update: {},
     create: {
       internalCode: "AN-DEMO-001",
       tag: "TAG-1001",
+      organizationId: organization.id,
       sex: "FEMALE",
       breed: "Brahman",
       birthDate: new Date("2023-01-01"),
@@ -210,6 +251,7 @@ const run = async () => {
     {
       internalCode: "AN-DEMO-002",
       tag: "TAG-1002",
+      organizationId: organization.id,
       sex: "FEMALE",
       breed: "Angus",
       birthDate: new Date("2023-05-12"),
@@ -221,6 +263,7 @@ const run = async () => {
     {
       internalCode: "AN-DEMO-003",
       tag: "TAG-1003",
+      organizationId: organization.id,
       sex: "MALE",
       breed: "Brahman",
       birthDate: new Date("2024-02-01"),
@@ -232,6 +275,7 @@ const run = async () => {
     {
       internalCode: "AN-DEMO-004",
       tag: "TAG-1004",
+      organizationId: organization.id,
       sex: "MALE",
       breed: "Nelore",
       birthDate: new Date("2022-09-18"),
@@ -244,6 +288,7 @@ const run = async () => {
     {
       internalCode: "AN-DEMO-005",
       tag: "TAG-1005",
+      organizationId: organization.id,
       sex: "MALE",
       breed: "Hereford",
       birthDate: new Date("2023-07-22"),
@@ -255,6 +300,7 @@ const run = async () => {
     {
       internalCode: "AN-DEMO-006",
       tag: "TAG-1006",
+      organizationId: organization.id,
       sex: "FEMALE",
       breed: "Holstein",
       birthDate: new Date("2021-08-05"),
@@ -274,6 +320,7 @@ const run = async () => {
   const treatment = await prisma.treatment.create({
     data: {
       animalId: animal.id,
+      organizationId: organization.id,
       diagnosis: "Desparasitacion",
       startedAt: new Date(),
       status: "ACTIVE",
@@ -286,6 +333,7 @@ const run = async () => {
       treatmentId: treatment.id,
       batchId: batch.id,
       productId: product.id,
+      organizationId: organization.id,
       administeredAt: new Date(),
       dose: 10,
       doseUnit: "ml",
@@ -300,6 +348,7 @@ const run = async () => {
     data: {
       batchId: batch.id,
       productId: product.id,
+      organizationId: organization.id,
       type: "OUT",
       quantity: 10,
       unit: "ml",
@@ -317,6 +366,7 @@ const run = async () => {
   await prisma.alert.create({
     data: {
       type: "WITHDRAWAL",
+      organizationId: organization.id,
       title: "Revisar retiro de carne",
       message: "El retiro del animal TAG-1001 finaliza pronto.",
       dueAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
@@ -327,6 +377,7 @@ const run = async () => {
     data: {
       title: "Vacunacion terneros",
       taskType: "vacunacion",
+      organizationId: organization.id,
       dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       notes: "Programado por categoria.",
     },

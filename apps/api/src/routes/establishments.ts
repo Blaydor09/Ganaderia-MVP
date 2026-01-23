@@ -11,7 +11,7 @@ const router = Router();
 
 const parseBoolean = (value: unknown) => value === "true" || value === "1";
 
-const getAnimalCountMap = async (establishmentIds: string[]) => {
+const getAnimalCountMap = async (organizationId: string, establishmentIds: string[]) => {
   if (establishmentIds.length === 0) {
     return new Map<string, number>();
   }
@@ -19,6 +19,7 @@ const getAnimalCountMap = async (establishmentIds: string[]) => {
   const rows = await prisma.animal.groupBy({
     by: ["establishmentId"],
     where: {
+      organizationId,
       establishmentId: { in: establishmentIds },
       deletedAt: null,
     },
@@ -63,14 +64,18 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const tree = parseBoolean(req.query.tree);
     const includeCounts = parseBoolean(req.query.includeCounts);
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { organizationId };
 
     if (tree) {
       const fincaId = req.query.fincaId as string | undefined;
       if (fincaId) {
-        where.OR = [{ id: fincaId }, { fincaId }];
+        where.OR = [
+          { id: fincaId, organizationId },
+          { fincaId, organizationId },
+        ];
       }
     } else {
       if (req.query.type) where.type = req.query.type;
@@ -84,7 +89,7 @@ router.get(
     });
 
     const countMap = includeCounts
-      ? await getAnimalCountMap(items.map((item) => item.id))
+      ? await getAnimalCountMap(organizationId, items.map((item) => item.id))
       : new Map<string, number>();
 
     const enriched = includeCounts ? withCounts(items, countMap) : items;
@@ -97,8 +102,9 @@ router.get(
   "/:id",
   authenticate,
   asyncHandler(async (req, res) => {
-    const establishment = await prisma.establishment.findUnique({
-      where: { id: req.params.id },
+    const organizationId = req.user!.organizationId;
+    const establishment = await prisma.establishment.findFirst({
+      where: { id: req.params.id, organizationId },
       include: {
         children: { orderBy: { name: "asc" } },
       },
@@ -117,6 +123,7 @@ router.post(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = establishmentCreateSchema.parse(req.body);
 
     if (data.type === "FINCA") {
@@ -129,6 +136,7 @@ router.post(
           id,
           name: data.name,
           type: data.type,
+          organizationId,
           parentId: null,
           fincaId: id,
         },
@@ -140,8 +148,8 @@ router.post(
       throw new ApiError(400, "Parent finca is required");
     }
 
-    const parent = await prisma.establishment.findUnique({
-      where: { id: data.parentId },
+    const parent = await prisma.establishment.findFirst({
+      where: { id: data.parentId, organizationId },
     });
 
     if (!parent) {
@@ -154,7 +162,7 @@ router.post(
 
     if (data.type === "CORRAL") {
       const existingCorral = await prisma.establishment.findFirst({
-        where: { type: "CORRAL", fincaId: parent.id },
+        where: { type: "CORRAL", fincaId: parent.id, organizationId },
       });
       if (existingCorral) {
         throw new ApiError(400, "Corral already exists for this finca");
@@ -165,6 +173,7 @@ router.post(
       data: {
         name: data.name,
         type: data.type,
+        organizationId,
         parentId: parent.id,
         fincaId: parent.id,
       },
@@ -179,9 +188,10 @@ router.patch(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = establishmentUpdateSchema.parse(req.body);
-    const existing = await prisma.establishment.findUnique({
-      where: { id: req.params.id },
+    const existing = await prisma.establishment.findFirst({
+      where: { id: req.params.id, organizationId },
     });
 
     if (!existing) {
@@ -207,8 +217,8 @@ router.patch(
         throw new ApiError(400, "Parent finca is required");
       }
 
-      const parent = await prisma.establishment.findUnique({
-        where: { id: parentId },
+      const parent = await prisma.establishment.findFirst({
+        where: { id: parentId, organizationId },
       });
 
       if (!parent) {
@@ -221,7 +231,12 @@ router.patch(
 
       if (existing.type === "CORRAL" && parent.id !== existing.fincaId) {
         const existingCorral = await prisma.establishment.findFirst({
-          where: { type: "CORRAL", fincaId: parent.id, NOT: { id: existing.id } },
+          where: {
+            type: "CORRAL",
+            fincaId: parent.id,
+            organizationId,
+            NOT: { id: existing.id },
+          },
         });
         if (existingCorral) {
           throw new ApiError(400, "Corral already exists for this finca");
@@ -250,10 +265,19 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
+    const existing = await prisma.establishment.findFirst({
+      where: { id: req.params.id, organizationId },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "Establishment not found" });
+    }
     const [childrenCount, animalsCount] = await Promise.all([
-      prisma.establishment.count({ where: { parentId: req.params.id } }),
+      prisma.establishment.count({
+        where: { parentId: req.params.id, organizationId },
+      }),
       prisma.animal.count({
-        where: { establishmentId: req.params.id, deletedAt: null },
+        where: { establishmentId: req.params.id, deletedAt: null, organizationId },
       }),
     ]);
 

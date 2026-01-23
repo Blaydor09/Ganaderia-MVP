@@ -12,15 +12,16 @@ router.get(
   "/summary",
   authenticate,
   asyncHandler(async (_req, res) => {
+    const organizationId = _req.user!.organizationId;
     const products = await prisma.product.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, organizationId },
       select: { id: true, name: true, minStock: true, unit: true },
       orderBy: { name: "asc" },
     });
 
     const totals = await prisma.batch.groupBy({
       by: ["productId"],
-      where: { deletedAt: null },
+      where: { deletedAt: null, organizationId },
       _sum: { quantityAvailable: true },
     });
 
@@ -42,8 +43,9 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (_req, res) => {
+    const organizationId = _req.user!.organizationId;
     const batches = await prisma.batch.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, organizationId },
       include: { product: true },
       orderBy: { expiresAt: "asc" },
     });
@@ -56,9 +58,11 @@ router.post(
   authenticate,
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
+    const organizationId = req.user!.organizationId;
     const data = inventoryTxSchema.parse(req.body);
     const tx = await createInventoryTransaction({
       batchId: data.batchId,
+      organizationId,
       type: data.type,
       quantity: data.quantity,
       unit: data.unit,
@@ -75,7 +79,8 @@ router.get(
   "/alerts",
   authenticate,
   asyncHandler(async (_req, res) => {
-    const alerts = await getInventoryAlerts();
+    const organizationId = _req.user!.organizationId;
+    const alerts = await getInventoryAlerts(organizationId);
     res.json(alerts);
   })
 );

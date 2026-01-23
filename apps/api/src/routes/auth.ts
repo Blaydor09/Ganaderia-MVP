@@ -1,8 +1,8 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { asyncHandler } from "../utils/asyncHandler";
-import { loginSchema, refreshSchema } from "../validators/authSchemas";
-import { login, logout, refresh } from "../services/authService";
+import { loginSchema, refreshSchema, registerSchema } from "../validators/authSchemas";
+import { login, logout, refresh, register } from "../services/authService";
 import { authenticate } from "../middleware/auth";
 import { prisma } from "../config/prisma";
 
@@ -22,6 +22,20 @@ router.post(
     const data = loginSchema.parse(req.body);
     const result = await login(data.email, data.password, req.headers["user-agent"], req.ip);
     res.json(result);
+  })
+);
+
+router.post(
+  "/register",
+  limiter,
+  asyncHandler(async (req, res) => {
+    const data = registerSchema.parse(req.body);
+    const result = await register({
+      ...data,
+      userAgent: req.headers["user-agent"],
+      ip: req.ip,
+    });
+    res.status(201).json(result);
   })
 );
 
@@ -49,7 +63,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
-      include: { roles: { include: { role: true } } },
+      include: { roles: { include: { role: true } }, organization: true },
     });
 
     if (!user) {
@@ -61,6 +75,9 @@ router.get(
       name: user.name,
       email: user.email,
       roles: user.roles.map((row: { role: { name: string } }) => row.role.name),
+      organization: user.organization
+        ? { id: user.organization.id, name: user.organization.name, slug: user.organization.slug }
+        : null,
     });
   })
 );
