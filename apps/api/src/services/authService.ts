@@ -4,6 +4,7 @@ import { ApiError } from "../utils/errors";
 import { hashPassword, verifyPassword } from "../utils/password";
 import { parseDurationToMs } from "../utils/duration";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt";
+import { hashInviteToken } from "../utils/invite";
 
 const normalizeSlug = (value: string) =>
   value
@@ -54,6 +55,17 @@ export const login = async (email: string, password: string, userAgent?: string,
   }
 
   const roles = user.roles.map((row: { role: { name: string } }) => row.role.name);
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId: user.organizationId,
+        userId: user.id,
+      },
+    },
+  });
+  if (!membership || membership.status !== "ACTIVE") {
+    throw new ApiError(403, "Access disabled for organization");
+  }
   const tokens = await issueTokens(
     {
       id: user.id,
@@ -206,6 +218,14 @@ export const register = async (input: {
       },
     });
 
+    await tx.organizationMember.create({
+      data: {
+        organizationId: organization.id,
+        userId: user.id,
+        status: "ACTIVE",
+      },
+    });
+
     return { organization, user };
   });
 
@@ -236,5 +256,101 @@ export const register = async (input: {
       name: result.organization.name,
       slug: result.organization.slug,
     },
+  };
+};
+
+export const acceptInvite = async (input: {
+  token: string;
+  name: string;
+  password: string;
+  userAgent?: string;
+  ip?: string;
+}) => {
+  const tokenHash = hashInviteToken(input.token);
+  const invite = await prisma.organizationInvite.findFirst({
+    where: {
+      tokenHash,
+      acceptedAt: null,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    include: { organization: true },
+  });
+
+  if (!invite) {
+    throw new ApiError(400, "Invalid or expired invite");
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: invite.email },
+  });
+  if (existingUser) {
+    throw new ApiError(409, "Email already registered");
+  }
+
+  const passwordHash = await hashPassword(input.password);
+  const role = await prisma.role.findUnique({ where: { name: invite.role } });
+  if (!role) {
+    throw new ApiError(400, "Role not found");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        name: input.name.trim(),
+        email: invite.email,
+        passwordHash,
+        organizationId: invite.organizationId,
+        roles: {
+          create: [{ roleId: role.id }],
+        },
+      },
+    });
+
+    await tx.organizationMember.create({
+      data: {
+        organizationId: invite.organizationId,
+        userId: user.id,
+        status: "ACTIVE",
+      },
+    });
+
+    await tx.organizationInvite.update({
+      where: { id: invite.id },
+      data: { acceptedAt: new Date() },
+    });
+
+    return user;
+  });
+
+  const roles = [invite.role];
+  const tokens = await issueTokens(
+    {
+      id: result.id,
+      name: result.name,
+      email: result.email,
+      organizationId: invite.organizationId,
+    },
+    roles,
+    input.userAgent,
+    input.ip
+  );
+
+  return {
+    ...tokens,
+    user: {
+      id: result.id,
+      name: result.name,
+      email: result.email,
+      roles,
+      organizationId: invite.organizationId,
+    },
+    organization: invite.organization
+      ? {
+          id: invite.organization.id,
+          name: invite.organization.name,
+          slug: invite.organization.slug,
+        }
+      : null,
   };
 };

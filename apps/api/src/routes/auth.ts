@@ -1,8 +1,13 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { asyncHandler } from "../utils/asyncHandler";
-import { loginSchema, refreshSchema, registerSchema } from "../validators/authSchemas";
-import { login, logout, refresh, register } from "../services/authService";
+import {
+  loginSchema,
+  refreshSchema,
+  registerSchema,
+  acceptInviteSchema,
+} from "../validators/authSchemas";
+import { login, logout, refresh, register, acceptInvite } from "../services/authService";
 import { authenticate } from "../middleware/auth";
 import { prisma } from "../config/prisma";
 
@@ -31,6 +36,20 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = registerSchema.parse(req.body);
     const result = await register({
+      ...data,
+      userAgent: req.headers["user-agent"],
+      ip: req.ip,
+    });
+    res.status(201).json(result);
+  })
+);
+
+router.post(
+  "/accept-invite",
+  limiter,
+  asyncHandler(async (req, res) => {
+    const data = acceptInviteSchema.parse(req.body);
+    const result = await acceptInvite({
       ...data,
       userAgent: req.headers["user-agent"],
       ip: req.ip,

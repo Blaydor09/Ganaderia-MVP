@@ -79,6 +79,20 @@ const run = async () => {
     },
   });
 
+  const orgUsers = await prisma.user.findMany({
+    where: { organizationId: organization.id },
+    select: { id: true },
+  });
+
+  await prisma.organizationMember.createMany({
+    data: orgUsers.map((user) => ({
+      organizationId: organization.id,
+      userId: user.id,
+      status: "ACTIVE",
+    })),
+    skipDuplicates: true,
+  });
+
   const existingFinca = await prisma.establishment.findFirst({
     where: { name: "Finca Central", type: "FINCA", organizationId: organization.id },
   });

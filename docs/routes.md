@@ -2,6 +2,8 @@
 
 ## Publicas
 - /login
+- /register
+- /invite
 - /landing
 
 ## Privadas (layout dashboard)

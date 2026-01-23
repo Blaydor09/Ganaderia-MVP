@@ -8,6 +8,7 @@ import type { Role } from "@/lib/auth";
 import { Access } from "@/lib/access";
 import LoginPage from "@/app/pages/LoginPage";
 import RegisterPage from "@/app/pages/RegisterPage";
+import AcceptInvitePage from "@/app/pages/AcceptInvitePage";
 import LandingPage from "@/app/pages/LandingPage";
 import DashboardPage from "@/app/pages/DashboardPage";
 import AnimalsPage from "@/app/pages/AnimalsPage";
@@ -106,6 +107,14 @@ const App = () => (
       element={
         <RedirectIfAuth>
           <RegisterPage />
+        </RedirectIfAuth>
+      }
+    />
+    <Route
+      path="/invite"
+      element={
+        <RedirectIfAuth>
+          <AcceptInvitePage />
         </RedirectIfAuth>
       }
     />

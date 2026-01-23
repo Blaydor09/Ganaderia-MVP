@@ -55,6 +55,12 @@ Abrir: http://localhost:5173/landing
 - oper@demo.com / oper12345
 - audit@demo.com / audit123
 
+## Acceso SaaS
+- Crear organizacion: `http://localhost:5173/register`
+- Invitar usuarios: `http://localhost:5173/users` (solo admin)
+- Aceptar invitacion: `http://localhost:5173/invite?token=...`
+- Las invitaciones expiran en 7 dias.
+
 ## Scripts
 ### Backend
 - `npm run dev` (TSX)

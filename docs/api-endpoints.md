@@ -3,9 +3,18 @@
 ## Auth
 - POST /auth/login
 - POST /auth/register
+- POST /auth/accept-invite
 - POST /auth/refresh
 - POST /auth/logout
 - GET /auth/me
+
+## Organizations
+- GET /organizations/me
+- PATCH /organizations/me
+- GET /organizations/members
+- GET /organizations/invites
+- POST /organizations/invites
+- DELETE /organizations/invites/:id
 
 ## Users / Roles
 - GET /users

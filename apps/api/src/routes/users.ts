@@ -14,30 +14,22 @@ router.get(
   requireRoles("ADMIN"),
   asyncHandler(async (_req, res) => {
     const organizationId = _req.user!.organizationId;
-    const users = await prisma.user.findMany({
+    const members = await prisma.organizationMember.findMany({
       where: { organizationId },
-      include: { roles: { include: { role: true } } },
+      include: { user: { include: { roles: { include: { role: true } } } } },
       orderBy: { createdAt: "desc" },
     });
 
     res.json(
-      users.map(
-        (user: {
-          id: string;
-          name: string;
-          email: string;
-          isActive: boolean;
-          roles: { role: { name: string } }[];
-          createdAt: Date;
-        }) => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          isActive: user.isActive,
-          roles: user.roles.map((row: { role: { name: string } }) => row.role.name),
-          createdAt: user.createdAt,
-        })
-      )
+      members.map((member) => ({
+        id: member.user.id,
+        name: member.user.name,
+        email: member.user.email,
+        isActive: member.user.isActive,
+        status: member.status,
+        roles: member.user.roles.map((row) => row.role.name),
+        createdAt: member.user.createdAt,
+      }))
     );
   })
 );
@@ -64,6 +56,14 @@ router.post(
         },
       },
       include: { roles: { include: { role: true } } },
+    });
+
+    await prisma.organizationMember.create({
+      data: {
+        organizationId,
+        userId: created.id,
+        status: "ACTIVE",
+      },
     });
 
     res.status(201).json({
@@ -149,6 +149,10 @@ router.delete(
     await prisma.user.update({
       where: { id: req.params.id },
       data: { isActive: false },
+    });
+    await prisma.organizationMember.updateMany({
+      where: { organizationId, userId: req.params.id },
+      data: { status: "REVOKED" },
     });
     res.json({ success: true });
   })
