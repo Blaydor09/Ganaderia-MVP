@@ -62,6 +62,7 @@
 - Reglas criticas en servicios con transacciones Prisma.
 - Auditoria para cambios criticos.
 - Soft delete en entidades clave.
+- Multi-tenant: los datos se segregan por organizationId y el JWT incluye el tenant activo.
 - Seguridad: bcrypt, rate limit, helmet, CORS estricto y docs deshabilitables en prod.
 
 ## Ambientes y configuracion

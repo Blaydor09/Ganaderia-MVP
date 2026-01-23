@@ -7,6 +7,7 @@ import { hasAnyRole, isAuthenticated } from "@/lib/auth";
 import type { Role } from "@/lib/auth";
 import { Access } from "@/lib/access";
 import LoginPage from "@/app/pages/LoginPage";
+import RegisterPage from "@/app/pages/RegisterPage";
 import LandingPage from "@/app/pages/LandingPage";
 import DashboardPage from "@/app/pages/DashboardPage";
 import AnimalsPage from "@/app/pages/AnimalsPage";
@@ -97,6 +98,14 @@ const App = () => (
       element={
         <RedirectIfAuth>
           <LoginPage />
+        </RedirectIfAuth>
+      }
+    />
+    <Route
+      path="/register"
+      element={
+        <RedirectIfAuth>
+          <RegisterPage />
         </RedirectIfAuth>
       }
     />

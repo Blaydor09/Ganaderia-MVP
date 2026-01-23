@@ -2,6 +2,7 @@
 
 ## Auth
 - POST /auth/login
+- POST /auth/register
 - POST /auth/refresh
 - POST /auth/logout
 - GET /auth/me

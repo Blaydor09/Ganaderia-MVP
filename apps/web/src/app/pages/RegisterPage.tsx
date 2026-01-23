@@ -1,22 +1,25 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Link, useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { setTokens } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo.png";
 
 const schema = z.object({
+  organizationName: z.string().min(2),
+  organizationSlug: z.string().min(2).regex(/^[a-z0-9-]+$/).optional(),
+  name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-const LoginPage = () => {
+const RegisterPage = () => {
   const navigate = useNavigate();
   const {
     register,
@@ -26,12 +29,19 @@ const LoginPage = () => {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const response = await api.post("/auth/login", values);
+      const payload = {
+        ...values,
+        organizationName: values.organizationName.trim(),
+        name: values.name.trim(),
+        email: values.email.trim(),
+        organizationSlug: values.organizationSlug?.trim() || undefined,
+      };
+      const response = await api.post("/auth/register", payload);
       setTokens(response.data.accessToken, response.data.refreshToken);
-      toast.success("Sesion iniciada");
+      toast.success("Organizacion creada");
       navigate("/");
     } catch (error: any) {
-      toast.error(error?.response?.data?.message ?? "Error de autenticacion");
+      toast.error(error?.response?.data?.message ?? "No se pudo crear la cuenta");
     }
   };
 
@@ -52,32 +62,59 @@ const LoginPage = () => {
                 Inventario Ganaderia
               </p>
               <p className="font-display text-lg font-semibold text-slate-900">
-                Plataforma ganadera
+                Crea tu organizacion
               </p>
             </div>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs text-brand-700">
-            Plataforma sanitaria y de inventario
+            Onboarding rapido en minutos
           </div>
           <h1 className="font-display text-3xl font-semibold text-slate-900">
-            Inventario ganadero con trazabilidad sanitaria
+            Inicia tu SaaS ganadero
           </h1>
           <p className="text-sm text-slate-600">
-            Controla animales, tratamientos y medicamentos por lote con retiros
-            automaticos y auditoria.
+            Configura tu organizacion y agrega el primer usuario administrador.
           </p>
-          <div className="grid gap-3 text-xs text-slate-500">
-            <span>Usuario demo: admin@demo.com</span>
-            <span>Clave demo: admin123</span>
-          </div>
         </div>
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft">
-          <h2 className="font-display text-xl font-semibold">Iniciar sesion</h2>
-          <p className="text-sm text-slate-500">Accede al dashboard operativo.</p>
+          <h2 className="font-display text-xl font-semibold">Crear cuenta</h2>
+          <p className="text-sm text-slate-500">
+            Completa los datos para comenzar.
+          </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">
+                Nombre de la organizacion
+              </label>
+              <Input placeholder="Finca Los Robles" {...register("organizationName")} />
+              {errors.organizationName ? (
+                <p className="text-xs text-red-500">
+                  {errors.organizationName.message}
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Slug</label>
+              <Input placeholder="finca-los-robles" {...register("organizationSlug")} />
+              <p className="text-[11px] text-slate-400">
+                Solo minusculas y guiones. Opcional.
+              </p>
+              {errors.organizationSlug ? (
+                <p className="text-xs text-red-500">
+                  {errors.organizationSlug.message}
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Nombre</label>
+              <Input placeholder="Administrador" {...register("name")} />
+              {errors.name ? (
+                <p className="text-xs text-red-500">{errors.name.message}</p>
+              ) : null}
+            </div>
+            <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">Email</label>
-              <Input placeholder="admin@demo.com" {...register("email")} />
+              <Input placeholder="admin@tuempresa.com" {...register("email")} />
               {errors.email ? (
                 <p className="text-xs text-red-500">{errors.email.message}</p>
               ) : null}
@@ -90,19 +127,13 @@ const LoginPage = () => {
               ) : null}
             </div>
             <Button className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Ingresando..." : "Ingresar"}
+              {isSubmitting ? "Creando..." : "Crear organizacion"}
             </Button>
           </form>
           <div className="mt-6 flex items-center justify-between text-xs text-slate-500">
-            <span>Conoce la plataforma antes de entrar.</span>
-            <Link className="text-brand-600 hover:underline" to="/landing">
-              Ver landing
-            </Link>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-            <span>No tienes cuenta?</span>
-            <Link className="text-brand-600 hover:underline" to="/register">
-              Crear organizacion
+            <span>Ya tienes cuenta?</span>
+            <Link className="text-brand-600 hover:underline" to="/login">
+              Iniciar sesion
             </Link>
           </div>
         </div>
@@ -111,4 +142,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default RegisterPage;
