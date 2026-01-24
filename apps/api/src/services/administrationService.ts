@@ -14,7 +14,7 @@ export type CreateAdministrationInput = {
   route: string;
   site?: string;
   notes?: string;
-  createdBy?: string;
+  createdById?: string;
   ip?: string;
 };
 
@@ -68,7 +68,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
         notes: input.notes,
         meatWithdrawalUntil: withdrawal.meatUntil,
         milkWithdrawalUntil: withdrawal.milkUntil,
-        createdBy: input.createdBy,
+        createdById: input.createdById,
       },
     });
 
@@ -88,7 +88,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
         reason: "administration",
         refType: "ADMINISTRATION",
         refId: administration.id,
-        createdBy: input.createdBy,
+        createdById: input.createdById,
       },
     });
 
@@ -96,7 +96,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
   });
 
   await writeAudit({
-    userId: input.createdBy,
+    userId: input.createdById,
     action: "CREATE",
     entity: "administration",
     entityId: result.id,

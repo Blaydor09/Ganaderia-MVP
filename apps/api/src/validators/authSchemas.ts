@@ -8,3 +8,10 @@ export const loginSchema = z.object({
 export const refreshSchema = z.object({
   refreshToken: z.string().min(10),
 });
+
+export const registerSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(6),
+  registrationCode: z.string().min(4).optional(),
+});

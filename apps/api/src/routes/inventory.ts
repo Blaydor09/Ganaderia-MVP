@@ -64,7 +64,7 @@ router.post(
       unit: data.unit,
       occurredAt: new Date(data.occurredAt),
       reason: data.reason,
-      createdBy: req.user?.id,
+      createdById: req.user?.id,
       ip: req.ip,
     });
     res.status(201).json(tx);

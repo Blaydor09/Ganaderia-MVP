@@ -48,6 +48,23 @@ const enableDocs =
     ? process.env.ENABLE_DOCS === "true"
     : !isProduction;
 
+const registrationModeRaw = (process.env.REGISTRATION_MODE ?? "open").toLowerCase();
+const registrationMode =
+  registrationModeRaw === "open" ||
+  registrationModeRaw === "protected" ||
+  registrationModeRaw === "closed"
+    ? registrationModeRaw
+    : "open";
+
+if (registrationModeRaw !== registrationMode) {
+  throw new Error("REGISTRATION_MODE must be open, protected, or closed");
+}
+
+const registrationCode = process.env.REGISTRATION_CODE;
+if (registrationMode === "protected" && !registrationCode) {
+  throw new Error("REGISTRATION_CODE is required when REGISTRATION_MODE=protected");
+}
+
 export const env = {
   nodeEnv: environment,
   isProduction,
@@ -60,4 +77,6 @@ export const env = {
   corsOrigin: corsOrigins,
   trustProxy: process.env.TRUST_PROXY === "true",
   enableDocs,
+  registrationMode,
+  registrationCode,
 };

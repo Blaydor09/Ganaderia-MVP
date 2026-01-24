@@ -6,6 +6,7 @@ import { requireRoles } from "../middleware/rbac";
 import { movementCreateSchema } from "../validators/movementSchemas";
 import { getPagination } from "../utils/pagination";
 import { createMovement } from "../services/movementService";
+import { writeAudit } from "../utils/audit";
 
 const router = Router();
 
@@ -45,7 +46,7 @@ router.post(
       movementType: data.movementType,
       transporter: data.transporter,
       notes: data.notes,
-      createdBy: req.user?.id,
+      createdById: req.user?.id,
       ip: req.ip,
     });
 
@@ -58,7 +59,21 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const existing = await prisma.movement.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      return res.status(404).json({ message: "Movement not found" });
+    }
+
     await prisma.movement.delete({ where: { id: req.params.id } });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "DELETE",
+      entity: "movement",
+      entityId: existing.id,
+      before: existing,
+      ip: req.ip,
+    });
     res.json({ success: true });
   })
 );

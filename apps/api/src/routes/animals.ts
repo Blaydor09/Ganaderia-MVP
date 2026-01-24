@@ -137,6 +137,7 @@ router.post(
         fatherId: data.fatherId,
         establishmentId: data.establishmentId,
         notes: data.notes,
+        createdById: req.user?.id,
       },
     });
 
@@ -180,6 +181,7 @@ router.post(
           category: item.category,
           status,
           origin: data.origin,
+          createdById: req.user?.id,
         };
         if (data.establishmentId) {
           record.establishmentId = data.establishmentId;
@@ -401,10 +403,19 @@ router.post(
           status: (row.status as any) ?? "ACTIVO",
           origin: row.origin as any,
           establishmentId: row.establishment_id || undefined,
+          createdById: req.user?.id,
         },
       });
       created.push(animal.id);
     }
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "IMPORT",
+      entity: "animal",
+      after: { count: created.length },
+      ip: req.ip,
+    });
 
     res.json({ count: created.length });
   })

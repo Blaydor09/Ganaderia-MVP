@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
 import { alertCreateSchema } from "../validators/alertSchemas";
+import { writeAudit } from "../utils/audit";
 
 const router = Router();
 
@@ -28,7 +29,17 @@ router.post(
         title: data.title,
         message: data.message,
         dueAt: new Date(data.dueAt),
+        createdById: req.user?.id,
       },
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "CREATE",
+      entity: "alert",
+      entityId: created.id,
+      after: created,
+      ip: req.ip,
     });
     res.status(201).json(created);
   })

@@ -16,7 +16,7 @@ export type CreateMovementInput = {
   movementType: "INTERNAL" | "EXTERNAL" | "SALE" | "SLAUGHTER";
   transporter?: string;
   notes?: string;
-  createdBy?: string;
+  createdById?: string;
   ip?: string;
 };
 
@@ -152,7 +152,7 @@ export const createMovement = async (input: CreateMovementInput) => {
         movementType: input.movementType,
         transporter: input.transporter,
         notes: input.notes,
-        createdBy: input.createdBy,
+        createdById: input.createdById,
       },
     }),
   ];
@@ -173,7 +173,7 @@ export const createMovement = async (input: CreateMovementInput) => {
   const [movement] = await prisma.$transaction(operations);
 
   await writeAudit({
-    userId: input.createdBy,
+    userId: input.createdById,
     action: "CREATE",
     entity: "movement",
     entityId: movement.id,

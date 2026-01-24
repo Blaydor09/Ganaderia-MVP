@@ -56,7 +56,7 @@ router.post(
       route: data.route,
       site: data.site,
       notes: data.notes,
-      createdBy: req.user?.id,
+      createdById: req.user?.id,
       ip: req.ip,
     });
     res.status(201).json(created);
@@ -115,7 +115,7 @@ router.patch(
             unit: data.doseUnit ?? existing.doseUnit,
             occurredAt: new Date(),
             reason: "administration_edit",
-            createdBy: req.user?.id,
+            createdById: req.user?.id,
           },
         });
       }

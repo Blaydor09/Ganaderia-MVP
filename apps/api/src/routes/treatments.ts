@@ -46,7 +46,7 @@ router.post(
         startedAt: new Date(data.startedAt),
         status: "ACTIVE",
         notes: data.notes,
-        createdBy: req.user?.id,
+        createdById: req.user?.id,
       },
     });
 

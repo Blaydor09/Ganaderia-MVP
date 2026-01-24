@@ -10,7 +10,7 @@ export type CreateInventoryTxInput = {
   unit: string;
   occurredAt: Date;
   reason?: string;
-  createdBy?: string;
+  createdById?: string;
   ip?: string;
 };
 
@@ -48,7 +48,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
         unit: input.unit,
         occurredAt: input.occurredAt,
         reason: input.reason,
-        createdBy: input.createdBy,
+        createdById: input.createdById,
       },
     });
 
@@ -56,7 +56,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
   });
 
   await writeAudit({
-    userId: input.createdBy,
+    userId: input.createdById,
     action: "CREATE",
     entity: "inventory_transaction",
     entityId: updated.txItem.id,

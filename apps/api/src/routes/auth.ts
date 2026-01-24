@@ -1,10 +1,11 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { asyncHandler } from "../utils/asyncHandler";
-import { loginSchema, refreshSchema } from "../validators/authSchemas";
-import { login, logout, refresh } from "../services/authService";
+import { loginSchema, refreshSchema, registerSchema } from "../validators/authSchemas";
+import { login, logout, refresh, registerFirstAdmin } from "../services/authService";
 import { authenticate } from "../middleware/auth";
 import { prisma } from "../config/prisma";
+import { env } from "../config/env";
 
 const router = Router();
 
@@ -22,6 +23,37 @@ router.post(
     const data = loginSchema.parse(req.body);
     const result = await login(data.email, data.password, req.headers["user-agent"], req.ip);
     res.json(result);
+  })
+);
+
+router.post(
+  "/register",
+  limiter,
+  asyncHandler(async (req, res) => {
+    const data = registerSchema.parse(req.body);
+    const result = await registerFirstAdmin({
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      registrationCode: data.registrationCode,
+      userAgent: req.headers["user-agent"],
+      ip: req.ip,
+    });
+    res.status(201).json(result);
+  })
+);
+
+router.get(
+  "/registration-status",
+  asyncHandler(async (_req, res) => {
+    const count = await prisma.user.count();
+    const isFirstUser = count === 0;
+    const allowRegistration = isFirstUser && env.registrationMode !== "closed";
+    res.json({
+      allowRegistration,
+      requiresCode: env.registrationMode === "protected",
+      mode: env.registrationMode,
+    });
   })
 );
 

@@ -277,7 +277,7 @@ const run = async () => {
       diagnosis: "Desparasitacion",
       startedAt: new Date(),
       status: "ACTIVE",
-      createdBy: admin.id,
+      createdById: admin.id,
     },
   });
 
@@ -292,7 +292,7 @@ const run = async () => {
       route: "subcutanea",
       meatWithdrawalUntil: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
       milkWithdrawalUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      createdBy: admin.id,
+      createdById: admin.id,
     },
   });
 
@@ -305,7 +305,7 @@ const run = async () => {
       unit: "ml",
       occurredAt: new Date(),
       reason: "administration",
-      createdBy: admin.id,
+      createdById: admin.id,
     },
   });
 

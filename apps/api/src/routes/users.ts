@@ -5,6 +5,9 @@ import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
 import { userCreateSchema, userUpdateSchema } from "../validators/userSchemas";
 import { hashPassword } from "../utils/password";
+import { ensureBaseRoles } from "../utils/roles";
+import { ApiError } from "../utils/errors";
+import { writeAudit } from "../utils/audit";
 
 const router = Router();
 
@@ -46,12 +49,21 @@ router.post(
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const data = userCreateSchema.parse(req.body);
+    await ensureBaseRoles();
+
+    const existing = await prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existing) {
+      throw new ApiError(409, "Email already registered");
+    }
+
     const passwordHash = await hashPassword(data.password);
 
     const created = await prisma.user.create({
       data: {
-        name: data.name,
-        email: data.email,
+        name: data.name.trim(),
+        email: data.email.trim(),
         passwordHash,
         roles: {
           create: data.roles.map((roleName) => ({
@@ -60,6 +72,20 @@ router.post(
         },
       },
       include: { roles: { include: { role: true } } },
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "CREATE",
+      entity: "user",
+      entityId: created.id,
+      after: {
+        id: created.id,
+        name: created.name,
+        email: created.email,
+        roles: created.roles.map((row: { role: { name: string } }) => row.role.name),
+      },
+      ip: req.ip,
     });
 
     res.status(201).json({
@@ -77,10 +103,17 @@ router.patch(
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const data = userUpdateSchema.parse(req.body);
+    const existing = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      include: { roles: { include: { role: true } } },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const updateData: any = {
-      name: data.name,
-      email: data.email,
+      name: data.name?.trim(),
+      email: data.email?.trim(),
       isActive: data.isActive,
     };
 
@@ -95,9 +128,13 @@ router.patch(
     });
 
     if (data.roles) {
+      await ensureBaseRoles();
       const roles = await prisma.role.findMany({
         where: { name: { in: data.roles } },
       });
+      if (roles.length !== data.roles.length) {
+        throw new ApiError(400, "One or more roles are invalid");
+      }
       await prisma.userRole.deleteMany({ where: { userId: updated.id } });
       await prisma.userRole.createMany({
         data: roles.map((role: { id: string }) => ({
@@ -110,6 +147,28 @@ router.patch(
     const fresh = await prisma.user.findUnique({
       where: { id: updated.id },
       include: { roles: { include: { role: true } } },
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "UPDATE",
+      entity: "user",
+      entityId: updated.id,
+      before: {
+        id: existing.id,
+        name: existing.name,
+        email: existing.email,
+        isActive: existing.isActive,
+        roles: existing.roles.map((row: { role: { name: string } }) => row.role.name),
+      },
+      after: {
+        id: fresh!.id,
+        name: fresh!.name,
+        email: fresh!.email,
+        isActive: fresh!.isActive,
+        roles: fresh!.roles.map((row: { role: { name: string } }) => row.role.name),
+      },
+      ip: req.ip,
     });
 
     res.json({
@@ -127,9 +186,37 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
-    await prisma.user.update({
+    const existing = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      include: { roles: { include: { role: true } } },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updated = await prisma.user.update({
       where: { id: req.params.id },
       data: { isActive: false },
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "DEACTIVATE",
+      entity: "user",
+      entityId: updated.id,
+      before: {
+        id: existing.id,
+        name: existing.name,
+        email: existing.email,
+        isActive: existing.isActive,
+      },
+      after: {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        isActive: updated.isActive,
+      },
+      ip: req.ip,
     });
     res.json({ success: true });
   })
@@ -140,6 +227,7 @@ router.get(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (_req, res) => {
+    await ensureBaseRoles();
     const roles = await prisma.role.findMany({ orderBy: { name: "asc" } });
     res.json(roles);
   })

@@ -6,6 +6,7 @@ import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
 import { establishmentCreateSchema, establishmentUpdateSchema } from "../validators/establishmentSchemas";
 import { ApiError } from "../utils/errors";
+import { writeAudit } from "../utils/audit";
 
 const router = Router();
 
@@ -131,7 +132,17 @@ router.post(
           type: data.type,
           parentId: null,
           fincaId: id,
+          createdById: req.user?.id,
         },
+      });
+
+      await writeAudit({
+        userId: req.user?.id,
+        action: "CREATE",
+        entity: "establishment",
+        entityId: created.id,
+        after: created,
+        ip: req.ip,
       });
       return res.status(201).json(created);
     }
@@ -167,7 +178,17 @@ router.post(
         type: data.type,
         parentId: parent.id,
         fincaId: parent.id,
+        createdById: req.user?.id,
       },
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "CREATE",
+      entity: "establishment",
+      entityId: created.id,
+      after: created,
+      ip: req.ip,
     });
 
     res.status(201).json(created);
@@ -241,6 +262,16 @@ router.patch(
       },
     });
 
+    await writeAudit({
+      userId: req.user?.id,
+      action: "UPDATE",
+      entity: "establishment",
+      entityId: updated.id,
+      before: existing,
+      after: updated,
+      ip: req.ip,
+    });
+
     res.json(updated);
   })
 );
@@ -265,7 +296,23 @@ router.delete(
       throw new ApiError(400, "Establishment has assigned animals");
     }
 
+    const existing = await prisma.establishment.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "Establishment not found" });
+    }
+
     await prisma.establishment.delete({ where: { id: req.params.id } });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "DELETE",
+      entity: "establishment",
+      entityId: existing.id,
+      before: existing,
+      ip: req.ip,
+    });
     res.json({ success: true });
   })
 );

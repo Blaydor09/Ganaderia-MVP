@@ -5,6 +5,7 @@ import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
 import { batchCreateSchema, batchUpdateSchema } from "../validators/batchSchemas";
 import { getPagination } from "../utils/pagination";
+import { writeAudit } from "../utils/audit";
 
 const router = Router();
 
@@ -47,7 +48,17 @@ router.post(
         cost: data.cost,
         quantityInitial: data.quantityInitial,
         quantityAvailable: data.quantityAvailable,
+        createdById: req.user?.id,
       },
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "CREATE",
+      entity: "batch",
+      entityId: created.id,
+      after: created,
+      ip: req.ip,
     });
     res.status(201).json(created);
   })
@@ -59,6 +70,11 @@ router.patch(
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = batchUpdateSchema.parse(req.body);
+    const existing = await prisma.batch.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
+
     const updated = await prisma.batch.update({
       where: { id: req.params.id },
       data: {
@@ -71,6 +87,16 @@ router.patch(
         quantityAvailable: data.quantityAvailable,
       },
     });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "UPDATE",
+      entity: "batch",
+      entityId: updated.id,
+      before: existing,
+      after: updated,
+      ip: req.ip,
+    });
     res.json(updated);
   })
 );
@@ -80,9 +106,24 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const existing = await prisma.batch.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
+
     const deleted = await prisma.batch.update({
       where: { id: req.params.id },
       data: { deletedAt: new Date() },
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      action: "DELETE",
+      entity: "batch",
+      entityId: deleted.id,
+      before: existing,
+      after: deleted,
+      ip: req.ip,
     });
     res.json(deleted);
   })
