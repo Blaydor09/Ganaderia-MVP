@@ -77,7 +77,7 @@ export const Sidebar = () => {
         })}
       </nav>
       <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">
-        Version demo 1.0
+        Version demo 1.0.2
       </div>
     </aside>
   );
