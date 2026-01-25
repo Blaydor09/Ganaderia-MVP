@@ -63,46 +63,46 @@ const UsersPage = () => {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <h3 className="font-display text-lg font-semibold text-slate-900">
+            <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
               Crear usuario
             </h3>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Alta directa con contraseña temporal.
             </p>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Nombre</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Nombre</label>
                 <Input placeholder="Nombre" {...register("name")} />
                 {errors.name ? (
                   <p className="text-xs text-red-500">{errors.name.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Email</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Email</label>
                 <Input placeholder="correo@empresa.com" {...register("email")} />
                 {errors.email ? (
                   <p className="text-xs text-red-500">{errors.email.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Clave</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Clave</label>
                 <Input type="password" placeholder="******" {...register("password")} />
                 {errors.password ? (
                   <p className="text-xs text-red-500">{errors.password.message}</p>
                 ) : null}
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-600">Roles</label>
-                <div className="grid gap-2 text-sm text-slate-600">
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Roles</label>
+                <div className="grid gap-2 text-sm text-slate-600 dark:text-slate-300">
                   {(roles ?? []).map((role: any) => (
                     <label key={role.id} className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         value={role.name}
                         {...register("roles")}
-                        className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                        className="h-4 w-4 rounded border-slate-300 text-brand-600 dark:border-slate-600"
                       />
                       <span>{role.name}</span>
                     </label>
@@ -121,20 +121,20 @@ const UsersPage = () => {
 
         <Card>
           <CardHeader>
-            <h3 className="font-display text-lg font-semibold text-slate-900">
+            <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
               Invitar por link
             </h3>
-            <p className="text-sm text-slate-500">Proximamente...</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Proximamente...</p>
           </CardHeader>
           <CardContent>
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
               Esta funcion estara disponible en la siguiente fase.
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             <TR>
@@ -155,7 +155,7 @@ const UsersPage = () => {
             ))}
             {(data ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={4} className="text-sm text-slate-500">
+                <TD colSpan={4} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin usuarios registrados.
                 </TD>
               </TR>

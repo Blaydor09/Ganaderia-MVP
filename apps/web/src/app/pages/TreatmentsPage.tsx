@@ -78,9 +78,9 @@ const TreatmentsPage = () => {
                 </DialogHeader>
                 <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
                   <div className="space-y-1 text-sm">
-                    <label className="text-xs text-slate-500">Animal</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Animal</label>
                     <select
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       {...register("animalId")}
                     >
                       <option value="">Selecciona</option>
@@ -95,14 +95,14 @@ const TreatmentsPage = () => {
                     ) : null}
                   </div>
                   <div className="space-y-1 text-sm">
-                    <label className="text-xs text-slate-500">Diagnostico</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Diagnostico</label>
                     <Input placeholder="Ej: Desparasitacion" {...register("diagnosis")} />
                     {errors.diagnosis ? (
                       <p className="text-xs text-red-500">{errors.diagnosis.message}</p>
                     ) : null}
                   </div>
                   <div className="space-y-1 text-sm">
-                    <label className="text-xs text-slate-500">Fecha inicio</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Fecha inicio</label>
                     <Input type="datetime-local" {...register("startedAt")} />
                     {errors.startedAt ? (
                       <p className="text-xs text-red-500">{errors.startedAt.message}</p>
@@ -118,7 +118,7 @@ const TreatmentsPage = () => {
         }
       />
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             <TR>
@@ -139,7 +139,7 @@ const TreatmentsPage = () => {
             ))}
             {(data?.items ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={4} className="text-sm text-slate-500">
+                <TD colSpan={4} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin tratamientos activos.
                 </TD>
               </TR>

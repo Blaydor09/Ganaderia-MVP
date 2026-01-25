@@ -170,7 +170,7 @@ const AnimalsPage = () => {
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -203,7 +203,7 @@ const AnimalsPage = () => {
             ) : (
               <TR>
                 <TD colSpan={columns.length} className={cellPaddingClass}>
-                  <div className="flex flex-col items-center gap-2 py-8 text-slate-500">
+                  <div className="flex flex-col items-center gap-2 py-8 text-slate-500 dark:text-slate-400">
                     <span>No hay animales registrados.</span>
                     {canManageAnimals ? (
                       <div className="flex gap-2">
@@ -221,7 +221,7 @@ const AnimalsPage = () => {
             )}
           </TBody>
         </Table>
-        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-500">
+        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
           <span>
             Pagina {page} de {Math.ceil((data?.total ?? 0) / pageSize) || 1}
           </span>

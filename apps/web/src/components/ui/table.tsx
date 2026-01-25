@@ -12,21 +12,33 @@ Table.displayName = "Table";
 
 const THead = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => (
-    <thead ref={ref} className={cn("bg-slate-50", className)} {...props} />
+    <thead
+      ref={ref}
+      className={cn("bg-slate-50 dark:bg-slate-900/60", className)}
+      {...props}
+    />
   )
 );
 THead.displayName = "THead";
 
 const TBody = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => (
-    <tbody ref={ref} className={cn("divide-y divide-slate-100", className)} {...props} />
+    <tbody
+      ref={ref}
+      className={cn("divide-y divide-slate-100 dark:divide-slate-800", className)}
+      {...props}
+    />
   )
 );
 TBody.displayName = "TBody";
 
 const TR = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(
   ({ className, ...props }, ref) => (
-    <tr ref={ref} className={cn("hover:bg-slate-50", className)} {...props} />
+    <tr
+      ref={ref}
+      className={cn("hover:bg-slate-50 dark:hover:bg-slate-900/60", className)}
+      {...props}
+    />
   )
 );
 TR.displayName = "TR";
@@ -35,7 +47,10 @@ const TH = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTab
   ({ className, ...props }, ref) => (
     <th
       ref={ref}
-      className={cn("px-4 py-3 text-left text-xs font-semibold text-slate-500", className)}
+      className={cn(
+        "px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400",
+        className
+      )}
       {...props}
     />
   )
@@ -44,7 +59,11 @@ TH.displayName = "TH";
 
 const TD = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
   ({ className, ...props }, ref) => (
-    <td ref={ref} className={cn("px-4 py-3", className)} {...props} />
+    <td
+      ref={ref}
+      className={cn("px-4 py-3 text-slate-700 dark:text-slate-200", className)}
+      {...props}
+    />
   )
 );
 TD.displayName = "TD";

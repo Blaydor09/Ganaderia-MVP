@@ -22,7 +22,7 @@ const InventoryPage = () => {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <p className="text-xs text-slate-500">Vencimientos proximos</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Vencimientos proximos</p>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center gap-3 text-xs text-slate-400">
@@ -39,13 +39,13 @@ const InventoryPage = () => {
               </div>
             ))}
             {(alerts?.expiring ?? []).length === 0 ? (
-              <p className="text-sm text-slate-500">Sin vencimientos cercanos.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Sin vencimientos cercanos.</p>
             ) : null}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <p className="text-xs text-slate-500">Stock minimo</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Stock minimo</p>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {(alerts?.lowStock ?? []).map((row: any) => (
@@ -55,13 +55,13 @@ const InventoryPage = () => {
               </div>
             ))}
             {(alerts?.lowStock ?? []).length === 0 ? (
-              <p className="text-sm text-slate-500">Sin productos en minimo.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Sin productos en minimo.</p>
             ) : null}
           </CardContent>
         </Card>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             <TR>
@@ -82,7 +82,7 @@ const InventoryPage = () => {
             ))}
             {(batches ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={4} className="text-sm text-slate-500">
+                <TD colSpan={4} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin stock registrado.
                 </TD>
               </TR>

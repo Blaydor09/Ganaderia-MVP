@@ -46,7 +46,7 @@ const AnimalsImportPage = () => {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <p className="text-xs text-slate-500">Paso 1</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Paso 1</p>
             <h3 className="font-display text-lg font-semibold">Carga de animales</h3>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -58,10 +58,10 @@ const AnimalsImportPage = () => {
         </Card>
         <Card>
           <CardHeader>
-            <p className="text-xs text-slate-500">Paso 2</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Paso 2</p>
             <h3 className="font-display text-lg font-semibold">Inventario inicial</h3>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-slate-500">
+          <CardContent className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
             <p>Registra productos y lotes iniciales desde el modulo Inventario.</p>
             <Button variant="secondary" asChild>
               <a href="/inventory">Ir a inventario</a>

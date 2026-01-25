@@ -13,7 +13,7 @@ const EventsPage = () => {
     <div className="space-y-6">
       <PageHeader title="Eventos" subtitle="Bitacora productiva y sanitaria" />
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             <TR>
@@ -34,7 +34,7 @@ const EventsPage = () => {
             ))}
             {(data?.items ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={4} className="text-sm text-slate-500">
+                <TD colSpan={4} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin eventos registrados.
                 </TD>
               </TR>

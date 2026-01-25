@@ -126,9 +126,9 @@ const BatchesPage = () => {
                 </DialogHeader>
                 <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
                   <div className="space-y-1 text-sm">
-                    <label className="text-xs text-slate-500">Producto</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Producto</label>
                     <select
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       {...register("productId")}
                     >
                       <option value="">Selecciona</option>
@@ -144,16 +144,16 @@ const BatchesPage = () => {
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500">Lote</label>
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Lote</label>
                       <Input placeholder="BATCH-001" {...register("batchNumber")} />
                       {errors.batchNumber ? (
                         <p className="text-xs text-red-500">{errors.batchNumber.message}</p>
                       ) : null}
                     </div>
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500">Proveedor (opcional)</label>
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Proveedor (opcional)</label>
                       <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                         {...register("supplierId")}
                       >
                         <option value="">Sin proveedor</option>
@@ -165,21 +165,21 @@ const BatchesPage = () => {
                       </select>
                     </div>
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500">Fecha recibido</label>
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Fecha recibido</label>
                       <Input type="date" {...register("receivedAt")} />
                       {errors.receivedAt ? (
                         <p className="text-xs text-red-500">{errors.receivedAt.message}</p>
                       ) : null}
                     </div>
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500">Vencimiento</label>
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Vencimiento</label>
                       <Input type="date" {...register("expiresAt")} />
                       {errors.expiresAt ? (
                         <p className="text-xs text-red-500">{errors.expiresAt.message}</p>
                       ) : null}
                     </div>
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500">Cantidad inicial</label>
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Cantidad inicial</label>
                       <Input
                         type="number"
                         min={0}
@@ -192,7 +192,7 @@ const BatchesPage = () => {
                       ) : null}
                     </div>
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500">Disponible</label>
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Disponible</label>
                       <Input
                         type="number"
                         min={0}
@@ -207,7 +207,7 @@ const BatchesPage = () => {
                       ) : null}
                     </div>
                     <div className="space-y-1 text-sm md:col-span-2">
-                      <label className="text-xs text-slate-500">Costo (opcional)</label>
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Costo (opcional)</label>
                       <Input
                         type="number"
                         min={0}
@@ -228,7 +228,7 @@ const BatchesPage = () => {
         }
       />
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             <TR>
@@ -251,7 +251,7 @@ const BatchesPage = () => {
             ))}
             {(data?.items ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={5} className="text-sm text-slate-500">
+                <TD colSpan={5} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin lotes registrados.
                 </TD>
               </TR>

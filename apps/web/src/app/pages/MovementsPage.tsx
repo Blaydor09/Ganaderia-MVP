@@ -13,7 +13,7 @@ const MovementsPage = () => {
     <div className="space-y-6">
       <PageHeader title="Movimientos" subtitle="Trazabilidad interna y externa" />
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             <TR>
@@ -34,7 +34,7 @@ const MovementsPage = () => {
             ))}
             {(data?.items ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={4} className="text-sm text-slate-500">
+                <TD colSpan={4} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin movimientos registrados.
                 </TD>
               </TR>

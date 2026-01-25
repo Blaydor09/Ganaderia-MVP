@@ -20,9 +20,9 @@ const AlertsPage = () => {
         {(data ?? []).map((alert: any) => (
           <Card key={alert.id}>
             <CardContent className="space-y-2">
-              <p className="text-xs text-slate-500">{alert.type}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{alert.type}</p>
               <h3 className="font-display text-lg font-semibold">{alert.title}</h3>
-              <p className="text-sm text-slate-500">{alert.message}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{alert.message}</p>
               <p className="text-xs text-slate-400">
                 {new Date(alert.dueAt).toLocaleDateString()}
               </p>
@@ -31,7 +31,7 @@ const AlertsPage = () => {
         ))}
         {(data ?? []).length === 0 ? (
           <Card>
-            <CardContent className="text-sm text-slate-500">
+            <CardContent className="text-sm text-slate-500 dark:text-slate-400">
               Sin alertas programadas.
             </CardContent>
           </Card>

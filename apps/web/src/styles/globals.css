@@ -13,6 +13,14 @@ body {
     #f8fafc;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background: #0b1220;
+}
+
 .font-display {
   font-family: 'Space Grotesk', system-ui, sans-serif;
 }

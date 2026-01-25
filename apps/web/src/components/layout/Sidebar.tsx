@@ -40,9 +40,9 @@ export const Sidebar = () => {
   const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex dark:border-slate-800 dark:bg-slate-950">
       <div className="mb-8 flex items-center gap-3">
-        <div className="h-11 w-11 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm">
+        <div className="h-11 w-11 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm dark:border-slate-700">
           <img
             src={logo}
             alt="Inventario Ganaderia"
@@ -50,7 +50,7 @@ export const Sidebar = () => {
           />
         </div>
         <div>
-          <p className="text-sm text-slate-500">Inventario</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Inventario</p>
           <p className="font-display text-lg font-semibold">Ganaderia</p>
         </div>
       </div>
@@ -65,8 +65,8 @@ export const Sidebar = () => {
                 cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium",
                   isActive
-                    ? "bg-brand-50 text-brand-700"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-100"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60"
                 )
               }
             >
@@ -76,7 +76,7 @@ export const Sidebar = () => {
           );
         })}
       </nav>
-      <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">
+      <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
         Version demo 1.0.2
       </div>
     </aside>

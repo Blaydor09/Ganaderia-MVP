@@ -13,7 +13,7 @@ const AuditPage = () => {
     <div className="space-y-6">
       <PageHeader title="Auditoria" subtitle="Cambios criticos y trazabilidad" />
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             <TR>
@@ -32,7 +32,7 @@ const AuditPage = () => {
             ))}
             {(data?.items ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={3} className="text-sm text-slate-500">
+                <TD colSpan={3} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin registros de auditoria.
                 </TD>
               </TR>

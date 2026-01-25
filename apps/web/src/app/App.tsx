@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { ThemeShell } from "@/components/layout/ThemeProvider";
 import { hasAnyRole, isAuthenticated } from "@/lib/auth";
 import type { Role } from "@/lib/auth";
 import { Access } from "@/lib/access";
@@ -60,14 +61,14 @@ const RequireRole = ({
 };
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => (
-  <div className="flex min-h-screen bg-slate-50">
+  <ThemeShell className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
     <Sidebar />
     <div className="flex flex-1 flex-col">
       <Topbar />
       <main className="flex-1 px-6 py-6 pb-20 lg:pb-6">{children}</main>
     </div>
     <MobileNav />
-  </div>
+  </ThemeShell>
 );
 
 const HomeRoute = () => {

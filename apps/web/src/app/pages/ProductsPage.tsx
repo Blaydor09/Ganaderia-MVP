@@ -26,15 +26,15 @@ const ProductsPage = () => {
           <Card key={product.id}>
             <CardContent className="space-y-2">
               <h3 className="font-display text-lg font-semibold">{product.name}</h3>
-              <p className="text-xs text-slate-500">Principio: {product.activeIngredient}</p>
-              <p className="text-xs text-slate-500">Retiro carne: {product.meatWithdrawalDays} dias</p>
-              <p className="text-xs text-slate-500">Retiro leche: {product.milkWithdrawalDays} dias</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Principio: {product.activeIngredient}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Retiro carne: {product.meatWithdrawalDays} dias</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Retiro leche: {product.milkWithdrawalDays} dias</p>
             </CardContent>
           </Card>
         ))}
         {(data?.items ?? []).length === 0 ? (
           <Card>
-            <CardContent className="text-sm text-slate-500">
+            <CardContent className="text-sm text-slate-500 dark:text-slate-400">
               Sin productos. Agrega el primer medicamento.
             </CardContent>
           </Card>

@@ -15,7 +15,7 @@ export const GlobalSearch = () => {
 
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
       <Input
         placeholder="Buscar arete, animal o lote"
         value={query}
@@ -23,8 +23,8 @@ export const GlobalSearch = () => {
         className="w-64 pl-9"
       />
       {query.length >= 2 ? (
-        <div className="absolute left-0 top-12 z-50 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-soft">
-          <div className="text-xs font-semibold text-slate-400">Animales</div>
+        <div className="absolute left-0 top-12 z-50 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-soft dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
+          <div className="text-xs font-semibold text-slate-400 dark:text-slate-500">Animales</div>
           <div className="space-y-2 py-2 text-sm">
             {(data?.animals ?? []).map((animal: any) => (
               <Link key={animal.id} to={`/animals/${animal.id}`} className="block hover:text-brand-600">
@@ -32,29 +32,29 @@ export const GlobalSearch = () => {
               </Link>
             ))}
             {(data?.animals ?? []).length === 0 ? (
-              <span className="text-xs text-slate-400">Sin coincidencias</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">Sin coincidencias</span>
             ) : null}
           </div>
-          <div className="text-xs font-semibold text-slate-400">Lotes</div>
+          <div className="text-xs font-semibold text-slate-400 dark:text-slate-500">Lotes</div>
           <div className="space-y-2 py-2 text-sm">
             {(data?.batches ?? []).map((batch: any) => (
-              <span key={batch.id} className="block text-slate-600">
+              <span key={batch.id} className="block text-slate-600 dark:text-slate-300">
                 {batch.batchNumber}
               </span>
             ))}
             {(data?.batches ?? []).length === 0 ? (
-              <span className="text-xs text-slate-400">Sin coincidencias</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">Sin coincidencias</span>
             ) : null}
           </div>
-          <div className="text-xs font-semibold text-slate-400">Productos</div>
+          <div className="text-xs font-semibold text-slate-400 dark:text-slate-500">Productos</div>
           <div className="space-y-2 py-2 text-sm">
             {(data?.products ?? []).map((product: any) => (
-              <span key={product.id} className="block text-slate-600">
+              <span key={product.id} className="block text-slate-600 dark:text-slate-300">
                 {product.name}
               </span>
             ))}
             {(data?.products ?? []).length === 0 ? (
-              <span className="text-xs text-slate-400">Sin coincidencias</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">Sin coincidencias</span>
             ) : null}
           </div>
         </div>

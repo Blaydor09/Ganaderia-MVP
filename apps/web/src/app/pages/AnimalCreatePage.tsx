@@ -114,37 +114,37 @@ const AnimalCreatePage = () => {
 
       <Card>
         <CardHeader>
-          <p className="text-xs text-slate-500">Datos basicos</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Datos basicos</p>
           <h3 className="font-display text-lg font-semibold">Informacion del animal</h3>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Arete (opcional)</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Arete (opcional)</label>
                 <Input placeholder="TAG-1007" {...register("tag")} />
                 {errors.tag ? (
                   <p className="text-xs text-red-500">{errors.tag.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Raza</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Raza</label>
                 <Input placeholder="Brahman" {...register("breed")} />
                 {errors.breed ? (
                   <p className="text-xs text-red-500">{errors.breed.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Fecha nacimiento</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Fecha nacimiento</label>
                 <Input type="date" {...register("birthDate")} />
                 {errors.birthDate ? (
                   <p className="text-xs text-red-500">{errors.birthDate.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Sexo</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Sexo</label>
                 <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                   {...register("sex")}
                 >
                   {animalSexOptions.map((option) => (
@@ -158,9 +158,9 @@ const AnimalCreatePage = () => {
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Categoria</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Categoria</label>
                 <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                   {...register("category")}
                 >
                   {animalCategoryOptions.map((option) => (
@@ -174,9 +174,9 @@ const AnimalCreatePage = () => {
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Origen</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Origen</label>
                 <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                   {...register("origin")}
                 >
                   {animalOriginOptions.map((option) => (
@@ -190,9 +190,9 @@ const AnimalCreatePage = () => {
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Estado</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Estado</label>
                 <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                   {...register("status")}
                 >
                   {animalStatusOptions.map((option) => (
@@ -206,9 +206,9 @@ const AnimalCreatePage = () => {
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Establecimiento</label>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Establecimiento</label>
                 <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                   {...register("establishmentId")}
                 >
                   <option value="">Sin asignar</option>
@@ -222,16 +222,16 @@ const AnimalCreatePage = () => {
               <div className="flex items-center gap-2 md:col-span-2">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-300"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-300 dark:border-slate-600"
                   {...register("birthEstimated")}
                 />
-                <span className="text-xs text-slate-600">Fecha estimada</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300">Fecha estimada</span>
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Notas</label>
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Notas</label>
               <textarea
-                className="min-h-[96px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+                className="min-h-[96px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                 placeholder="Observaciones adicionales"
                 {...register("notes")}
               />

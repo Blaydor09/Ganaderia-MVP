@@ -11,7 +11,7 @@ export const Breadcrumbs = () => {
   });
 
   return (
-    <nav className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+    <nav className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
       <Link to="/" className="hover:text-brand-600">
         Inicio
       </Link>

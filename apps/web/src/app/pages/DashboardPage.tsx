@@ -230,7 +230,7 @@ const DashboardPage = () => {
         {canViewAnimals ? (
           <Card>
             <CardHeader>
-              <p className="text-xs text-slate-500">Animales activos</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Animales activos</p>
               <p className="font-display text-2xl font-semibold">
                 {animalSummary?.total ?? 0}
               </p>
@@ -247,13 +247,13 @@ const DashboardPage = () => {
         {canViewWithdrawals ? (
           <Card>
             <CardHeader>
-              <p className="text-xs text-slate-500">Retiros activos</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Retiros activos</p>
               <p className="font-display text-2xl font-semibold">
                 {withdrawalsData?.total ?? 0}
               </p>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Animales bloqueados para venta o faena.
               </p>
             </CardContent>
@@ -262,14 +262,14 @@ const DashboardPage = () => {
         {canViewInventory ? (
           <Card>
             <CardHeader>
-              <p className="text-xs text-slate-500">Alertas de inventario</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Alertas de inventario</p>
               <p className="font-display text-2xl font-semibold">
                 {(inventoryAlerts?.expiring?.length ?? 0) +
                   (inventoryAlerts?.lowStock?.length ?? 0)}
               </p>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Vencimientos proximos y stock minimo.
               </p>
             </CardContent>
@@ -278,24 +278,24 @@ const DashboardPage = () => {
         {canViewMovements ? (
           <Card>
             <CardHeader>
-              <p className="text-xs text-slate-500">Movimientos recientes</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Movimientos recientes</p>
               <p className="font-display text-2xl font-semibold">
                 {movementsData?.items?.length ?? 0}
               </p>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-500">Ultimos traslados.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Ultimos traslados.</p>
             </CardContent>
           </Card>
         ) : null}
         {canViewTreatments ? (
           <Card>
             <CardHeader>
-              <p className="text-xs text-slate-500">Tratamientos 7 dias</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Tratamientos 7 dias</p>
               <p className="font-display text-2xl font-semibold">{treatmentsLast7}</p>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-500">Actividad sanitaria reciente.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Actividad sanitaria reciente.</p>
             </CardContent>
           </Card>
         ) : null}
@@ -305,12 +305,12 @@ const DashboardPage = () => {
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <p className="text-xs text-slate-500">Distribucion por categoria</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Distribucion por categoria</p>
               <p className="font-display text-xl font-semibold">Animales activos</p>
             </CardHeader>
             <CardContent className="h-64">
               {categoryTotal === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
                   Sin datos para graficar.
                 </div>
               ) : (
@@ -344,12 +344,12 @@ const DashboardPage = () => {
           </Card>
           <Card>
             <CardHeader>
-              <p className="text-xs text-slate-500">Distribucion por sexo</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Distribucion por sexo</p>
               <p className="font-display text-xl font-semibold">Animales activos</p>
             </CardHeader>
             <CardContent className="h-64">
               {sexTotal === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
                   Sin datos para graficar.
                 </div>
               ) : (
@@ -389,14 +389,14 @@ const DashboardPage = () => {
           {canViewEvents ? (
             <Card className={canViewInventory ? "lg:col-span-2" : "lg:col-span-3"}>
               <CardHeader>
-                <p className="text-xs text-slate-500">Nacimientos vs muertes vs ventas</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Nacimientos vs muertes vs ventas</p>
                 <p className="font-display text-xl font-semibold">
                   Ultimos {lifecycleMonths} meses
                 </p>
               </CardHeader>
               <CardContent className="h-72">
                 {lifecycleChartData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                  <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
                     Sin eventos en el periodo.
                   </div>
                 ) : (
@@ -439,14 +439,14 @@ const DashboardPage = () => {
           {canViewInventory ? (
             <Card className={canViewEvents ? "" : "lg:col-span-3"}>
               <CardHeader>
-                <p className="text-xs text-slate-500">Stock total vs minimo</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Stock total vs minimo</p>
                 <p className="font-display text-xl font-semibold">
                   Productos con mayor volumen
                 </p>
               </CardHeader>
               <CardContent className="h-72">
                 {stockChartData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                  <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
                     Sin stock registrado.
                   </div>
                 ) : (
@@ -488,7 +488,7 @@ const DashboardPage = () => {
         {canViewTreatments ? (
           <Card className={canViewMovements ? "lg:col-span-2" : "lg:col-span-3"}>
             <CardHeader>
-              <p className="text-xs text-slate-500">Tratamientos ultimos 7 dias</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Tratamientos ultimos 7 dias</p>
               <p className="font-display text-xl font-semibold">Actividad sanitaria</p>
             </CardHeader>
             <CardContent className="h-64">
@@ -518,20 +518,20 @@ const DashboardPage = () => {
         {canViewMovements ? (
           <Card className={canViewTreatments ? "" : "lg:col-span-3"}>
             <CardHeader>
-              <p className="text-xs text-slate-500">Movimientos recientes</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Movimientos recientes</p>
               <p className="font-display text-xl font-semibold">Trazabilidad</p>
             </CardHeader>
             <CardContent className="space-y-3">
               {(movementsData?.items ?? []).map((move: any) => (
                 <div key={move.id} className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">{move.movementType}</span>
+                  <span className="text-slate-600 dark:text-slate-300">{move.movementType}</span>
                   <span className="text-xs text-slate-400">
                     {new Date(move.occurredAt).toLocaleDateString()}
                   </span>
                 </div>
               ))}
               {(movementsData?.items ?? []).length === 0 ? (
-                <p className="text-sm text-slate-500">Sin movimientos recientes.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Sin movimientos recientes.</p>
               ) : null}
             </CardContent>
           </Card>

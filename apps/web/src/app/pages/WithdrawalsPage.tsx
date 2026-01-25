@@ -16,7 +16,7 @@ const WithdrawalsPage = () => {
         subtitle="Animales bloqueados por retiro de carne o leche"
       />
 
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
         <Table>
           <THead>
             <TR>
@@ -37,7 +37,7 @@ const WithdrawalsPage = () => {
             ))}
             {(data?.items ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={4} className="text-sm text-slate-500">
+                <TD colSpan={4} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin retiros activos.
                 </TD>
               </TR>

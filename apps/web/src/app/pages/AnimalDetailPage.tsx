@@ -40,11 +40,11 @@ const AnimalDetailPage = () => {
         }
       />
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900/80">
         <div className="flex flex-wrap items-center gap-4">
           <Badge>{getAnimalCategoryLabel(data.category)}</Badge>
-          <span className="text-sm text-slate-500">Raza: {data.breed}</span>
-          <span className="text-sm text-slate-500">Sexo: {data.sex}</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Raza: {data.breed}</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Sexo: {data.sex}</span>
         </div>
       </div>
 
@@ -59,14 +59,14 @@ const AnimalDetailPage = () => {
         </TabsList>
         <TabsContent value="resumen">
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-xl border border-slate-200 p-4">
-              <p className="text-xs text-slate-500">Nacimiento</p>
+            <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Nacimiento</p>
               <p className="text-sm font-medium">
                 {data.birthDate ? new Date(data.birthDate).toLocaleDateString() : "Sin fecha"}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 p-4">
-              <p className="text-xs text-slate-500">Ubicacion</p>
+            <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Ubicacion</p>
               <p className="text-sm font-medium">
                 {data.establishment
                   ? data.establishment.parent
@@ -75,17 +75,20 @@ const AnimalDetailPage = () => {
                   : "Sin asignar"}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 p-4">
-              <p className="text-xs text-slate-500">Origen</p>
+            <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Origen</p>
               <p className="text-sm font-medium">{data.origin}</p>
             </div>
           </div>
         </TabsContent>
         <TabsContent value="eventos">
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
             {data.events?.length ? (
               data.events.map((event: any) => (
-                <div key={event.id} className="flex items-center justify-between border-b py-2 text-sm">
+                <div
+                  key={event.id}
+                  className="flex items-center justify-between border-b border-slate-200 py-2 text-sm dark:border-slate-800"
+                >
                   <span>{event.type}</span>
                   <span className="text-xs text-slate-400">
                     {new Date(event.occurredAt).toLocaleDateString()}
@@ -93,29 +96,35 @@ const AnimalDetailPage = () => {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">Sin eventos registrados.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Sin eventos registrados.</p>
             )}
           </div>
         </TabsContent>
         <TabsContent value="tratamientos">
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
             {data.treatments?.length ? (
               data.treatments.map((treatment: any) => (
-                <div key={treatment.id} className="flex items-center justify-between border-b py-2 text-sm">
+                <div
+                  key={treatment.id}
+                  className="flex items-center justify-between border-b border-slate-200 py-2 text-sm dark:border-slate-800"
+                >
                   <span>{treatment.diagnosis}</span>
                   <span className="text-xs text-slate-400">{treatment.status}</span>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">Sin tratamientos.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Sin tratamientos.</p>
             )}
           </div>
         </TabsContent>
         <TabsContent value="movimientos">
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
             {data.movements?.length ? (
               data.movements.map((move: any) => (
-                <div key={move.id} className="flex items-center justify-between border-b py-2 text-sm">
+                <div
+                  key={move.id}
+                  className="flex items-center justify-between border-b border-slate-200 py-2 text-sm dark:border-slate-800"
+                >
                   <span>{move.movementType}</span>
                   <span className="text-xs text-slate-400">
                     {new Date(move.occurredAt).toLocaleDateString()}
@@ -123,18 +132,18 @@ const AnimalDetailPage = () => {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">Sin movimientos.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Sin movimientos.</p>
             )}
           </div>
         </TabsContent>
         <TabsContent value="pesajes">
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm text-slate-500">Pesajes registrados en eventos de tipo PESO.</p>
+          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Pesajes registrados en eventos de tipo PESO.</p>
           </div>
         </TabsContent>
         <TabsContent value="documentos">
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-sm text-slate-500">Adjuntos en desarrollo.</p>
+          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Adjuntos en desarrollo.</p>
           </div>
         </TabsContent>
       </Tabs>

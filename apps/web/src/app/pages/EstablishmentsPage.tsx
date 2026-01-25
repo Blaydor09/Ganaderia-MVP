@@ -100,16 +100,16 @@ const EstablishmentsPage = () => {
                 </DialogHeader>
                 <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
                   <div className="space-y-1 text-sm">
-                    <label className="text-xs text-slate-500">Nombre</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Nombre</label>
                     <Input placeholder="Ej: Potrero Norte" {...register("name")} />
                     {errors.name ? (
                       <p className="text-xs text-red-500">{errors.name.message}</p>
                     ) : null}
                   </div>
                   <div className="space-y-1 text-sm">
-                    <label className="text-xs text-slate-500">Tipo</label>
+                    <label className="text-xs text-slate-500 dark:text-slate-400">Tipo</label>
                     <select
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       {...register("type")}
                     >
                       {establishmentTypeOptions.map((option) => (
@@ -121,9 +121,9 @@ const EstablishmentsPage = () => {
                   </div>
                   {selectedType !== "FINCA" ? (
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500">Finca</label>
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Finca</label>
                       <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                         {...register("parentId")}
                       >
                         <option value="">Selecciona</option>
@@ -150,7 +150,7 @@ const EstablishmentsPage = () => {
 
       {isLoading ? (
         <Card>
-          <CardContent className="text-sm text-slate-500">Cargando establecimientos...</CardContent>
+          <CardContent className="text-sm text-slate-500 dark:text-slate-400">Cargando establecimientos...</CardContent>
         </Card>
       ) : fincas.length ? (
         <div className="space-y-4">
@@ -162,12 +162,12 @@ const EstablishmentsPage = () => {
             return (
               <Card key={finca.id}>
                 <CardHeader>
-                  <p className="text-xs text-slate-500">Finca</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Finca</p>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h3 className="font-display text-lg font-semibold">{finca.name}</h3>
                     </div>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       Animales: {finca.animalCount ?? 0}
                     </span>
                   </div>
@@ -175,7 +175,7 @@ const EstablishmentsPage = () => {
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <p className="text-xs text-slate-500">Corral</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Corral</p>
                       {corral ? (
                         <div className="flex items-center justify-between text-sm">
                           <span>{corral.name}</span>
@@ -184,11 +184,11 @@ const EstablishmentsPage = () => {
                           </span>
                         </div>
                       ) : (
-                        <p className="text-sm text-slate-500">Sin corral registrado.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Sin corral registrado.</p>
                       )}
                     </div>
                     <div className="space-y-2">
-                      <p className="text-xs text-slate-500">Potreros</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Potreros</p>
                       {potreros.length ? (
                         potreros.map((potrero: any) => (
                           <div key={potrero.id} className="flex items-center justify-between text-sm">
@@ -199,7 +199,7 @@ const EstablishmentsPage = () => {
                           </div>
                         ))
                       ) : (
-                        <p className="text-sm text-slate-500">Sin potreros registrados.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Sin potreros registrados.</p>
                       )}
                     </div>
                   </div>
@@ -210,7 +210,7 @@ const EstablishmentsPage = () => {
         </div>
       ) : (
         <Card>
-          <CardContent className="text-sm text-slate-500">
+          <CardContent className="text-sm text-slate-500 dark:text-slate-400">
             Sin establecimientos registrados.
           </CardContent>
         </Card>

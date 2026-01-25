@@ -16,7 +16,7 @@ const ReportsPage = () => {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <p className="text-xs text-slate-500">Consumo de medicamentos</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Consumo de medicamentos</p>
             <h3 className="font-display text-lg font-semibold">Top productos</h3>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -27,16 +27,16 @@ const ReportsPage = () => {
               </div>
             ))}
             {(consumption?.items ?? []).length === 0 ? (
-              <p className="text-sm text-slate-500">Sin datos de consumo.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Sin datos de consumo.</p>
             ) : null}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <p className="text-xs text-slate-500">Pesajes</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Pesajes</p>
             <h3 className="font-display text-lg font-semibold">Evolucion por animal</h3>
           </CardHeader>
-          <CardContent className="text-sm text-slate-500">
+          <CardContent className="text-sm text-slate-500 dark:text-slate-400">
             Usa el filtro por animal en el reporte de pesajes.
           </CardContent>
         </Card>

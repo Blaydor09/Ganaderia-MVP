@@ -10,11 +10,15 @@ export interface ButtonProps
 }
 
 const buttonVariants = {
-  default: "bg-brand-600 text-white hover:bg-brand-700",
-  secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200",
-  outline: "border border-slate-200 text-slate-900 hover:bg-slate-100",
-  ghost: "text-slate-700 hover:bg-slate-100",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  default:
+    "bg-brand-600 text-white hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-400",
+  secondary:
+    "bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700",
+  outline:
+    "border border-slate-200 text-slate-900 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800",
+  ghost:
+    "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800",
+  danger: "bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-400",
 };
 
 const sizeVariants = {
@@ -30,7 +34,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(
           "inline-flex items-center justify-center gap-2 rounded-full font-medium transition",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 dark:focus-visible:ring-brand-500",
           "disabled:pointer-events-none disabled:opacity-50",
           buttonVariants[variant],
           sizeVariants[size],
