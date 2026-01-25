@@ -40,7 +40,7 @@ export const Sidebar = () => {
   const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));
 
   return (
-    <aside className="hidden h-screen w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
       <div className="mb-8 flex items-center gap-3">
         <div className="h-11 w-11 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm">
           <img
