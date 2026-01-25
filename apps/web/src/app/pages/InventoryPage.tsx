@@ -1,10 +1,36 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { formatDateOnlyUtc } from "@/lib/dates";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+
+const adjustSchema = z.object({
+  quantityAvailable: z.number().min(0),
+});
+
+type AdjustFormValues = z.infer<typeof adjustSchema>;
 
 const InventoryPage = () => {
+  const queryClient = useQueryClient();
+  const canAdjust = hasAnyRole(Access.batchesUpdate);
+  const [adjustingBatch, setAdjustingBatch] = useState<any | null>(null);
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const { data: batches } = useQuery({
     queryKey: ["inventory"],
     queryFn: async () => (await api.get("/inventory")).data,
@@ -14,6 +40,40 @@ const InventoryPage = () => {
     queryKey: ["inventory", "alerts"],
     queryFn: async () => (await api.get("/inventory/alerts")).data,
   });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AdjustFormValues>({
+    resolver: zodResolver(adjustSchema),
+    defaultValues: { quantityAvailable: 0 },
+  });
+
+  useEffect(() => {
+    if (!adjustingBatch) return;
+    reset({
+      quantityAvailable: adjustingBatch.quantityAvailable ?? 0,
+    });
+  }, [adjustingBatch, reset]);
+
+  const onAdjustSubmit = async (values: AdjustFormValues) => {
+    if (!adjustingBatch) return;
+    try {
+      await api.patch(`/batches/${adjustingBatch.id}`, {
+        quantityAvailable: values.quantityAvailable,
+      });
+      toast.success("Stock actualizado");
+      setIsAdjustOpen(false);
+      setAdjustingBatch(null);
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory", "alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["batches"] });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Error al ajustar stock");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -34,7 +94,7 @@ const InventoryPage = () => {
               <div key={batch.id} className="flex items-center justify-between">
                 <span>{batch.product?.name}</span>
                 <span className="text-xs text-slate-400">
-                  {new Date(batch.expiresAt).toLocaleDateString()}
+                  {formatDateOnlyUtc(batch.expiresAt)}
                 </span>
               </div>
             ))}
@@ -69,6 +129,7 @@ const InventoryPage = () => {
               <TH>Lote</TH>
               <TH>Vencimiento</TH>
               <TH>Disponible</TH>
+              <TH>Acciones</TH>
             </TR>
           </THead>
           <TBody>
@@ -76,13 +137,28 @@ const InventoryPage = () => {
               <TR key={batch.id}>
                 <TD>{batch.product?.name}</TD>
                 <TD>{batch.batchNumber}</TD>
-                <TD>{new Date(batch.expiresAt).toLocaleDateString()}</TD>
+                <TD>{formatDateOnlyUtc(batch.expiresAt)}</TD>
                 <TD>{batch.quantityAvailable}</TD>
+                <TD>
+                  {canAdjust ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setAdjustingBatch(batch);
+                        setIsAdjustOpen(true);
+                      }}
+                    >
+                      Ajustar
+                    </Button>
+                  ) : null}
+                </TD>
               </TR>
             ))}
             {(batches ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={4} className="text-sm text-slate-500 dark:text-slate-400">
+                <TD colSpan={5} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin stock registrado.
                 </TD>
               </TR>
@@ -90,6 +166,42 @@ const InventoryPage = () => {
           </TBody>
         </Table>
       </div>
+
+      <Dialog
+        open={isAdjustOpen}
+        onOpenChange={(open) => {
+          setIsAdjustOpen(open);
+          if (!open) {
+            setAdjustingBatch(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajustar stock</DialogTitle>
+          </DialogHeader>
+          <form className="space-y-3" onSubmit={handleSubmit(onAdjustSubmit)}>
+            <div className="space-y-1 text-sm">
+              <label className="text-xs text-slate-500 dark:text-slate-400">
+                Disponible (dosis)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                {...register("quantityAvailable", {
+                  setValueAs: (value) => (value === "" ? 0 : Number(value)),
+                })}
+              />
+              {errors.quantityAvailable ? (
+                <p className="text-xs text-red-500">{errors.quantityAvailable.message}</p>
+              ) : null}
+            </div>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : "Guardar ajuste"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

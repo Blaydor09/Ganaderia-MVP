@@ -91,7 +91,7 @@ export const getInventoryAlerts = async () => {
 
   const lowStock = await prisma.product.findMany({
     where: { deletedAt: null },
-    include: { batches: true },
+    include: { batches: { where: { deletedAt: null } } },
   });
 
   const lowStockList = lowStock

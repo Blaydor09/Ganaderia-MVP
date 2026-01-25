@@ -14,6 +14,7 @@ export const Access = {
   productsCreate: ["ADMIN", "VETERINARIO", "OPERADOR"] as Role[],
   batches: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
   batchesCreate: ["ADMIN", "VETERINARIO", "OPERADOR"] as Role[],
+  batchesUpdate: ["ADMIN", "VETERINARIO"] as Role[],
   inventory: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
   alerts: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
   tasks: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],

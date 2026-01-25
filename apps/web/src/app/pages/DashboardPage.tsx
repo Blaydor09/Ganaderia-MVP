@@ -218,7 +218,7 @@ const DashboardPage = () => {
               ) : null}
               {canViewWithdrawals ? (
                 <Button variant="ghost" asChild>
-                  <Link to="/withdrawals">Ver retiros activos</Link>
+                  <Link to="/reports">Ver retiros en reportes</Link>
                 </Button>
               ) : null}
             </div>
