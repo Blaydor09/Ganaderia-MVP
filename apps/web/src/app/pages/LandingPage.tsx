@@ -269,7 +269,7 @@ const LandingPage = () => {
               <Link to="/login">Entrar</Link>
             </Button>
             <Button asChild>
-              <a href="#contact">Solicitar demo</a>
+              <a href="#contact">Mas informacion</a>
             </Button>
           </div>
         </div>
@@ -296,7 +296,7 @@ const LandingPage = () => {
           </div>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" asChild>
-              <a href="#contact">Solicitar demo</a>
+              <a href="#contact">Mas informacion</a>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <Link to="/login">Ver plataforma</Link>
@@ -686,65 +686,152 @@ const LandingPage = () => {
       </section>
 
       <section id="contact" className="mx-auto max-w-6xl px-6 py-16">
-        <Card className="bg-gradient-to-r from-brand-50 via-white to-white">
-          <CardHeader className="space-y-3">
-            <p className="text-xs uppercase tracking-wide text-brand-700">
-              Solicitar demo
-            </p>
-            <h2 className="font-display text-3xl font-semibold">
-              Listo para ordenar tu inventario ganadero?
-            </h2>
-            <p className="text-sm text-slate-600">
-              Completa el formulario y te contactamos para una demo personalizada.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600" htmlFor="demo-name">
-                  Nombre
-                </label>
-                <input
-                  type="text"
-                  id="demo-name"
-                  placeholder="Nombre y apellido"
-                  className="w-full rounded-full border border-slate-200 px-4 py-2 text-sm"
-                />
+        <Card className="overflow-hidden bg-gradient-to-r from-brand-50 via-white to-white">
+          <CardContent className="p-6 lg:p-10">
+            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+              <div className="space-y-5">
+                <p className="text-xs uppercase tracking-wide text-brand-700">
+                  Solicitar informacion
+                </p>
+                <h2 className="font-display text-3xl font-semibold">
+                  Listo para ordenar tu inventario ganadero?
+                </h2>
+                <p className="text-sm text-slate-600">
+                  Completa el formulario y te contactamos con una propuesta clara de
+                  implementacion, tiempos y alcance.
+                </p>
+                <div className="grid gap-3 text-sm text-slate-600">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="mt-0.5 h-4 w-4 text-emerald-600" />
+                    Respuesta personalizada en 24 a 48 horas.
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <ClipboardList className="mt-0.5 h-4 w-4 text-brand-700" />
+                    Analisis de flujo operativo y necesidades sanitarias.
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 text-brand-700" />
+                    Acompanamiento para adopcion del equipo.
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                    Soporte en espanol
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                    Integracion por roles
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
+                    Seguimiento post-arranque
+                  </span>
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600" htmlFor="demo-email">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="demo-email"
-                  placeholder="correo@empresa.com"
-                  className="w-full rounded-full border border-slate-200 px-4 py-2 text-sm"
-                />
-              </div>
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-medium text-slate-600" htmlFor="demo-msg">
-                  Mensaje
-                </label>
-                <textarea
-                  rows={4}
-                  id="demo-msg"
-                  placeholder="Cuantas fincas y animales gestionas?"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-3 md:col-span-2">
-                <Button type="button" size="lg">
-                  Enviar solicitud
-                </Button>
-                <Button type="button" size="lg" variant="outline" asChild>
-                  <Link to="/login">Entrar al sistema</Link>
-                </Button>
-                <span className="text-xs text-slate-500">
-                  Frontend demo, sin envio real.
-                </span>
-              </div>
-            </form>
+
+              <form className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-soft md:grid-cols-2">
+                <div className="space-y-1">
+                  <label
+                    className="text-xs font-medium text-slate-600"
+                    htmlFor="info-name"
+                  >
+                    Nombre completo
+                  </label>
+                  <input
+                    type="text"
+                    id="info-name"
+                    placeholder="Nombre y apellido"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    className="text-xs font-medium text-slate-600"
+                    htmlFor="info-company"
+                  >
+                    Finca o empresa
+                  </label>
+                  <input
+                    type="text"
+                    id="info-company"
+                    placeholder="Nombre de la finca"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    className="text-xs font-medium text-slate-600"
+                    htmlFor="info-email"
+                  >
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="info-email"
+                    placeholder="correo@empresa.com"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    className="text-xs font-medium text-slate-600"
+                    htmlFor="info-phone"
+                  >
+                    WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    id="info-phone"
+                    placeholder="Ej: +52 55 0000 0000"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    className="text-xs font-medium text-slate-600"
+                    htmlFor="info-size"
+                  >
+                    Tamano de operacion
+                  </label>
+                  <select
+                    id="info-size"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>
+                      Cantidad aproximada
+                    </option>
+                    <option>1 a 100 animales</option>
+                    <option>101 a 300 animales</option>
+                    <option>301 a 700 animales</option>
+                    <option>701+ animales</option>
+                  </select>
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label
+                    className="text-xs font-medium text-slate-600"
+                    htmlFor="info-msg"
+                  >
+                    Que informacion necesitas?
+                  </label>
+                  <textarea
+                    rows={4}
+                    id="info-msg"
+                    placeholder="Cuantas fincas gestionas y que procesos quieres ordenar?"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+                  <Button type="button" size="lg">
+                    Solicitar informacion
+                  </Button>
+                  <Button type="button" size="lg" variant="outline" asChild>
+                    <Link to="/login">Entrar al sistema</Link>
+                  </Button>
+                  <span className="text-xs text-slate-500">
+                    Formulario de contacto, sin envio real.
+                  </span>
+                </div>
+              </form>
+            </div>
           </CardContent>
         </Card>
       </section>
