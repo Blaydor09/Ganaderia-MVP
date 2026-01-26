@@ -73,7 +73,7 @@ router.post(
         roles: {
           create: data.roles.map((roleName) => ({
             role: { connect: { name: roleName } },
-            tenantId,
+            tenant: { connect: { id: tenantId } },
           })),
         },
       },
