@@ -10,7 +10,10 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 
   try {
     const payload = verifyAccessToken(token);
-    req.user = { id: payload.sub, roles: payload.roles };
+    if (!payload.tenantId) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+    req.user = { id: payload.sub, roles: payload.roles, tenantId: payload.tenantId };
     return next();
   } catch {
     return res.status(401).json({ message: "Invalid token" });

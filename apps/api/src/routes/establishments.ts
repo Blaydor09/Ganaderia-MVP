@@ -12,7 +12,7 @@ const router = Router();
 
 const parseBoolean = (value: unknown) => value === "true" || value === "1";
 
-const getAnimalCountMap = async (establishmentIds: string[]) => {
+const getAnimalCountMap = async (tenantId: string, establishmentIds: string[]) => {
   if (establishmentIds.length === 0) {
     return new Map<string, number>();
   }
@@ -22,6 +22,7 @@ const getAnimalCountMap = async (establishmentIds: string[]) => {
     where: {
       establishmentId: { in: establishmentIds },
       deletedAt: null,
+      tenantId,
     },
     _count: { _all: true },
   });
@@ -64,9 +65,10 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const tree = parseBoolean(req.query.tree);
     const includeCounts = parseBoolean(req.query.includeCounts);
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { tenantId };
 
     if (tree) {
       const fincaId = req.query.fincaId as string | undefined;
@@ -85,7 +87,7 @@ router.get(
     });
 
     const countMap = includeCounts
-      ? await getAnimalCountMap(items.map((item) => item.id))
+      ? await getAnimalCountMap(tenantId, items.map((item) => item.id))
       : new Map<string, number>();
 
     const enriched = includeCounts ? withCounts(items, countMap) : items;
@@ -98,8 +100,9 @@ router.get(
   "/:id",
   authenticate,
   asyncHandler(async (req, res) => {
-    const establishment = await prisma.establishment.findUnique({
-      where: { id: req.params.id },
+    const tenantId = req.user!.tenantId;
+    const establishment = await prisma.establishment.findFirst({
+      where: { id: req.params.id, tenantId },
       include: {
         children: { orderBy: { name: "asc" } },
       },
@@ -119,6 +122,7 @@ router.post(
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const data = establishmentCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
 
     if (data.type === "FINCA") {
       if (data.parentId) {
@@ -132,12 +136,14 @@ router.post(
           type: data.type,
           parentId: null,
           fincaId: id,
+          tenantId,
           createdById: req.user?.id,
         },
       });
 
       await writeAudit({
         userId: req.user?.id,
+        tenantId,
         action: "CREATE",
         entity: "establishment",
         entityId: created.id,
@@ -151,8 +157,8 @@ router.post(
       throw new ApiError(400, "Parent finca is required");
     }
 
-    const parent = await prisma.establishment.findUnique({
-      where: { id: data.parentId },
+    const parent = await prisma.establishment.findFirst({
+      where: { id: data.parentId, tenantId },
     });
 
     if (!parent) {
@@ -165,7 +171,7 @@ router.post(
 
     if (data.type === "CORRAL") {
       const existingCorral = await prisma.establishment.findFirst({
-        where: { type: "CORRAL", fincaId: parent.id },
+        where: { type: "CORRAL", fincaId: parent.id, tenantId },
       });
       if (existingCorral) {
         throw new ApiError(400, "Corral already exists for this finca");
@@ -178,12 +184,14 @@ router.post(
         type: data.type,
         parentId: parent.id,
         fincaId: parent.id,
+        tenantId,
         createdById: req.user?.id,
       },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "establishment",
       entityId: created.id,
@@ -201,8 +209,9 @@ router.patch(
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const data = establishmentUpdateSchema.parse(req.body);
-    const existing = await prisma.establishment.findUnique({
-      where: { id: req.params.id },
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.establishment.findFirst({
+      where: { id: req.params.id, tenantId },
     });
 
     if (!existing) {
@@ -228,8 +237,8 @@ router.patch(
         throw new ApiError(400, "Parent finca is required");
       }
 
-      const parent = await prisma.establishment.findUnique({
-        where: { id: parentId },
+      const parent = await prisma.establishment.findFirst({
+        where: { id: parentId, tenantId },
       });
 
       if (!parent) {
@@ -242,7 +251,12 @@ router.patch(
 
       if (existing.type === "CORRAL" && parent.id !== existing.fincaId) {
         const existingCorral = await prisma.establishment.findFirst({
-          where: { type: "CORRAL", fincaId: parent.id, NOT: { id: existing.id } },
+          where: {
+            type: "CORRAL",
+            fincaId: parent.id,
+            tenantId,
+            NOT: { id: existing.id },
+          },
         });
         if (existingCorral) {
           throw new ApiError(400, "Corral already exists for this finca");
@@ -264,6 +278,7 @@ router.patch(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "establishment",
       entityId: updated.id,
@@ -281,10 +296,11 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const [childrenCount, animalsCount] = await Promise.all([
-      prisma.establishment.count({ where: { parentId: req.params.id } }),
+      prisma.establishment.count({ where: { parentId: req.params.id, tenantId } }),
       prisma.animal.count({
-        where: { establishmentId: req.params.id, deletedAt: null },
+        where: { establishmentId: req.params.id, deletedAt: null, tenantId },
       }),
     ]);
 
@@ -296,8 +312,8 @@ router.delete(
       throw new ApiError(400, "Establishment has assigned animals");
     }
 
-    const existing = await prisma.establishment.findUnique({
-      where: { id: req.params.id },
+    const existing = await prisma.establishment.findFirst({
+      where: { id: req.params.id, tenantId },
     });
     if (!existing) {
       return res.status(404).json({ message: "Establishment not found" });
@@ -307,6 +323,7 @@ router.delete(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "DELETE",
       entity: "establishment",
       entityId: existing.id,

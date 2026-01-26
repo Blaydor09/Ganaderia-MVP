@@ -21,7 +21,8 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = {};
+    const tenantId = req.user!.tenantId;
+    const where: Record<string, unknown> = { tenantId };
     if (req.query.animalId) {
       where.treatment = { animalId: req.query.animalId };
     }
@@ -47,6 +48,7 @@ router.post(
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = administrationCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
     const created = await createAdministration({
       treatmentId: data.treatmentId,
       batchId: data.batchId,
@@ -56,6 +58,7 @@ router.post(
       route: data.route,
       site: data.site,
       notes: data.notes,
+      tenantId,
       createdById: req.user?.id,
       ip: req.ip,
     });
@@ -69,8 +72,9 @@ router.patch(
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = administrationUpdateSchema.parse(req.body);
-    const existing = await prisma.administration.findUnique({
-      where: { id: req.params.id },
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.administration.findFirst({
+      where: { id: req.params.id, tenantId },
       include: { batch: { include: { product: true } } },
     });
 
@@ -115,6 +119,7 @@ router.patch(
             unit: data.doseUnit ?? existing.doseUnit,
             occurredAt: new Date(),
             reason: "administration_edit",
+            tenantId,
             createdById: req.user?.id,
           },
         });
@@ -139,6 +144,7 @@ router.patch(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "administration",
       entityId: updated.id,

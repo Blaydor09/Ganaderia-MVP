@@ -31,10 +31,10 @@ const parseOptionalDate = (value?: string | null) => {
   return new Date(value);
 };
 
-const ensureAssignableEstablishment = async (establishmentId?: string) => {
+const ensureAssignableEstablishment = async (tenantId: string, establishmentId?: string) => {
   if (!establishmentId) return;
-  const establishment = await prisma.establishment.findUnique({
-    where: { id: establishmentId },
+  const establishment = await prisma.establishment.findFirst({
+    where: { id: establishmentId, tenantId },
   });
   if (!establishment) {
     throw new ApiError(400, "Establishment not found");
@@ -44,16 +44,43 @@ const ensureAssignableEstablishment = async (establishmentId?: string) => {
   }
 };
 
+const ensureSupplier = async (tenantId: string, supplierId?: string | null) => {
+  if (!supplierId) return;
+  const supplier = await prisma.supplier.findFirst({
+    where: { id: supplierId, tenantId },
+  });
+  if (!supplier) {
+    throw new ApiError(400, "Supplier not found");
+  }
+};
+
+const ensureParentAnimals = async (
+  tenantId: string,
+  motherId?: string | null,
+  fatherId?: string | null
+) => {
+  const ids = [motherId, fatherId].filter(Boolean) as string[];
+  if (!ids.length) return;
+  const parents = await prisma.animal.findMany({
+    where: { id: { in: ids }, tenantId },
+    select: { id: true },
+  });
+  if (parents.length !== ids.length) {
+    throw new ApiError(400, "Parent animal not found");
+  }
+};
+
 router.get(
   "/summary",
   authenticate,
   asyncHandler(async (req, res) => {
-    const where: Prisma.AnimalWhereInput = { deletedAt: null };
+    const tenantId = req.user!.tenantId;
+    const where: Prisma.AnimalWhereInput = { deletedAt: null, tenantId };
     if (req.query.establishmentId) {
       where.establishmentId = String(req.query.establishmentId);
     }
     if (req.query.fincaId) {
-      where.establishment = { fincaId: String(req.query.fincaId) };
+      where.establishment = { fincaId: String(req.query.fincaId), tenantId };
     }
 
     const [total, byCategory, bySex, byStatus, byOrigin] = await Promise.all([
@@ -88,13 +115,14 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = { deletedAt: null };
+    const tenantId = req.user!.tenantId;
+    const where: Record<string, unknown> = { deletedAt: null, tenantId };
     if (req.query.tag) where.tag = { contains: req.query.tag, mode: "insensitive" };
     if (req.query.category) where.category = req.query.category;
     if (req.query.status) where.status = req.query.status;
     if (req.query.establishmentId) where.establishmentId = req.query.establishmentId;
     if (req.query.fincaId) {
-      where.establishment = { fincaId: req.query.fincaId };
+      where.establishment = { fincaId: req.query.fincaId, tenantId };
     }
 
     const [items, total] = await Promise.all([
@@ -118,7 +146,10 @@ router.post(
   requireRoles("ADMIN", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = animalCreateSchema.parse(req.body);
-    await ensureAssignableEstablishment(data.establishmentId);
+    const tenantId = req.user!.tenantId;
+    await ensureAssignableEstablishment(tenantId, data.establishmentId);
+    await ensureSupplier(tenantId, data.supplierId);
+    await ensureParentAnimals(tenantId, data.motherId, data.fatherId);
     const tag = normalizeOptionalString(data.tag);
     const birthDate = parseOptionalDate(data.birthDate);
     const animal = await prisma.animal.create({
@@ -136,6 +167,7 @@ router.post(
         motherId: data.motherId,
         fatherId: data.fatherId,
         establishmentId: data.establishmentId,
+        tenantId,
         notes: data.notes,
         createdById: req.user?.id,
       },
@@ -143,6 +175,7 @@ router.post(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "animal",
       entityId: animal.id,
@@ -160,7 +193,8 @@ router.post(
   requireRoles("ADMIN", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = animalQuickCreateSchema.parse(req.body);
-    await ensureAssignableEstablishment(data.establishmentId);
+    const tenantId = req.user!.tenantId;
+    await ensureAssignableEstablishment(tenantId, data.establishmentId);
 
     const birthDate = parseOptionalDate(data.birthDate);
     const breed = data.breed.trim();
@@ -181,6 +215,7 @@ router.post(
           category: item.category,
           status,
           origin: data.origin,
+          tenantId,
           createdById: req.user?.id,
         };
         if (data.establishmentId) {
@@ -203,6 +238,7 @@ router.post(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "BULK_CREATE",
       entity: "animal",
       after: {
@@ -223,8 +259,9 @@ router.get(
   "/:id",
   authenticate,
   asyncHandler(async (req, res) => {
-    const animal = await prisma.animal.findUnique({
-      where: { id: req.params.id },
+    const tenantId = req.user!.tenantId;
+    const animal = await prisma.animal.findFirst({
+      where: { id: req.params.id, tenantId },
       include: {
         establishment: { include: { parent: true } },
         events: { orderBy: { occurredAt: "desc" } },
@@ -246,8 +283,9 @@ router.get(
   "/:id/summary",
   authenticate,
   asyncHandler(async (req, res) => {
-    const animal = await prisma.animal.findUnique({
-      where: { id: req.params.id },
+    const tenantId = req.user!.tenantId;
+    const animal = await prisma.animal.findFirst({
+      where: { id: req.params.id, tenantId },
     });
 
     if (!animal) {
@@ -259,7 +297,7 @@ router.get(
       orderBy: { occurredAt: "desc" },
     });
 
-    const withdrawal = await getActiveWithdrawalForAnimal(animal.id);
+    const withdrawal = await getActiveWithdrawalForAnimal(animal.id, tenantId);
 
     res.json({
       animal,
@@ -275,13 +313,22 @@ router.patch(
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const data = animalUpdateSchema.parse(req.body);
-    const existing = await prisma.animal.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.animal.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Animal not found" });
     }
 
     if (data.establishmentId !== undefined) {
-      await ensureAssignableEstablishment(data.establishmentId);
+      await ensureAssignableEstablishment(tenantId, data.establishmentId);
+    }
+    if (data.supplierId !== undefined) {
+      await ensureSupplier(tenantId, data.supplierId);
+    }
+    if (data.motherId !== undefined || data.fatherId !== undefined) {
+      await ensureParentAnimals(tenantId, data.motherId, data.fatherId);
     }
 
     const updateData: Prisma.AnimalUncheckedUpdateInput = {
@@ -313,6 +360,7 @@ router.patch(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "animal",
       entityId: updated.id,
@@ -330,7 +378,10 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
-    const existing = await prisma.animal.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.animal.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Animal not found" });
     }
@@ -342,6 +393,7 @@ router.delete(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "DELETE",
       entity: "animal",
       entityId: deleted.id,
@@ -364,6 +416,7 @@ router.post(
       return res.status(400).json({ message: "Missing file" });
     }
 
+    const tenantId = req.user!.tenantId;
     const rows = parse(req.file.buffer, {
       columns: true,
       skip_empty_lines: true,
@@ -376,7 +429,7 @@ router.post(
 
     if (establishmentIds.length) {
       const establishments = await prisma.establishment.findMany({
-        where: { id: { in: establishmentIds } },
+        where: { id: { in: establishmentIds }, tenantId },
       });
       if (establishments.length !== establishmentIds.length) {
         throw new ApiError(400, "Invalid establishment_id in CSV");
@@ -403,6 +456,7 @@ router.post(
           status: (row.status as any) ?? "ACTIVO",
           origin: row.origin as any,
           establishmentId: row.establishment_id || undefined,
+          tenantId,
           createdById: req.user?.id,
         },
       });
@@ -411,6 +465,7 @@ router.post(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "IMPORT",
       entity: "animal",
       after: { count: created.length },

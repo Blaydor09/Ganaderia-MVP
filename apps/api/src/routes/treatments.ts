@@ -14,7 +14,8 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = {};
+    const tenantId = req.user!.tenantId;
+    const where: Record<string, unknown> = { tenantId };
     if (req.query.status) where.status = req.query.status;
 
     const [items, total] = await Promise.all([
@@ -38,6 +39,14 @@ router.post(
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = treatmentCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
+    const animal = await prisma.animal.findFirst({
+      where: { id: data.animalId, tenantId },
+      select: { id: true },
+    });
+    if (!animal) {
+      return res.status(400).json({ message: "Animal not found" });
+    }
     const created = await prisma.treatment.create({
       data: {
         animalId: data.animalId,
@@ -46,12 +55,14 @@ router.post(
         startedAt: new Date(data.startedAt),
         status: "ACTIVE",
         notes: data.notes,
+        tenantId,
         createdById: req.user?.id,
       },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "treatment",
       entityId: created.id,
@@ -69,7 +80,10 @@ router.post(
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = treatmentCloseSchema.parse(req.body);
-    const existing = await prisma.treatment.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.treatment.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Treatment not found" });
     }
@@ -81,6 +95,7 @@ router.post(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "treatment",
       entityId: updated.id,
@@ -97,8 +112,9 @@ router.get(
   "/by-animal/:animalId",
   authenticate,
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const items = await prisma.treatment.findMany({
-      where: { animalId: req.params.animalId },
+      where: { animalId: req.params.animalId, tenantId },
       include: { administrations: true },
       orderBy: { startedAt: "desc" },
     });

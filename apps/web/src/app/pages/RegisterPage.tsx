@@ -12,6 +12,7 @@ import logo from "@/assets/logo.png";
 import { ThemeShell } from "@/components/layout/ThemeProvider";
 
 const schema = z.object({
+  tenantName: z.string().min(2),
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
@@ -63,6 +64,7 @@ const RegisterPage = () => {
 
     try {
       const payload = {
+        tenantName: values.tenantName.trim(),
         name: values.name.trim(),
         email: values.email.trim(),
         password: values.password,
@@ -70,7 +72,7 @@ const RegisterPage = () => {
       };
       const response = await api.post("/auth/register", payload);
       setTokens(response.data.accessToken, response.data.refreshToken);
-      toast.success("Cuenta admin creada");
+      toast.success("Cuenta creada");
       navigate("/");
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "No se pudo crear la cuenta");
@@ -97,19 +99,18 @@ const RegisterPage = () => {
                 Inventario Ganaderia
               </p>
               <p className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Crear cuenta admin
+                Crear cuenta
               </p>
             </div>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs text-brand-700 dark:bg-brand-900/40 dark:text-brand-100">
-            Registro inicial del sistema
+            Registro de nueva cuenta
           </div>
           <h1 className="font-display text-3xl font-semibold text-slate-900 dark:text-slate-100">
             Configura el acceso principal
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Este formulario crea el primer usuario administrador. Luego ese
-            administrador agrega el resto del equipo.
+            Este formulario crea una cuenta nueva y su primer usuario administrador.
           </p>
         </div>
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-none">
@@ -117,7 +118,7 @@ const RegisterPage = () => {
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {statusError
               ? statusError
-              : "Completa los datos para iniciar el sistema."}
+              : "Completa los datos para crear la cuenta."}
           </p>
 
           {!status && !statusError ? (
@@ -133,6 +134,15 @@ const RegisterPage = () => {
 
           {allowRegistration ? (
             <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                  Nombre de la cuenta
+                </label>
+                <Input placeholder="Ej: Finca Los Sauces" {...register("tenantName")} />
+                {errors.tenantName ? (
+                  <p className="text-xs text-red-500">{errors.tenantName.message}</p>
+                ) : null}
+              </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Nombre</label>
                 <Input placeholder="Administrador" {...register("name")} />

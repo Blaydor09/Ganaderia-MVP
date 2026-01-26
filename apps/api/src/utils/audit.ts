@@ -8,6 +8,7 @@ export type AuditInput = {
   before?: unknown;
   after?: unknown;
   ip?: string;
+  tenantId?: string;
 };
 
 export const writeAudit = async (input: AuditInput) => {
@@ -20,6 +21,7 @@ export const writeAudit = async (input: AuditInput) => {
       before: input.before ?? undefined,
       after: input.after ?? undefined,
       ip: input.ip,
+      tenantId: input.tenantId,
     },
   });
 };

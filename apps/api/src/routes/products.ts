@@ -14,7 +14,8 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = { deletedAt: null };
+    const tenantId = req.user!.tenantId;
+    const where: Record<string, unknown> = { deletedAt: null, tenantId };
     if (req.query.search) {
       where.name = { contains: req.query.search, mode: "insensitive" };
     }
@@ -39,12 +40,14 @@ router.post(
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = productCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
     const created = await prisma.product.create({
-      data: { ...data, createdById: req.user?.id },
+      data: { ...data, tenantId, createdById: req.user?.id },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "product",
       entityId: created.id,
@@ -61,7 +64,10 @@ router.patch(
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = productUpdateSchema.parse(req.body);
-    const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.product.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Product not found" });
     }
@@ -73,6 +79,7 @@ router.patch(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "product",
       entityId: updated.id,
@@ -89,7 +96,10 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
-    const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.product.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Product not found" });
     }
@@ -101,6 +111,7 @@ router.delete(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "DELETE",
       entity: "product",
       entityId: deleted.id,

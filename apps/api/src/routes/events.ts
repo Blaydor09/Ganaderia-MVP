@@ -14,6 +14,7 @@ router.get(
   "/lifecycle-summary",
   authenticate,
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const monthsParam = Number(req.query.months ?? 12);
     const months = Math.min(Math.max(monthsParam, 1), 24);
     const now = dayjs();
@@ -24,6 +25,7 @@ router.get(
       where: {
         type: { in: ["NACIMIENTO", "MUERTE", "VENTA"] },
         occurredAt: { gte: start.toDate(), lte: end.toDate() },
+        tenantId,
       },
       select: { type: true, occurredAt: true },
     });
@@ -61,7 +63,8 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = {};
+    const tenantId = req.user!.tenantId;
+    const where: Record<string, unknown> = { tenantId };
     if (req.query.animalId) where.animalId = req.query.animalId;
     if (req.query.type) where.type = req.query.type;
     if (req.query.from || req.query.to) {
@@ -91,6 +94,23 @@ router.post(
   requireRoles("ADMIN", "OPERADOR", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = eventCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
+    const animal = await prisma.animal.findFirst({
+      where: { id: data.animalId, tenantId },
+      select: { id: true },
+    });
+    if (!animal) {
+      return res.status(400).json({ message: "Animal not found" });
+    }
+    if (data.establishmentId) {
+      const establishment = await prisma.establishment.findFirst({
+        where: { id: data.establishmentId, tenantId },
+        select: { id: true },
+      });
+      if (!establishment) {
+        return res.status(400).json({ message: "Establishment not found" });
+      }
+    }
     const created = await prisma.animalEvent.create({
       data: {
         animalId: data.animalId,
@@ -100,12 +120,14 @@ router.post(
         valueNumber: data.valueNumber,
         valueText: data.valueText,
         notes: data.notes,
+        tenantId,
         createdById: req.user?.id,
       },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "animal_event",
       entityId: created.id,
@@ -123,9 +145,21 @@ router.patch(
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = eventUpdateSchema.parse(req.body);
-    const existing = await prisma.animalEvent.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.animalEvent.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Event not found" });
+    }
+    if (data.establishmentId) {
+      const establishment = await prisma.establishment.findFirst({
+        where: { id: data.establishmentId, tenantId },
+        select: { id: true },
+      });
+      if (!establishment) {
+        return res.status(400).json({ message: "Establishment not found" });
+      }
     }
 
     const updated = await prisma.animalEvent.update({
@@ -142,6 +176,7 @@ router.patch(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "animal_event",
       entityId: updated.id,
@@ -159,7 +194,10 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
-    const existing = await prisma.animalEvent.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.animalEvent.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Event not found" });
     }
@@ -168,6 +206,7 @@ router.delete(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "DELETE",
       entity: "animal_event",
       entityId: existing.id,

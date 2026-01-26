@@ -13,13 +13,15 @@ router.get(
   requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
+    const tenantId = req.user!.tenantId;
     const [items, total] = await Promise.all([
       prisma.auditLog.findMany({
+        where: { tenantId },
         skip,
         take: pageSize,
         orderBy: { createdAt: "desc" },
       }),
-      prisma.auditLog.count(),
+      prisma.auditLog.count({ where: { tenantId } }),
     ]);
 
     res.json({ items, total, page, pageSize });

@@ -20,6 +20,13 @@ const run = async () => {
     });
   }
 
+  const tenantId = "00000000-0000-0000-0000-000000000001";
+  const tenant = await prisma.tenant.upsert({
+    where: { id: tenantId },
+    update: { name: "Cuenta Demo" },
+    create: { id: tenantId, name: "Cuenta Demo" },
+  });
+
   const adminPassword = await hashPassword("admin123");
   const vetPassword = await hashPassword("vet12345");
   const operatorPassword = await hashPassword("oper12345");
@@ -32,7 +39,9 @@ const run = async () => {
       name: "Admin Demo",
       email: "admin@demo.com",
       passwordHash: adminPassword,
-      roles: { create: [{ role: { connect: { name: "ADMIN" } } }] },
+      roles: {
+        create: [{ role: { connect: { name: "ADMIN" } }, tenantId: tenant.id }],
+      },
     },
   });
 
@@ -43,7 +52,9 @@ const run = async () => {
       name: "Vet Demo",
       email: "vet@demo.com",
       passwordHash: vetPassword,
-      roles: { create: [{ role: { connect: { name: "VETERINARIO" } } }] },
+      roles: {
+        create: [{ role: { connect: { name: "VETERINARIO" } }, tenantId: tenant.id }],
+      },
     },
   });
 
@@ -54,7 +65,9 @@ const run = async () => {
       name: "Operador Demo",
       email: "oper@demo.com",
       passwordHash: operatorPassword,
-      roles: { create: [{ role: { connect: { name: "OPERADOR" } } }] },
+      roles: {
+        create: [{ role: { connect: { name: "OPERADOR" } }, tenantId: tenant.id }],
+      },
     },
   });
 
@@ -65,12 +78,14 @@ const run = async () => {
       name: "Auditor Demo",
       email: "audit@demo.com",
       passwordHash: auditorPassword,
-      roles: { create: [{ role: { connect: { name: "AUDITOR" } } }] },
+      roles: {
+        create: [{ role: { connect: { name: "AUDITOR" } }, tenantId: tenant.id }],
+      },
     },
   });
 
   const existingFinca = await prisma.establishment.findFirst({
-    where: { name: "Finca Central", type: "FINCA" },
+    where: { name: "Finca Central", type: "FINCA", tenantId: tenant.id },
   });
   const fincaId = existingFinca?.id ?? randomUUID();
   const finca = existingFinca
@@ -81,6 +96,7 @@ const run = async () => {
           type: "FINCA",
           parentId: null,
           fincaId,
+          tenantId: tenant.id,
         },
       })
     : await prisma.establishment.create({
@@ -90,11 +106,17 @@ const run = async () => {
           type: "FINCA",
           parentId: null,
           fincaId,
+          tenantId: tenant.id,
         },
       });
 
   const potreroNorteExisting = await prisma.establishment.findFirst({
-    where: { name: "Potrero Norte", type: "POTRERO", parentId: finca.id },
+    where: {
+      name: "Potrero Norte",
+      type: "POTRERO",
+      parentId: finca.id,
+      tenantId: tenant.id,
+    },
   });
   const potreroNorte = potreroNorteExisting
     ? await prisma.establishment.update({
@@ -104,6 +126,7 @@ const run = async () => {
           type: "POTRERO",
           parentId: finca.id,
           fincaId: finca.id,
+          tenantId: tenant.id,
         },
       })
     : await prisma.establishment.create({
@@ -112,11 +135,17 @@ const run = async () => {
           type: "POTRERO",
           parentId: finca.id,
           fincaId: finca.id,
+          tenantId: tenant.id,
         },
       });
 
   const potreroSurExisting = await prisma.establishment.findFirst({
-    where: { name: "Potrero Sur", type: "POTRERO", parentId: finca.id },
+    where: {
+      name: "Potrero Sur",
+      type: "POTRERO",
+      parentId: finca.id,
+      tenantId: tenant.id,
+    },
   });
   const potreroSur = potreroSurExisting
     ? await prisma.establishment.update({
@@ -126,6 +155,7 @@ const run = async () => {
           type: "POTRERO",
           parentId: finca.id,
           fincaId: finca.id,
+          tenantId: tenant.id,
         },
       })
     : await prisma.establishment.create({
@@ -134,11 +164,17 @@ const run = async () => {
           type: "POTRERO",
           parentId: finca.id,
           fincaId: finca.id,
+          tenantId: tenant.id,
         },
       });
 
   const corralExisting = await prisma.establishment.findFirst({
-    where: { name: "Corral Principal", type: "CORRAL", fincaId: finca.id },
+    where: {
+      name: "Corral Principal",
+      type: "CORRAL",
+      fincaId: finca.id,
+      tenantId: tenant.id,
+    },
   });
   const corral = corralExisting
     ? await prisma.establishment.update({
@@ -148,6 +184,7 @@ const run = async () => {
           type: "CORRAL",
           parentId: finca.id,
           fincaId: finca.id,
+          tenantId: tenant.id,
         },
       })
     : await prisma.establishment.create({
@@ -156,11 +193,12 @@ const run = async () => {
           type: "CORRAL",
           parentId: finca.id,
           fincaId: finca.id,
+          tenantId: tenant.id,
         },
       });
 
   const supplier = await prisma.supplier.create({
-    data: { name: "Proveedor Vet" },
+    data: { name: "Proveedor Vet", tenantId: tenant.id },
   });
 
   const product = await prisma.product.create({
@@ -174,6 +212,7 @@ const run = async () => {
       meatWithdrawalDays: 28,
       milkWithdrawalDays: 7,
       minStock: 50,
+      tenantId: tenant.id,
     },
   });
 
@@ -187,11 +226,12 @@ const run = async () => {
       cost: 120,
       quantityInitial: 200,
       quantityAvailable: 200,
+      tenantId: tenant.id,
     },
   });
 
   const animal = await prisma.animal.upsert({
-    where: { internalCode: "AN-DEMO-001" },
+    where: { tenantId_internalCode: { tenantId: tenant.id, internalCode: "AN-DEMO-001" } },
     update: {},
     create: {
       internalCode: "AN-DEMO-001",
@@ -203,6 +243,7 @@ const run = async () => {
       status: "ACTIVO",
       origin: "BORN",
       establishmentId: corral.id,
+      tenantId: tenant.id,
     },
   });
 
@@ -214,9 +255,10 @@ const run = async () => {
       breed: "Angus",
       birthDate: new Date("2023-05-12"),
         category: "VAQUILLA",
-        status: "ACTIVO",
-        origin: "BORN",
-        establishmentId: potreroNorte.id,
+      status: "ACTIVO",
+      origin: "BORN",
+      establishmentId: potreroNorte.id,
+      tenantId: tenant.id,
       },
     {
       internalCode: "AN-DEMO-003",
@@ -228,6 +270,7 @@ const run = async () => {
         status: "ACTIVO",
         origin: "BORN",
         establishmentId: potreroSur.id,
+        tenantId: tenant.id,
       },
     {
       internalCode: "AN-DEMO-004",
@@ -240,6 +283,7 @@ const run = async () => {
         origin: "BOUGHT",
         supplierId: supplier.id,
         establishmentId: corral.id,
+        tenantId: tenant.id,
       },
     {
       internalCode: "AN-DEMO-005",
@@ -251,6 +295,7 @@ const run = async () => {
         status: "ACTIVO",
         origin: "BORN",
         establishmentId: potreroNorte.id,
+        tenantId: tenant.id,
       },
     {
       internalCode: "AN-DEMO-006",
@@ -263,6 +308,7 @@ const run = async () => {
         origin: "BOUGHT",
         supplierId: supplier.id,
         establishmentId: potreroSur.id,
+        tenantId: tenant.id,
       },
   ];
 
@@ -278,6 +324,7 @@ const run = async () => {
       startedAt: new Date(),
       status: "ACTIVE",
       createdById: admin.id,
+      tenantId: tenant.id,
     },
   });
 
@@ -293,6 +340,7 @@ const run = async () => {
       meatWithdrawalUntil: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
       milkWithdrawalUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       createdById: admin.id,
+      tenantId: tenant.id,
     },
   });
 
@@ -306,6 +354,7 @@ const run = async () => {
       occurredAt: new Date(),
       reason: "administration",
       createdById: admin.id,
+      tenantId: tenant.id,
     },
   });
 
@@ -320,6 +369,7 @@ const run = async () => {
       title: "Revisar retiro de carne",
       message: "El retiro del animal TAG-1001 finaliza pronto.",
       dueAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      tenantId: tenant.id,
     },
   });
 
@@ -329,6 +379,7 @@ const run = async () => {
       taskType: "vacunacion",
       dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       notes: "Programado por categoria.",
+      tenantId: tenant.id,
     },
   });
 

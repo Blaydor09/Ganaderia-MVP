@@ -107,6 +107,7 @@ model User {
   passwordHash String
   isActive     Boolean        @default(true)
   roles        UserRole[]
+  createdTenants Tenant[] @relation("TenantCreatedBy")
   auditLogs    AuditLog[]
   refreshTokens RefreshToken[]
   createdEstablishments Establishment[] @relation("EstablishmentCreatedBy")
@@ -134,16 +135,46 @@ model Role {
   users       UserRole[]
 }
 
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  createdById String?
+  createdBy   User?    @relation("TenantCreatedBy", fields: [createdById], references: [id])
+  users       UserRole[]
+  establishments Establishment[]
+  suppliers   Supplier[]
+  animals     Animal[]
+  animalPhotos AnimalPhoto[]
+  events      AnimalEvent[]
+  movements   Movement[]
+  products    Product[]
+  batches     Batch[]
+  inventoryTransactions InventoryTransaction[]
+  treatments  Treatment[]
+  administrations Administration[]
+  labResults  LabResult[]
+  auditLogs   AuditLog[]
+  alerts      Alert[]
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdById])
+}
+
 model UserRole {
   id        String   @id @default(uuid())
   userId    String
   roleId    String
+  tenantId  String
   assignedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
   role Role @relation(fields: [roleId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  @@unique([userId, roleId])
+  @@unique([userId, roleId, tenantId])
+  @@index([tenantId])
 }
 
 model RefreshToken {
@@ -167,6 +198,7 @@ model Establishment {
   type      EstablishmentType
   parentId  String?
   fincaId   String?
+  tenantId  String
   createdById String?
   animals   Animal[]
   events    AnimalEvent[]
@@ -175,12 +207,14 @@ model Establishment {
   originMovements      Movement[] @relation("MovementOrigin")
   destinationMovements Movement[] @relation("MovementDestination")
   createdBy User? @relation("EstablishmentCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([parentId])
   @@index([fincaId])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model Supplier {
@@ -189,20 +223,23 @@ model Supplier {
   contact   String?
   phone     String?
   email     String?
+  tenantId  String
   createdById String?
   animals   Animal[]
   batches   Batch[]
   createdBy User? @relation("SupplierCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model Animal {
   id              String        @id @default(uuid())
-  internalCode    String        @unique
-  tag             String?       @unique
+  internalCode    String
+  tag             String?
   sex             AnimalSex
   breed           String
   birthDate       DateTime?
@@ -214,6 +251,7 @@ model Animal {
   motherId        String?
   fatherId        String?
   establishmentId String?
+  tenantId        String
   notes           String?
   createdById     String?
   photos          AnimalPhoto[]
@@ -228,23 +266,30 @@ model Animal {
   supplier      Supplier?     @relation(fields: [supplierId], references: [id])
   establishment Establishment? @relation(fields: [establishmentId], references: [id])
   createdBy     User? @relation("AnimalCreatedBy", fields: [createdById], references: [id])
+  tenant        Tenant @relation(fields: [tenantId], references: [id])
 
+  @@unique([tenantId, internalCode])
+  @@unique([tenantId, tag])
   @@index([tag])
   @@index([establishmentId])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model AnimalPhoto {
   id        String   @id @default(uuid())
   animalId  String
   url       String
+  tenantId  String
   createdById String?
   createdAt DateTime @default(now())
 
   animal Animal @relation(fields: [animalId], references: [id])
   createdBy User? @relation("AnimalPhotoCreatedBy", fields: [createdById], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model AnimalEvent {
@@ -253,6 +298,7 @@ model AnimalEvent {
   type            EventType
   occurredAt      DateTime
   establishmentId String?
+  tenantId        String
   valueNumber     Float?
   valueText       String?
   notes           String?
@@ -262,9 +308,11 @@ model AnimalEvent {
   animal        Animal        @relation(fields: [animalId], references: [id])
   establishment Establishment? @relation(fields: [establishmentId], references: [id])
   createdBy     User? @relation("AnimalEventCreatedBy", fields: [createdById], references: [id])
+  tenant        Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([occurredAt])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model Movement {
@@ -276,6 +324,7 @@ model Movement {
   movementType   MovementType
   transporter    String?
   notes          String?
+  tenantId       String
   createdById    String?
   createdAt      DateTime      @default(now())
 
@@ -283,11 +332,13 @@ model Movement {
   origin      Establishment? @relation("MovementOrigin", fields: [originId], references: [id])
   destination Establishment? @relation("MovementDestination", fields: [destinationId], references: [id])
   createdBy   User? @relation("MovementCreatedBy", fields: [createdById], references: [id])
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([occurredAt])
   @@index([originId])
   @@index([destinationId])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model Product {
@@ -307,6 +358,7 @@ model Product {
   typicalDose          String?
   notes                String?
   minStock             Int      @default(0)
+  tenantId             String
   createdById          String?
   batches              Batch[]
   inventoryTransactions InventoryTransaction[]
@@ -316,9 +368,11 @@ model Product {
   deletedAt            DateTime?
 
   createdBy User? @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([name])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model Batch {
@@ -331,6 +385,7 @@ model Batch {
   cost              Decimal? @db.Decimal(10, 2)
   quantityInitial   Float
   quantityAvailable Float
+  tenantId          String
   createdById       String?
   transactions      InventoryTransaction[]
   administrations   Administration[]
@@ -341,10 +396,12 @@ model Batch {
   product  Product  @relation(fields: [productId], references: [id])
   supplier Supplier? @relation(fields: [supplierId], references: [id])
   createdBy User? @relation("BatchCreatedBy", fields: [createdById], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([expiresAt])
-  @@unique([productId, batchNumber])
+  @@unique([tenantId, productId, batchNumber])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model InventoryTransaction {
@@ -358,15 +415,18 @@ model InventoryTransaction {
   reason     String?
   refType    String?
   refId      String?
+  tenantId   String
   createdById String?
   createdAt  DateTime @default(now())
 
   batch   Batch   @relation(fields: [batchId], references: [id])
   product Product @relation(fields: [productId], references: [id])
   createdBy User? @relation("InventoryTransactionCreatedBy", fields: [createdById], references: [id])
+  tenant  Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([occurredAt])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model Treatment {
@@ -378,15 +438,18 @@ model Treatment {
   endedAt    DateTime?
   status     TreatmentStatus @default(ACTIVE)
   notes      String?
+  tenantId   String
   createdById String?
   createdAt  DateTime @default(now())
 
   animal Animal @relation(fields: [animalId], references: [id])
   administrations Administration[]
   createdBy User? @relation("TreatmentCreatedBy", fields: [createdById], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([startedAt])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model Administration {
@@ -402,6 +465,7 @@ model Administration {
   notes               String?
   meatWithdrawalUntil DateTime
   milkWithdrawalUntil DateTime
+  tenantId            String
   createdById         String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -410,9 +474,11 @@ model Administration {
   batch     Batch     @relation(fields: [batchId], references: [id])
   product   Product   @relation(fields: [productId], references: [id])
   createdBy User? @relation("AdministrationCreatedBy", fields: [createdById], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([administeredAt])
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model LabResult {
@@ -421,12 +487,15 @@ model LabResult {
   name        String
   result      String
   collectedAt DateTime
+  tenantId    String
   createdById String?
 
   animal Animal @relation(fields: [animalId], references: [id])
   createdBy User? @relation("LabResultCreatedBy", fields: [createdById], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model AuditLog {
@@ -438,11 +507,14 @@ model AuditLog {
   before    Json?
   after     Json?
   ip        String?
+  tenantId  String?
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([createdAt])
+  @@index([tenantId])
 }
 
 model Alert {
@@ -452,12 +524,15 @@ model Alert {
   message   String
   dueAt     DateTime
   status    TaskStatus @default(OPEN)
+  tenantId  String
   createdById String?
   createdAt DateTime  @default(now())
 
   createdBy User? @relation("AlertCreatedBy", fields: [createdById], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([createdById])
+  @@index([tenantId])
 }
 
 model Task {
@@ -467,10 +542,13 @@ model Task {
   dueAt     DateTime
   status    TaskStatus @default(OPEN)
   notes     String?
+  tenantId  String
   createdById String?
   createdAt DateTime  @default(now())
 
   createdBy User? @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([createdById])
+  @@index([tenantId])
 }

@@ -2,10 +2,11 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { asyncHandler } from "../utils/asyncHandler";
 import { loginSchema, refreshSchema, registerSchema } from "../validators/authSchemas";
-import { login, logout, refresh, registerFirstAdmin } from "../services/authService";
+import { login, logout, refresh, registerAccount, switchTenant } from "../services/authService";
 import { authenticate } from "../middleware/auth";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
+import { z } from "zod";
 
 const router = Router();
 
@@ -21,7 +22,13 @@ router.post(
   limiter,
   asyncHandler(async (req, res) => {
     const data = loginSchema.parse(req.body);
-    const result = await login(data.email, data.password, req.headers["user-agent"], req.ip);
+    const result = await login(
+      data.email,
+      data.password,
+      data.tenantId,
+      req.headers["user-agent"],
+      req.ip
+    );
     res.json(result);
   })
 );
@@ -31,10 +38,11 @@ router.post(
   limiter,
   asyncHandler(async (req, res) => {
     const data = registerSchema.parse(req.body);
-    const result = await registerFirstAdmin({
+    const result = await registerAccount({
       name: data.name,
       email: data.email,
       password: data.password,
+      tenantName: data.tenantName,
       registrationCode: data.registrationCode,
       userAgent: req.headers["user-agent"],
       ip: req.ip,
@@ -46,9 +54,7 @@ router.post(
 router.get(
   "/registration-status",
   asyncHandler(async (_req, res) => {
-    const count = await prisma.user.count();
-    const isFirstUser = count === 0;
-    const allowRegistration = isFirstUser && env.registrationMode !== "closed";
+    const allowRegistration = env.registrationMode !== "closed";
     res.json({
       allowRegistration,
       requiresCode: env.registrationMode === "protected",
@@ -75,6 +81,22 @@ router.post(
   })
 );
 
+router.post(
+  "/switch-tenant",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const schema = z.object({ tenantId: z.string().uuid() });
+    const data = schema.parse(req.body);
+    const result = await switchTenant({
+      userId: req.user!.id,
+      tenantId: data.tenantId,
+      userAgent: req.headers["user-agent"],
+      ip: req.ip,
+    });
+    res.json(result);
+  })
+);
+
 router.get(
   "/me",
   authenticate,
@@ -88,11 +110,19 @@ router.get(
       return res.status(404).json({ message: "User not found" });
     }
 
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: req.user!.tenantId },
+    });
+
     res.json({
       id: user.id,
       name: user.name,
       email: user.email,
-      roles: user.roles.map((row: { role: { name: string } }) => row.role.name),
+      roles: user.roles
+        .filter((row: { tenantId?: string }) => row.tenantId === req.user!.tenantId)
+        .map((row: { role: { name: string } }) => row.role.name),
+      tenantId: req.user!.tenantId,
+      tenant: tenant ? { id: tenant.id, name: tenant.name } : null,
     });
   })
 );

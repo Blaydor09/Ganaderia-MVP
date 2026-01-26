@@ -11,16 +11,17 @@ const router = Router();
 router.get(
   "/summary",
   authenticate,
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const products = await prisma.product.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, tenantId },
       select: { id: true, name: true, minStock: true, unit: true },
       orderBy: { name: "asc" },
     });
 
     const totals = await prisma.batch.groupBy({
       by: ["productId"],
-      where: { deletedAt: null },
+      where: { deletedAt: null, tenantId },
       _sum: { quantityAvailable: true },
     });
 
@@ -41,9 +42,10 @@ router.get(
 router.get(
   "/",
   authenticate,
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const batches = await prisma.batch.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, tenantId },
       include: { product: true },
       orderBy: { expiresAt: "asc" },
     });
@@ -57,6 +59,7 @@ router.post(
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = inventoryTxSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
     const tx = await createInventoryTransaction({
       batchId: data.batchId,
       type: data.type,
@@ -64,6 +67,7 @@ router.post(
       unit: data.unit,
       occurredAt: new Date(data.occurredAt),
       reason: data.reason,
+      tenantId,
       createdById: req.user?.id,
       ip: req.ip,
     });
@@ -74,8 +78,8 @@ router.post(
 router.get(
   "/alerts",
   authenticate,
-  asyncHandler(async (_req, res) => {
-    const alerts = await getInventoryAlerts();
+  asyncHandler(async (req, res) => {
+    const alerts = await getInventoryAlerts(req.user!.tenantId);
     res.json(alerts);
   })
 );

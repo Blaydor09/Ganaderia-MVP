@@ -23,6 +23,6 @@ export const Access = {
   establishmentsCreate: ["ADMIN"] as Role[],
   users: ["ADMIN"] as Role[],
   audit: ["ADMIN", "AUDITOR"] as Role[],
-  settings: ["ADMIN"] as Role[],
+  settings: ["ADMIN", "VETERINARIO", "OPERADOR", "AUDITOR"] as Role[],
   eventsCreate: ["ADMIN", "OPERADOR"] as Role[],
 } as const;

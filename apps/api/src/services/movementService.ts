@@ -10,6 +10,7 @@ type Establishment = NonNullable<
 
 export type CreateMovementInput = {
   animalId: string;
+  tenantId: string;
   occurredAt: Date;
   originId?: string;
   destinationId?: string;
@@ -21,8 +22,8 @@ export type CreateMovementInput = {
 };
 
 export const createMovement = async (input: CreateMovementInput) => {
-  const animal = await prisma.animal.findUnique({
-    where: { id: input.animalId },
+  const animal = await prisma.animal.findFirst({
+    where: { id: input.animalId, tenantId: input.tenantId },
   });
   if (!animal) {
     throw new ApiError(404, "Animal not found");
@@ -30,10 +31,14 @@ export const createMovement = async (input: CreateMovementInput) => {
 
   const [origin, destination] = await Promise.all([
     input.originId
-      ? prisma.establishment.findUnique({ where: { id: input.originId } })
+      ? prisma.establishment.findFirst({
+          where: { id: input.originId, tenantId: input.tenantId },
+        })
       : Promise.resolve(null),
     input.destinationId
-      ? prisma.establishment.findUnique({ where: { id: input.destinationId } })
+      ? prisma.establishment.findFirst({
+          where: { id: input.destinationId, tenantId: input.tenantId },
+        })
       : Promise.resolve(null),
   ]);
 
@@ -46,7 +51,7 @@ export const createMovement = async (input: CreateMovementInput) => {
   }
 
   if (input.movementType === "SALE" || input.movementType === "SLAUGHTER") {
-    const withdrawal = await getActiveWithdrawalForAnimal(input.animalId);
+    const withdrawal = await getActiveWithdrawalForAnimal(input.animalId, input.tenantId);
     if (isWithdrawalActive(withdrawal.meatUntil)) {
       throw new ApiError(400, "Animal has active meat withdrawal");
     }
@@ -152,6 +157,7 @@ export const createMovement = async (input: CreateMovementInput) => {
         movementType: input.movementType,
         transporter: input.transporter,
         notes: input.notes,
+        tenantId: input.tenantId,
         createdById: input.createdById,
       },
     }),
@@ -174,6 +180,7 @@ export const createMovement = async (input: CreateMovementInput) => {
 
   await writeAudit({
     userId: input.createdById,
+    tenantId: input.tenantId,
     action: "CREATE",
     entity: "movement",
     entityId: movement.id,

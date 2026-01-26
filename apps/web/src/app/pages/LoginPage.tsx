@@ -97,7 +97,7 @@ const LoginPage = () => {
           <div className="mt-6 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>No tienes cuenta?</span>
             <Link className="text-brand-600 hover:underline" to="/register">
-              Crear admin
+              Crear cuenta
             </Link>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">

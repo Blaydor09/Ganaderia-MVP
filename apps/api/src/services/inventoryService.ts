@@ -10,13 +10,14 @@ export type CreateInventoryTxInput = {
   unit: string;
   occurredAt: Date;
   reason?: string;
+  tenantId: string;
   createdById?: string;
   ip?: string;
 };
 
 export const createInventoryTransaction = async (input: CreateInventoryTxInput) => {
-  const batch = await prisma.batch.findUnique({
-    where: { id: input.batchId },
+  const batch = await prisma.batch.findFirst({
+    where: { id: input.batchId, tenantId: input.tenantId },
     include: { product: true },
   });
 
@@ -48,6 +49,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
         unit: input.unit,
         occurredAt: input.occurredAt,
         reason: input.reason,
+        tenantId: input.tenantId,
         createdById: input.createdById,
       },
     });
@@ -57,6 +59,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
 
   await writeAudit({
     userId: input.createdById,
+    tenantId: input.tenantId,
     action: "CREATE",
     entity: "inventory_transaction",
     entityId: updated.txItem.id,
@@ -67,7 +70,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
   return updated.txItem;
 };
 
-export const getInventoryAlerts = async () => {
+export const getInventoryAlerts = async (tenantId: string) => {
   const now = new Date();
   const soon7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const soon15 = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
@@ -76,6 +79,7 @@ export const getInventoryAlerts = async () => {
   const expiringAll = await prisma.batch.findMany({
     where: {
       expiresAt: { lte: soon30 },
+      tenantId,
       deletedAt: null,
     },
     include: { product: true },
@@ -90,8 +94,8 @@ export const getInventoryAlerts = async () => {
   );
 
   const lowStock = await prisma.product.findMany({
-    where: { deletedAt: null },
-    include: { batches: { where: { deletedAt: null } } },
+    where: { deletedAt: null, tenantId },
+    include: { batches: { where: { deletedAt: null, tenantId } } },
   });
 
   const lowStockList = lowStock

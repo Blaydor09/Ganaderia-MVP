@@ -4,6 +4,7 @@ import { env } from "../config/env";
 export type JwtPayload = {
   sub: string;
   roles: string[];
+  tenantId: string;
 };
 
 export const signAccessToken = (payload: JwtPayload) => {

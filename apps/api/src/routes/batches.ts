@@ -14,7 +14,8 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
-    const where: Record<string, unknown> = { deletedAt: null };
+    const tenantId = req.user!.tenantId;
+    const where: Record<string, unknown> = { deletedAt: null, tenantId };
     if (req.query.productId) where.productId = req.query.productId;
 
     const [items, total] = await Promise.all([
@@ -38,6 +39,23 @@ router.post(
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = batchCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
+    const product = await prisma.product.findFirst({
+      where: { id: data.productId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!product) {
+      return res.status(400).json({ message: "Product not found" });
+    }
+    if (data.supplierId) {
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: data.supplierId, tenantId },
+        select: { id: true },
+      });
+      if (!supplier) {
+        return res.status(400).json({ message: "Supplier not found" });
+      }
+    }
     const created = await prisma.batch.create({
       data: {
         productId: data.productId,
@@ -48,12 +66,14 @@ router.post(
         cost: data.cost,
         quantityInitial: data.quantityInitial,
         quantityAvailable: data.quantityAvailable,
+        tenantId,
         createdById: req.user?.id,
       },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "batch",
       entityId: created.id,
@@ -70,9 +90,21 @@ router.patch(
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = batchUpdateSchema.parse(req.body);
-    const existing = await prisma.batch.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.batch.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Batch not found" });
+    }
+    if (data.supplierId) {
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: data.supplierId, tenantId },
+        select: { id: true },
+      });
+      if (!supplier) {
+        return res.status(400).json({ message: "Supplier not found" });
+      }
     }
 
     const updated = await prisma.batch.update({
@@ -90,6 +122,7 @@ router.patch(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "batch",
       entityId: updated.id,
@@ -106,7 +139,10 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
-    const existing = await prisma.batch.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.batch.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Batch not found" });
     }
@@ -118,6 +154,7 @@ router.delete(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "DELETE",
       entity: "batch",
       entityId: deleted.id,

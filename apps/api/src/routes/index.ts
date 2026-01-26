@@ -16,6 +16,7 @@ import audit from "./audit";
 import alerts from "./alerts";
 import tasks from "./tasks";
 import search from "./search";
+import tenants from "./tenants";
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use("/audit", audit);
 router.use("/alerts", alerts);
 router.use("/tasks", tasks);
 router.use("/search", search);
+router.use("/tenants", tenants);
 
 export default router;

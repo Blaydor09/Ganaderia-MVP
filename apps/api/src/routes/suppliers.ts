@@ -11,7 +11,11 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (_req, res) => {
-    const items = await prisma.supplier.findMany({ orderBy: { name: "asc" } });
+    const tenantId = _req.user!.tenantId;
+    const items = await prisma.supplier.findMany({
+      where: { tenantId },
+      orderBy: { name: "asc" },
+    });
     res.json(items);
   })
 );
@@ -21,12 +25,14 @@ router.post(
   authenticate,
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const created = await prisma.supplier.create({
-      data: { ...req.body, createdById: req.user?.id },
+      data: { ...req.body, tenantId, createdById: req.user?.id },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "supplier",
       entityId: created.id,

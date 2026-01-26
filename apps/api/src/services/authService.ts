@@ -6,14 +6,16 @@ import { parseDurationToMs } from "../utils/duration";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt";
 import { ensureBaseRoles } from "../utils/roles";
 import { writeAudit } from "../utils/audit";
+import { normalizeEmail } from "../utils/email";
 
-const issueTokens = async (
-  user: { id: string; name: string; email: string },
-  roles: string[],
-  userAgent?: string,
-  ip?: string
-) => {
-  const payload = { sub: user.id, roles };
+const createSession = async (input: {
+  user: { id: string; name: string; email: string };
+  roles: string[];
+  tenantId: string;
+  userAgent?: string;
+  ip?: string;
+}) => {
+  const payload = { sub: input.user.id, roles: input.roles, tenantId: input.tenantId };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
   const tokenHash = await hashPassword(refreshToken);
@@ -21,21 +23,41 @@ const issueTokens = async (
 
   await prisma.refreshToken.create({
     data: {
-      userId: user.id,
+      userId: input.user.id,
       tokenHash,
       expiresAt,
-      userAgent,
-      ip,
+      userAgent: input.userAgent,
+      ip: input.ip,
     },
   });
 
   return { accessToken, refreshToken };
 };
 
-export const login = async (email: string, password: string, userAgent?: string, ip?: string) => {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    include: { roles: { include: { role: true } } },
+const getTenantRoles = async (userId: string, tenantId: string) => {
+  const rows = await prisma.userRole.findMany({
+    where: { userId, tenantId },
+    include: { role: true },
+  });
+  return Array.from(
+    new Set(rows.map((row: { role: { name: string } }) => row.role.name))
+  );
+};
+
+const getTenantRecord = async (tenantId: string) => {
+  return prisma.tenant.findUnique({ where: { id: tenantId } });
+};
+
+export const login = async (
+  email: string,
+  password: string,
+  tenantId?: string,
+  userAgent?: string,
+  ip?: string
+) => {
+  const normalizedEmail = normalizeEmail(email);
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: "insensitive" } },
   });
 
   if (!user || !user.isActive) {
@@ -47,17 +69,37 @@ export const login = async (email: string, password: string, userAgent?: string,
     throw new ApiError(401, "Invalid credentials");
   }
 
-  const roles = user.roles.map((row: { role: { name: string } }) => row.role.name);
-  const tokens = await issueTokens(
-    {
+  const memberships = await prisma.userRole.findMany({
+    where: { userId: user.id },
+    include: { role: true, tenant: true },
+    orderBy: { assignedAt: "asc" },
+  });
+
+  if (!memberships.length) {
+    throw new ApiError(403, "No tenant access");
+  }
+
+  const activeTenantId = tenantId ?? memberships[0].tenantId;
+  const tenantMemberships = memberships.filter((row) => row.tenantId === activeTenantId);
+
+  if (!tenantMemberships.length) {
+    throw new ApiError(403, "Tenant access denied");
+  }
+
+  const roles = Array.from(new Set(tenantMemberships.map((row) => row.role.name)));
+  const tenant = tenantMemberships[0].tenant;
+
+  const tokens = await createSession({
+    user: {
       id: user.id,
       name: user.name,
       email: user.email,
     },
     roles,
+    tenantId: activeTenantId,
     userAgent,
-    ip
-  );
+    ip,
+  });
 
   return {
     ...tokens,
@@ -67,6 +109,7 @@ export const login = async (email: string, password: string, userAgent?: string,
       email: user.email,
       roles,
     },
+    tenant: tenant ? { id: tenant.id, name: tenant.name } : null,
   };
 };
 
@@ -95,15 +138,22 @@ export const refresh = async (refreshToken: string) => {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
-    include: { roles: { include: { role: true } } },
   });
 
   if (!user) {
     throw new ApiError(401, "User not found");
   }
 
-  const roles = user.roles.map((row: { role: { name: string } }) => row.role.name);
-  const newAccessToken = signAccessToken({ sub: user.id, roles });
+  const roles = await getTenantRoles(user.id, payload.tenantId);
+  if (!roles.length) {
+    throw new ApiError(403, "Tenant access denied");
+  }
+
+  const newAccessToken = signAccessToken({
+    sub: user.id,
+    roles,
+    tenantId: payload.tenantId,
+  });
 
   return { accessToken: newAccessToken };
 };
@@ -123,7 +173,7 @@ export const logout = async (refreshToken: string) => {
 
   const match = tokenMatch.find((item) => item.valid);
   if (!match) {
-    throw new ApiError(400, "Token not found" );
+    throw new ApiError(400, "Token not found");
   }
 
   await prisma.refreshToken.update({
@@ -134,19 +184,15 @@ export const logout = async (refreshToken: string) => {
   return { success: true };
 };
 
-export const registerFirstAdmin = async (input: {
+export const registerAccount = async (input: {
   name: string;
   email: string;
   password: string;
+  tenantName: string;
   registrationCode?: string;
   userAgent?: string;
   ip?: string;
 }) => {
-  const existingUsers = await prisma.user.count();
-  if (existingUsers > 0) {
-    throw new ApiError(403, "Registration closed");
-  }
-
   if (env.registrationMode === "closed") {
     throw new ApiError(403, "Registration closed");
   }
@@ -155,7 +201,10 @@ export const registerFirstAdmin = async (input: {
     throw new ApiError(403, "Invalid registration code");
   }
 
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  const normalizedEmail = normalizeEmail(input.email);
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+  });
   if (existing) {
     throw new ApiError(409, "Email already registered");
   }
@@ -171,25 +220,38 @@ export const registerFirstAdmin = async (input: {
   const user = await prisma.user.create({
     data: {
       name: input.name.trim(),
-      email: input.email.trim(),
+      email: normalizedEmail,
       passwordHash,
-      roles: {
-        create: [{ roleId: adminRole.id }],
-      },
     },
-    include: { roles: { include: { role: true } } },
   });
 
-  const roles = user.roles.map((row: { role: { name: string } }) => row.role.name);
-  const tokens = await issueTokens(
-    { id: user.id, name: user.name, email: user.email },
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: input.tenantName.trim(),
+      createdById: user.id,
+    },
+  });
+
+  await prisma.userRole.create({
+    data: {
+      userId: user.id,
+      roleId: adminRole.id,
+      tenantId: tenant.id,
+    },
+  });
+
+  const roles = [adminRole.name];
+  const tokens = await createSession({
+    user: { id: user.id, name: user.name, email: user.email },
     roles,
-    input.userAgent,
-    input.ip
-  );
+    tenantId: tenant.id,
+    userAgent: input.userAgent,
+    ip: input.ip,
+  });
 
   await writeAudit({
     userId: user.id,
+    tenantId: tenant.id,
     action: "CREATE",
     entity: "user",
     entityId: user.id,
@@ -200,5 +262,65 @@ export const registerFirstAdmin = async (input: {
   return {
     ...tokens,
     user: { id: user.id, name: user.name, email: user.email, roles },
+    tenant: { id: tenant.id, name: tenant.name },
   };
+};
+
+export const switchTenant = async (input: {
+  userId: string;
+  tenantId: string;
+  userAgent?: string;
+  ip?: string;
+}) => {
+  const user = await prisma.user.findUnique({ where: { id: input.userId } });
+  if (!user || !user.isActive) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  const roles = await getTenantRoles(user.id, input.tenantId);
+  if (!roles.length) {
+    throw new ApiError(403, "Tenant access denied");
+  }
+
+  const tenant = await getTenantRecord(input.tenantId);
+  if (!tenant) {
+    throw new ApiError(404, "Tenant not found");
+  }
+
+  const tokens = await createSession({
+    user: { id: user.id, name: user.name, email: user.email },
+    roles,
+    tenantId: input.tenantId,
+    userAgent: input.userAgent,
+    ip: input.ip,
+  });
+
+  return {
+    ...tokens,
+    user: { id: user.id, name: user.name, email: user.email, roles },
+    tenant: { id: tenant.id, name: tenant.name },
+  };
+};
+
+export const getUserTenants = async (userId: string) => {
+  const memberships = await prisma.userRole.findMany({
+    where: { userId },
+    include: { role: true, tenant: true },
+    orderBy: { assignedAt: "asc" },
+  });
+
+  const map = new Map<string, { id: string; name: string; roles: string[] }>();
+  for (const row of memberships) {
+    const existing = map.get(row.tenantId) ?? {
+      id: row.tenantId,
+      name: row.tenant.name,
+      roles: [],
+    };
+    if (!existing.roles.includes(row.role.name)) {
+      existing.roles.push(row.role.name);
+    }
+    map.set(row.tenantId, existing);
+  }
+
+  return Array.from(map.values());
 };

@@ -64,6 +64,19 @@ export const getUserRoles = (): Role[] => {
   }
 };
 
+export const getTenantId = (): string | null => {
+  const token = getAccessToken();
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(decodeBase64(parts[1])) as { tenantId?: string };
+    return typeof payload.tenantId === "string" ? payload.tenantId : null;
+  } catch {
+    return null;
+  }
+};
+
 export const hasAnyRole = (allowed: Role[]) => {
   const roles = getUserRoles();
   return roles.some((role) => allowed.includes(role));

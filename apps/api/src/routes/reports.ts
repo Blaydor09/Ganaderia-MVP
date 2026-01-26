@@ -11,13 +11,14 @@ router.get(
   authenticate,
   requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const now = new Date();
     const establishmentId = (req.query.establishmentId as string | undefined) ?? undefined;
     const fincaId = (req.query.fincaId as string | undefined) ?? undefined;
     const treatmentFilter = establishmentId
-      ? { animal: { establishmentId } }
+      ? { animal: { establishmentId, tenantId } }
       : fincaId
-        ? { animal: { establishment: { fincaId } } }
+        ? { animal: { establishment: { fincaId, tenantId } } }
         : undefined;
     const administrations = await prisma.administration.findMany({
       where: {
@@ -25,6 +26,7 @@ router.get(
           { meatWithdrawalUntil: { gt: now } },
           { milkWithdrawalUntil: { gt: now } },
         ],
+        tenantId,
         treatment: treatmentFilter,
       },
       include: {
@@ -70,6 +72,7 @@ router.get(
   authenticate,
   requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const days = Number(req.query.days ?? 30);
     const now = new Date();
     const limit = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
@@ -78,6 +81,7 @@ router.get(
       where: {
         expiresAt: { lte: limit },
         deletedAt: null,
+        tenantId,
       },
       include: { product: true },
       orderBy: { expiresAt: "asc" },
@@ -91,10 +95,11 @@ router.get(
   "/consumption",
   authenticate,
   requireRoles("ADMIN", "AUDITOR"),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const transactions = await prisma.inventoryTransaction.groupBy({
       by: ["productId"],
-      where: { type: "OUT" },
+      where: { type: "OUT", tenantId },
       _sum: { quantity: true },
     });
 
@@ -102,7 +107,7 @@ router.get(
     const txRows = transactions as TxRow[];
 
     const products = await prisma.product.findMany({
-      where: { id: { in: txRows.map((t: TxRow) => t.productId) } },
+      where: { id: { in: txRows.map((t: TxRow) => t.productId) }, tenantId },
     });
 
     const items = txRows.map((row: TxRow) => ({
@@ -119,8 +124,9 @@ router.get(
   authenticate,
   requireRoles("ADMIN", "AUDITOR"),
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const animalId = req.query.animalId as string | undefined;
-    const where: Record<string, unknown> = { type: "PESO" };
+    const where: Record<string, unknown> = { type: "PESO", tenantId };
     if (animalId) where.animalId = animalId;
 
     const events = await prisma.animalEvent.findMany({

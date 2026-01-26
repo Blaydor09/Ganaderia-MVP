@@ -9,6 +9,7 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const q = String(req.query.q ?? "");
     if (!q) {
       return res.json({ animals: [], products: [], batches: [] });
@@ -16,15 +17,19 @@ router.get(
 
     const [animals, products, batches] = await Promise.all([
       prisma.animal.findMany({
-        where: { tag: { contains: q, mode: "insensitive" }, deletedAt: null },
+        where: { tag: { contains: q, mode: "insensitive" }, deletedAt: null, tenantId },
         take: 5,
       }),
       prisma.product.findMany({
-        where: { name: { contains: q, mode: "insensitive" }, deletedAt: null },
+        where: { name: { contains: q, mode: "insensitive" }, deletedAt: null, tenantId },
         take: 5,
       }),
       prisma.batch.findMany({
-        where: { batchNumber: { contains: q, mode: "insensitive" }, deletedAt: null },
+        where: {
+          batchNumber: { contains: q, mode: "insensitive" },
+          deletedAt: null,
+          tenantId,
+        },
         take: 5,
       }),
     ]);

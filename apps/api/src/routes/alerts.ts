@@ -11,8 +11,12 @@ const router = Router();
 router.get(
   "/",
   authenticate,
-  asyncHandler(async (_req, res) => {
-    const alerts = await prisma.alert.findMany({ orderBy: { dueAt: "asc" } });
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
+    const alerts = await prisma.alert.findMany({
+      where: { tenantId },
+      orderBy: { dueAt: "asc" },
+    });
     res.json(alerts);
   })
 );
@@ -23,18 +27,21 @@ router.post(
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = alertCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
     const created = await prisma.alert.create({
       data: {
         type: data.type,
         title: data.title,
         message: data.message,
         dueAt: new Date(data.dueAt),
+        tenantId,
         createdById: req.user?.id,
       },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "alert",
       entityId: created.id,

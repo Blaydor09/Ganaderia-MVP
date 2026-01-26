@@ -11,8 +11,12 @@ const router = Router();
 router.get(
   "/",
   authenticate,
-  asyncHandler(async (_req, res) => {
-    const tasks = await prisma.task.findMany({ orderBy: { dueAt: "asc" } });
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
+    const tasks = await prisma.task.findMany({
+      where: { tenantId },
+      orderBy: { dueAt: "asc" },
+    });
     res.json(tasks);
   })
 );
@@ -23,18 +27,21 @@ router.post(
   requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
   asyncHandler(async (req, res) => {
     const data = taskCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
     const created = await prisma.task.create({
       data: {
         title: data.title,
         taskType: data.taskType,
         dueAt: new Date(data.dueAt),
         notes: data.notes,
+        tenantId,
         createdById: req.user?.id,
       },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "task",
       entityId: created.id,
@@ -51,7 +58,10 @@ router.patch(
   requireRoles("ADMIN", "VETERINARIO"),
   asyncHandler(async (req, res) => {
     const data = taskUpdateSchema.parse(req.body);
-    const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.task.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
     if (!existing) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -63,6 +73,7 @@ router.patch(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "task",
       entityId: updated.id,

@@ -8,6 +8,7 @@ import { hashPassword } from "../utils/password";
 import { ensureBaseRoles } from "../utils/roles";
 import { ApiError } from "../utils/errors";
 import { writeAudit } from "../utils/audit";
+import { normalizeEmail } from "../utils/email";
 
 const router = Router();
 
@@ -15,9 +16,11 @@ router.get(
   "/",
   authenticate,
   requireRoles("ADMIN"),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
     const users = await prisma.user.findMany({
-      include: { roles: { include: { role: true } } },
+      where: { roles: { some: { tenantId } } },
+      include: { roles: { where: { tenantId }, include: { role: true } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -49,10 +52,12 @@ router.post(
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const data = userCreateSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
     await ensureBaseRoles();
 
-    const existing = await prisma.user.findUnique({
-      where: { email: data.email },
+    const normalizedEmail = normalizeEmail(data.email);
+    const existing = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
     });
     if (existing) {
       throw new ApiError(409, "Email already registered");
@@ -63,11 +68,12 @@ router.post(
     const created = await prisma.user.create({
       data: {
         name: data.name.trim(),
-        email: data.email.trim(),
+        email: normalizedEmail,
         passwordHash,
         roles: {
           create: data.roles.map((roleName) => ({
             role: { connect: { name: roleName } },
+            tenantId,
           })),
         },
       },
@@ -76,6 +82,7 @@ router.post(
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "CREATE",
       entity: "user",
       entityId: created.id,
@@ -103,17 +110,28 @@ router.patch(
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const data = userUpdateSchema.parse(req.body);
-    const existing = await prisma.user.findUnique({
-      where: { id: req.params.id },
-      include: { roles: { include: { role: true } } },
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.user.findFirst({
+      where: { id: req.params.id, roles: { some: { tenantId } } },
+      include: { roles: { where: { tenantId }, include: { role: true } } },
     });
     if (!existing) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const normalizedEmail = data.email ? normalizeEmail(data.email) : undefined;
+    if (normalizedEmail) {
+      const emailOwner = await prisma.user.findFirst({
+        where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      });
+      if (emailOwner && emailOwner.id !== existing.id) {
+        throw new ApiError(409, "Email already registered");
+      }
+    }
+
     const updateData: any = {
       name: data.name?.trim(),
-      email: data.email?.trim(),
+      email: normalizedEmail,
       isActive: data.isActive,
     };
 
@@ -135,22 +153,24 @@ router.patch(
       if (roles.length !== data.roles.length) {
         throw new ApiError(400, "One or more roles are invalid");
       }
-      await prisma.userRole.deleteMany({ where: { userId: updated.id } });
+      await prisma.userRole.deleteMany({ where: { userId: updated.id, tenantId } });
       await prisma.userRole.createMany({
         data: roles.map((role: { id: string }) => ({
           userId: updated.id,
           roleId: role.id,
+          tenantId,
         })),
       });
     }
 
-    const fresh = await prisma.user.findUnique({
-      where: { id: updated.id },
-      include: { roles: { include: { role: true } } },
+    const fresh = await prisma.user.findFirst({
+      where: { id: updated.id, roles: { some: { tenantId } } },
+      include: { roles: { where: { tenantId }, include: { role: true } } },
     });
 
     await writeAudit({
       userId: req.user?.id,
+      tenantId,
       action: "UPDATE",
       entity: "user",
       entityId: updated.id,
@@ -186,35 +206,44 @@ router.delete(
   authenticate,
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
-    const existing = await prisma.user.findUnique({
-      where: { id: req.params.id },
-      include: { roles: { include: { role: true } } },
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.user.findFirst({
+      where: { id: req.params.id, roles: { some: { tenantId } } },
+      include: { roles: { where: { tenantId }, include: { role: true } } },
     });
     if (!existing) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const updated = await prisma.user.update({
-      where: { id: req.params.id },
-      data: { isActive: false },
-    });
+    await prisma.userRole.deleteMany({ where: { userId: req.params.id, tenantId } });
+    const remaining = await prisma.userRole.count({ where: { userId: req.params.id } });
+    const updated =
+      remaining === 0
+        ? await prisma.user.update({
+            where: { id: req.params.id },
+            data: { isActive: false },
+          })
+        : existing;
 
     await writeAudit({
       userId: req.user?.id,
-      action: "DEACTIVATE",
+      tenantId,
+      action: "REMOVE",
       entity: "user",
-      entityId: updated.id,
+      entityId: existing.id,
       before: {
         id: existing.id,
         name: existing.name,
         email: existing.email,
         isActive: existing.isActive,
+        roles: existing.roles.map((row: { role: { name: string } }) => row.role.name),
       },
       after: {
         id: updated.id,
         name: updated.name,
         email: updated.email,
         isActive: updated.isActive,
+        removedFromTenant: tenantId,
       },
       ip: req.ip,
     });

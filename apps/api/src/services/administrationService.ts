@@ -14,13 +14,14 @@ export type CreateAdministrationInput = {
   route: string;
   site?: string;
   notes?: string;
+  tenantId: string;
   createdById?: string;
   ip?: string;
 };
 
 export const createAdministration = async (input: CreateAdministrationInput) => {
-  const batch = await prisma.batch.findUnique({
-    where: { id: input.batchId },
+  const batch = await prisma.batch.findFirst({
+    where: { id: input.batchId, tenantId: input.tenantId },
     include: { product: true },
   });
 
@@ -40,8 +41,8 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
     throw new ApiError(400, "Insufficient stock");
   }
 
-  const treatment = await prisma.treatment.findUnique({
-    where: { id: input.treatmentId },
+  const treatment = await prisma.treatment.findFirst({
+    where: { id: input.treatmentId, tenantId: input.tenantId },
   });
 
   if (!treatment) {
@@ -68,6 +69,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
         notes: input.notes,
         meatWithdrawalUntil: withdrawal.meatUntil,
         milkWithdrawalUntil: withdrawal.milkUntil,
+        tenantId: input.tenantId,
         createdById: input.createdById,
       },
     });
@@ -88,6 +90,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
         reason: "administration",
         refType: "ADMINISTRATION",
         refId: administration.id,
+        tenantId: input.tenantId,
         createdById: input.createdById,
       },
     });
@@ -97,6 +100,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
 
   await writeAudit({
     userId: input.createdById,
+    tenantId: input.tenantId,
     action: "CREATE",
     entity: "administration",
     entityId: result.id,
