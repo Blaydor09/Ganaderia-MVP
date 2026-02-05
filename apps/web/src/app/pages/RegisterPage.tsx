@@ -73,7 +73,7 @@ const RegisterPage = () => {
       const response = await api.post("/auth/register", payload);
       setTokens(response.data.accessToken, response.data.refreshToken);
       toast.success("Cuenta creada");
-      navigate("/");
+      navigate("/onboarding");
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "No se pudo crear la cuenta");
     }

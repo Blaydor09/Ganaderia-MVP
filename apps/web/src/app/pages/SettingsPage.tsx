@@ -35,7 +35,7 @@ const SettingsPage = () => {
       toast.success("Cuenta creada");
       setTenantName("");
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
-      navigate("/", { replace: true });
+      navigate("/onboarding", { replace: true });
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "No se pudo crear la cuenta");
     }

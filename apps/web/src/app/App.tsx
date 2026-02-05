@@ -32,6 +32,7 @@ import UsersPage from "@/app/pages/UsersPage";
 import AuditPage from "@/app/pages/AuditPage";
 import SettingsPage from "@/app/pages/SettingsPage";
 import AccessDeniedPage from "@/app/pages/AccessDeniedPage";
+import OnboardingPage from "@/app/pages/OnboardingPage";
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
   if (!isAuthenticated()) {
@@ -108,6 +109,14 @@ const App = () => (
         <RedirectIfAuth>
           <RegisterPage />
         </RedirectIfAuth>
+      }
+    />
+    <Route
+      path="/onboarding"
+      element={
+        <RequireAuth>
+          <OnboardingPage />
+        </RequireAuth>
       }
     />
     <Route path="/" element={<HomeRoute />} />
