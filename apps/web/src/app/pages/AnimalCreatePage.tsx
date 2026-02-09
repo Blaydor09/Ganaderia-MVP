@@ -17,6 +17,7 @@ import {
   animalStatusOptions,
 } from "@/lib/animals";
 import { getEstablishmentTypeLabel } from "@/lib/establishments";
+import { parseDateInputToUtcIso } from "@/lib/dates";
 
 const optionalTagSchema = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -78,7 +79,7 @@ const AnimalCreatePage = () => {
   });
 
   const onSubmit = async (values: FormValues) => {
-    const birthDateIso = new Date(`${values.birthDate}T00:00:00Z`).toISOString();
+    const birthDateIso = parseDateInputToUtcIso(values.birthDate);
     const tag = values.tag?.trim();
     try {
       const response = await api.post("/animals", {

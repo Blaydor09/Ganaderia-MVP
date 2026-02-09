@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
 import { formatProductType } from "@/lib/products";
-import { formatDateOnlyUtc, toDateInputValue } from "@/lib/dates";
+import { formatDateOnlyUtc, parseDateInputToUtcIso, toDateInputValue } from "@/lib/dates";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,7 +33,13 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-const editSchema = schema.omit({ productId: true });
+const editSchema = z.object({
+  batchNumber: z.string().min(1, "Requerido"),
+  expiresAt: z.string().min(1, "Requerido"),
+  receivedAt: z.string().min(1, "Requerido"),
+  supplierId: z.string().optional(),
+  cost: z.number().min(0).optional(),
+});
 type EditFormValues = z.infer<typeof editSchema>;
 
 const BatchesPage = () => {
@@ -87,8 +93,6 @@ const BatchesPage = () => {
       receivedAt: "",
       supplierId: "",
       cost: undefined,
-      quantityInitial: 0,
-      quantityAvailable: 0,
     },
   });
 
@@ -115,14 +119,12 @@ const BatchesPage = () => {
         editingBatch.cost === null || editingBatch.cost === undefined
           ? undefined
           : Number(editingBatch.cost),
-      quantityInitial: editingBatch.quantityInitial ?? 0,
-      quantityAvailable: editingBatch.quantityAvailable ?? 0,
     });
   }, [editingBatch, resetEdit]);
 
   const onSubmit = async (values: FormValues) => {
-    const expiresAtIso = new Date(`${values.expiresAt}T00:00:00Z`).toISOString();
-    const receivedAtIso = new Date(`${values.receivedAt}T00:00:00Z`).toISOString();
+    const expiresAtIso = parseDateInputToUtcIso(values.expiresAt);
+    const receivedAtIso = parseDateInputToUtcIso(values.receivedAt);
     try {
       await api.post("/batches", {
         productId: values.productId,
@@ -155,8 +157,8 @@ const BatchesPage = () => {
 
   const onEditSubmit = async (values: EditFormValues) => {
     if (!editingBatch) return;
-    const expiresAtIso = new Date(`${values.expiresAt}T00:00:00Z`).toISOString();
-    const receivedAtIso = new Date(`${values.receivedAt}T00:00:00Z`).toISOString();
+    const expiresAtIso = parseDateInputToUtcIso(values.expiresAt);
+    const receivedAtIso = parseDateInputToUtcIso(values.receivedAt);
     try {
       await api.patch(`/batches/${editingBatch.id}`, {
         batchNumber: values.batchNumber.trim(),
@@ -164,8 +166,6 @@ const BatchesPage = () => {
         receivedAt: receivedAtIso,
         supplierId: values.supplierId || undefined,
         cost: values.cost,
-        quantityInitial: values.quantityInitial,
-        quantityAvailable: values.quantityAvailable,
       });
       toast.success("Lote actualizado");
       setIsEditOpen(false);
@@ -397,38 +397,6 @@ const BatchesPage = () => {
                 <Input type="date" {...registerEdit("expiresAt")} />
                 {editErrors.expiresAt ? (
                   <p className="text-xs text-red-500">{editErrors.expiresAt.message}</p>
-                ) : null}
-              </div>
-              <div className="space-y-1 text-sm">
-                <label className="text-xs text-slate-500 dark:text-slate-400">
-                  Cantidad inicial
-                </label>
-                <Input
-                  type="number"
-                  min={0}
-                  {...registerEdit("quantityInitial", {
-                    setValueAs: (value) => (value === "" ? 0 : Number(value)),
-                  })}
-                />
-                {editErrors.quantityInitial ? (
-                  <p className="text-xs text-red-500">
-                    {editErrors.quantityInitial.message}
-                  </p>
-                ) : null}
-              </div>
-              <div className="space-y-1 text-sm">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Disponible</label>
-                <Input
-                  type="number"
-                  min={0}
-                  {...registerEdit("quantityAvailable", {
-                    setValueAs: (value) => (value === "" ? 0 : Number(value)),
-                  })}
-                />
-                {editErrors.quantityAvailable ? (
-                  <p className="text-xs text-red-500">
-                    {editErrors.quantityAvailable.message}
-                  </p>
                 ) : null}
               </div>
               <div className="space-y-1 text-sm md:col-span-2">

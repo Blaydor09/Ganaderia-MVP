@@ -115,8 +115,6 @@ router.patch(
         supplierId: data.supplierId,
         receivedAt: data.receivedAt ? new Date(data.receivedAt) : undefined,
         cost: data.cost,
-        quantityInitial: data.quantityInitial,
-        quantityAvailable: data.quantityAvailable,
       },
     });
 

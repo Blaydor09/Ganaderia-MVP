@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { formatDateOnlyUtc } from "@/lib/dates";
 
 const WithdrawalsPage = () => {
   const { data } = useQuery({
@@ -31,8 +32,8 @@ const WithdrawalsPage = () => {
               <TR key={row.animal.id}>
                 <TD>{row.animal.tag || "Sin arete"}</TD>
                 <TD>{row.products.join(", ")}</TD>
-                <TD>{new Date(row.meatUntil).toLocaleDateString()}</TD>
-                <TD>{new Date(row.milkUntil).toLocaleDateString()}</TD>
+                <TD>{formatDateOnlyUtc(row.meatUntil)}</TD>
+                <TD>{formatDateOnlyUtc(row.milkUntil)}</TD>
               </TR>
             ))}
             {(data?.items ?? []).length === 0 ? (

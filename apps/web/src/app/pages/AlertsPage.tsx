@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDateOnlyUtc } from "@/lib/dates";
 
 const AlertsPage = () => {
   const { data } = useQuery({
@@ -23,9 +24,7 @@ const AlertsPage = () => {
               <p className="text-xs text-slate-500 dark:text-slate-400">{alert.type}</p>
               <h3 className="font-display text-lg font-semibold">{alert.title}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">{alert.message}</p>
-              <p className="text-xs text-slate-400">
-                {new Date(alert.dueAt).toLocaleDateString()}
-              </p>
+              <p className="text-xs text-slate-400">{formatDateOnlyUtc(alert.dueAt)}</p>
             </CardContent>
           </Card>
         ))}

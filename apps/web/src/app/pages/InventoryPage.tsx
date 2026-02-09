@@ -60,9 +60,23 @@ const InventoryPage = () => {
 
   const onAdjustSubmit = async (values: AdjustFormValues) => {
     if (!adjustingBatch) return;
+    const currentAvailable = Number(adjustingBatch.quantityAvailable ?? 0);
+    const nextAvailable = Number(values.quantityAvailable);
+    const delta = nextAvailable - currentAvailable;
+    if (delta === 0) {
+      toast.message("No hay cambios de stock");
+      setIsAdjustOpen(false);
+      setAdjustingBatch(null);
+      return;
+    }
     try {
-      await api.patch(`/batches/${adjustingBatch.id}`, {
-        quantityAvailable: values.quantityAvailable,
+      await api.post("/inventory/transactions", {
+        batchId: adjustingBatch.id,
+        type: delta > 0 ? "IN" : "OUT",
+        quantity: Math.abs(delta),
+        unit: adjustingBatch.product?.unit ?? "dosis",
+        occurredAt: new Date().toISOString(),
+        reason: "manual_adjustment",
       });
       toast.success("Stock actualizado");
       setIsAdjustOpen(false);

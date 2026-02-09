@@ -2,70 +2,59 @@
 
 ## Stack
 - Frontend: React + Vite + TypeScript + Tailwind + shadcn/ui.
-- Estado/datos: TanStack Query.
-- Formularios: React Hook Form + Zod.
-- Tablas: TanStack Table.
-- Graficos: Recharts.
+- Estado y datos: TanStack Query.
+- Formularios y validacion: React Hook Form + Zod.
 - Backend: Node.js + Express + TypeScript.
-- DB: PostgreSQL (mejor para datos relacionales, indices y reportes).
-- ORM: Prisma.
-- Auth: JWT + refresh tokens + RBAC.
-- Docs API: OpenAPI (Swagger UI).
+- DB y ORM: PostgreSQL + Prisma.
+- Auth: JWT access/refresh + RBAC por tenant.
+- API docs: OpenAPI + Swagger UI.
 
-## Estructura de carpetas (monorepo)
-- apps/api
-  - src
-    - config
-    - middleware
-    - routes
-    - controllers
-    - services
-    - validators
-    - utils
-  - prisma
-    - schema.prisma
-    - seed.ts
-  - tests
-  - docs/openapi.yaml
-- apps/web
-  - src
-    - app (rutas y layouts)
-    - components
-    - features
-    - lib
-    - hooks
-    - styles
-  - public
-- docs
-  - architecture.md
-  - erd.mmd
-  - routes.md
-  - api-endpoints.md
-  - wireframe.md
-  - guide.md
+## Estructura del monorepo
+- `apps/api`
+  - `src/config`, `src/middleware`, `src/routes`, `src/services`, `src/validators`, `src/utils`
+  - `prisma/schema.prisma`
+  - `tests`
+  - `docs/openapi.yaml`
+- `apps/web`
+  - `src/app` (ruteo y paginas)
+  - `src/components` (layout/UI)
+  - `src/lib` (auth, api client, date helpers, access)
+- `docs`
+  - `architecture.md`, `api-endpoints.md`, `routes.md`, `guide.md`
 
-## Modulos backend
-- Auth y RBAC (login, refresh, logout, me, roles/usuarios)
-- Animales
-- Eventos
-- Movimientos
-- Establecimientos
-- Productos (medicamentos)
-- Lotes e inventario
-- Tratamientos y aplicaciones
-- Reportes
-- Alertas y tareas
-- Auditoria
-
-## Principios
-- Validacion en backend con Zod.
-- Reglas criticas en servicios con transacciones Prisma.
-- Auditoria para cambios criticos.
+## Patrones clave
+- Validacion de payload en API con Zod.
+- Reglas de negocio en servicios (tratamientos, inventario, movimientos).
+- Auditoria para operaciones criticas (create/update/delete).
 - Soft delete en entidades clave.
-- Seguridad: bcrypt, rate limit, helmet, CORS estricto y docs deshabilitables en prod.
+- Seguridad base: helmet, cors configurado, rate limit en auth.
 
-## Ambientes y configuracion
-- La API carga `.env` y luego `.env.<ambiente>` usando `APP_ENV` o `NODE_ENV`.
-- En produccion, `CORS_ORIGIN` es obligatorio (lista separada por coma y sin `*`).
-- Swagger se controla con `ENABLE_DOCS` (activo en dev, recomendado en `false` para prod).
-- El frontend usa `VITE_API_URL`; en prod puede apuntar a `"/api/v1"` con nginx.
+## Decisiones recientes (P0/P1)
+- Auth hardening:
+  - `refresh/logout` invalido retorna `401`.
+  - Usuario inactivo no puede renovar sesion (`401`).
+- Integridad de inventario:
+  - Ajustes manuales de stock solo por `POST /inventory/transactions` con `IN|OUT`.
+  - `PATCH /batches/:id` solo para metadatos de lote.
+- Fechas de calendario:
+  - Helper unico para mostrar fecha en UTC (`formatDateOnlyUtc`).
+  - Helpers de parseo para `date` y `datetime-local` (`parseDateInputToUtcIso`, `parseDateTimeInputToIso`).
+- Flujo UI operativo:
+  - Creacion de eventos y movimientos desde interfaz.
+  - Registro de aplicaciones y cierre de tratamientos desde interfaz.
+  - Topbar y busqueda global conectadas a datos reales.
+
+## Performance frontend
+- Paginas cargadas con lazy loading (`React.lazy` + `Suspense`).
+- Split de chunks vendor desde Vite/Rollup.
+- Logo migrado a SVG liviano para reducir tamano inicial.
+
+## Calidad y validacion
+- API: `npm run lint`, `npm test`, `npm run build`.
+- WEB: `npm run lint`, `npm test`, `npm run build`.
+- Cobertura inicial de pruebas para auth, reglas de inventario y helpers de fecha.
+
+## Configuracion de ambientes
+- API carga `.env` y admite variantes por ambiente.
+- `ENABLE_DOCS` controla Swagger en runtime.
+- Frontend usa `VITE_API_URL`.

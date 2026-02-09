@@ -1,15 +1,19 @@
 # Rutas de la aplicacion (frontend)
 
 ## Publicas
-- /login
 - /landing
+- /login
+- /register
 
-## Privadas (layout dashboard)
+## Privadas
 - / (dashboard)
+- /onboarding
 - /animals
+- /animals/new
+- /animals/quick
+- /animals/import
 - /animals/:id
 - /animals/:id/print
-- /animals/import
 - /events
 - /movements
 - /establishments
@@ -19,16 +23,18 @@
 - /treatments
 - /withdrawals
 - /reports
-  - /reports/withdrawals
-  - /reports/inventory
-  - /reports/consumption
-  - /reports/weights
 - /alerts
 - /tasks
 - /users
 - /audit
 - /settings
 
-## Widgets globales
-- Global search (arete, animal, lote, producto)
-- Notificaciones (alertas stock/vencimiento)
+## Notas operativas
+- Todas las rutas privadas usan auth JWT y control de roles (RBAC).
+- Si el usuario no tiene rol permitido, la vista muestra `AccessDeniedPage`.
+- El flujo de primer uso esperado es: `/register` -> `/onboarding` -> rutas operativas.
+
+## Componentes globales
+- Topbar con tenant y usuario reales desde `GET /auth/me`.
+- Busqueda global navegable para animales, lotes y productos.
+- Sidebar y navegacion movil con acceso segun rol.

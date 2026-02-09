@@ -1,19 +1,62 @@
 openapi: 3.0.3
 info:
   title: Inventario Ganaderia API
-  version: 1.0.0
+  version: 1.1.0
+  description: API REST para trazabilidad sanitaria, inventario y operaciones ganaderas.
 servers:
   - url: /api/v1
+tags:
+  - name: Health
+  - name: Auth
+  - name: Tenants
+  - name: Users
+  - name: Animals
+  - name: Events
+  - name: Movements
+  - name: Establishments
+  - name: Products
+  - name: Suppliers
+  - name: Batches
+  - name: Inventory
+  - name: Treatments
+  - name: Administrations
+  - name: Alerts
+  - name: Tasks
+  - name: Reports
+  - name: Audit
+  - name: Search
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    GenericObject:
+      type: object
+      additionalProperties: true
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
 paths:
   /health:
     get:
+      tags: [Health]
       summary: Health check
+      security: []
       responses:
-        "200":
+        '200':
           description: OK
+
   /auth/login:
     post:
-      summary: Login
+      tags: [Auth]
+      summary: Login and issue access/refresh tokens
+      security: []
       requestBody:
         required: true
         content:
@@ -25,39 +68,250 @@ paths:
                   type: string
                 password:
                   type: string
+                tenantId:
+                  type: string
+                  format: uuid
+              required: [email, password]
       responses:
-        "200":
-          description: Tokens
-  /animals:
-    get:
-      summary: List animals
-      responses:
-        "200":
-          description: List
+        '200':
+          description: Tokens issued
+        '401':
+          description: Invalid credentials
+
+  /auth/register:
     post:
-      summary: Create animal
+      tags: [Auth]
+      summary: Register tenant and first admin user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                tenantName:
+                  type: string
+                registrationCode:
+                  type: string
       responses:
-        "201":
-          description: Created
-  /animals/quick:
-    post:
-      summary: Quick register animals
-      responses:
-        "201":
-          description: Created
-  /animals/{id}:
+        '201':
+          description: Account created
+
+  /auth/registration-status:
     get:
-      summary: Get animal
+      tags: [Auth]
+      summary: Get registration mode and requirements
+      security: []
+      responses:
+        '200':
+          description: Registration status
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required: [refreshToken]
+      responses:
+        '200':
+          description: Access token refreshed
+        '401':
+          description: Invalid, expired, revoked token or inactive user
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required: [refreshToken]
+      responses:
+        '200':
+          description: Token revoked
+        '401':
+          description: Invalid or expired token
+
+  /auth/switch-tenant:
+    post:
+      tags: [Auth]
+      summary: Switch active tenant and issue new tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                  format: uuid
+              required: [tenantId]
+      responses:
+        '200':
+          description: Tenant switched
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user profile
+      responses:
+        '200':
+          description: Current user
+        '404':
+          description: User not found
+
+  /tenants:
+    get:
+      tags: [Tenants]
+      summary: List tenants for current user
+      responses:
+        '200':
+          description: Tenant list
+    post:
+      tags: [Tenants]
+      summary: Create tenant
+      responses:
+        '201':
+          description: Tenant created
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List users by tenant
+      responses:
+        '200':
+          description: Users list
+    post:
+      tags: [Users]
+      summary: Create user and assign role
+      responses:
+        '201':
+          description: User created
+
+  /users/{id}:
+    patch:
+      tags: [Users]
+      summary: Update user
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+            format: uuid
       responses:
-        "200":
-          description: Animal
+        '200':
+          description: User updated
+    delete:
+      tags: [Users]
+      summary: Delete user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User deleted
+
+  /users/roles:
+    get:
+      tags: [Users]
+      summary: List available roles
+      responses:
+        '200':
+          description: Roles list
+
+  /animals:
+    get:
+      tags: [Animals]
+      summary: List animals
+      responses:
+        '200':
+          description: Animal list
+    post:
+      tags: [Animals]
+      summary: Create animal
+      responses:
+        '201':
+          description: Animal created
+
+  /animals/summary:
+    get:
+      tags: [Animals]
+      summary: Get animal summary metrics
+      responses:
+        '200':
+          description: Summary metrics
+
+  /animals/quick:
+    post:
+      tags: [Animals]
+      summary: Quick create animals
+      responses:
+        '201':
+          description: Animals created
+
+  /animals/import:
+    post:
+      tags: [Animals]
+      summary: Import animals from CSV
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Import completed
+
+  /animals/{id}:
+    get:
+      tags: [Animals]
+      summary: Get animal detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Animal detail
     patch:
+      tags: [Animals]
       summary: Update animal
       parameters:
         - name: id
@@ -65,51 +319,501 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
-        "200":
-          description: Updated
+        '200':
+          description: Animal updated
+    delete:
+      tags: [Animals]
+      summary: Soft delete animal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Animal deleted
+
+  /animals/{id}/summary:
+    get:
+      tags: [Animals]
+      summary: Get animal timeline and stats summary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Animal summary
+
+  /events:
+    get:
+      tags: [Events]
+      summary: List events
+      responses:
+        '200':
+          description: Event list
+    post:
+      tags: [Events]
+      summary: Create event
+      responses:
+        '201':
+          description: Event created
+
+  /events/lifecycle-summary:
+    get:
+      tags: [Events]
+      summary: Get lifecycle counters
+      responses:
+        '200':
+          description: Lifecycle summary
+
+  /events/{id}:
+    patch:
+      tags: [Events]
+      summary: Update event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event updated
+    delete:
+      tags: [Events]
+      summary: Delete event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event deleted
+
+  /movements:
+    get:
+      tags: [Movements]
+      summary: List movements
+      responses:
+        '200':
+          description: Movement list
+    post:
+      tags: [Movements]
+      summary: Create movement
+      responses:
+        '201':
+          description: Movement created
+
+  /movements/{id}:
+    delete:
+      tags: [Movements]
+      summary: Delete movement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Movement deleted
+
+  /establishments:
+    get:
+      tags: [Establishments]
+      summary: List establishments
+      responses:
+        '200':
+          description: Establishment list
+    post:
+      tags: [Establishments]
+      summary: Create establishment
+      responses:
+        '201':
+          description: Establishment created
+
+  /establishments/{id}:
+    get:
+      tags: [Establishments]
+      summary: Get establishment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Establishment detail
+    patch:
+      tags: [Establishments]
+      summary: Update establishment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Establishment updated
+    delete:
+      tags: [Establishments]
+      summary: Delete establishment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Establishment deleted
+
   /products:
     get:
+      tags: [Products]
       summary: List products
       responses:
-        "200":
-          description: List
+        '200':
+          description: Product list
     post:
+      tags: [Products]
       summary: Create product
       responses:
-        "201":
-          description: Created
+        '201':
+          description: Product created
+
+  /products/{id}:
+    patch:
+      tags: [Products]
+      summary: Update product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product updated
+    delete:
+      tags: [Products]
+      summary: Delete product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product deleted
+
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      summary: List suppliers
+      responses:
+        '200':
+          description: Supplier list
+    post:
+      tags: [Suppliers]
+      summary: Create supplier
+      responses:
+        '201':
+          description: Supplier created
+
   /batches:
     get:
+      tags: [Batches]
       summary: List batches
       responses:
-        "200":
-          description: List
+        '200':
+          description: Batch list
     post:
+      tags: [Batches]
       summary: Create batch
       responses:
-        "201":
-          description: Created
+        '201':
+          description: Batch created
+
+  /batches/{id}:
+    patch:
+      tags: [Batches]
+      summary: Update batch metadata (not stock)
+      description: Public patch does not accept `quantityInitial` or `quantityAvailable`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Batch updated
+        '400':
+          description: Validation error
+    delete:
+      tags: [Batches]
+      summary: Soft delete batch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Batch deleted
+
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: List inventory by batch
+      responses:
+        '200':
+          description: Inventory list
+
+  /inventory/summary:
+    get:
+      tags: [Inventory]
+      summary: Inventory summary by product
+      responses:
+        '200':
+          description: Inventory summary
+
+  /inventory/alerts:
+    get:
+      tags: [Inventory]
+      summary: Inventory alerts for stock and expiration
+      responses:
+        '200':
+          description: Alerts list
+
+  /inventory/transactions:
+    post:
+      tags: [Inventory]
+      summary: Create inventory transaction
+      description: Public contract allows only transaction types `IN` or `OUT`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                batchId:
+                  type: string
+                  format: uuid
+                type:
+                  type: string
+                  enum: [IN, OUT]
+                quantity:
+                  type: number
+                unit:
+                  type: string
+                occurredAt:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+              required: [batchId, type, quantity, unit, occurredAt]
+      responses:
+        '201':
+          description: Transaction created
+        '400':
+          description: Validation or business rule error
+
   /treatments:
     get:
+      tags: [Treatments]
       summary: List treatments
       responses:
-        "200":
-          description: List
+        '200':
+          description: Treatment list
     post:
+      tags: [Treatments]
       summary: Create treatment
       responses:
-        "201":
-          description: Created
-  /administrations:
+        '201':
+          description: Treatment created
+
+  /treatments/{id}/close:
     post:
+      tags: [Treatments]
+      summary: Close treatment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Treatment closed
+
+  /treatments/by-animal/{animalId}:
+    get:
+      tags: [Treatments]
+      summary: List treatments by animal
+      parameters:
+        - name: animalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Treatment list by animal
+
+  /administrations:
+    get:
+      tags: [Administrations]
+      summary: List administrations
+      responses:
+        '200':
+          description: Administration list
+    post:
+      tags: [Administrations]
       summary: Create administration
       responses:
-        "201":
-          description: Created
+        '201':
+          description: Administration created
+
+  /administrations/{id}:
+    patch:
+      tags: [Administrations]
+      summary: Update administration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Administration updated
+
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: List alerts
+      responses:
+        '200':
+          description: Alert list
+    post:
+      tags: [Alerts]
+      summary: Create alert
+      responses:
+        '201':
+          description: Alert created
+
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks
+      responses:
+        '200':
+          description: Task list
+    post:
+      tags: [Tasks]
+      summary: Create task
+      responses:
+        '201':
+          description: Task created
+
+  /tasks/{id}:
+    patch:
+      tags: [Tasks]
+      summary: Update task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task updated
+
   /reports/withdrawals-active:
     get:
+      tags: [Reports]
       summary: Active withdrawals report
       responses:
-        "200":
-          description: Report
+        '200':
+          description: Report rows
+
+  /reports/inventory-expiring:
+    get:
+      tags: [Reports]
+      summary: Expiring inventory report
+      responses:
+        '200':
+          description: Report rows
+
+  /reports/consumption:
+    get:
+      tags: [Reports]
+      summary: Consumption report by product
+      responses:
+        '200':
+          description: Report rows
+
+  /reports/weights:
+    get:
+      tags: [Reports]
+      summary: Weight events report
+      responses:
+        '200':
+          description: Report rows
+
+  /audit:
+    get:
+      tags: [Audit]
+      summary: Audit log
+      responses:
+        '200':
+          description: Audit entries
+
+  /search:
+    get:
+      tags: [Search]
+      summary: Global search
+      responses:
+        '200':
+          description: Search results
+
+  /docs:
+    get:
+      tags: [Health]
+      summary: Swagger UI endpoint
+      security: []
+      responses:
+        '200':
+          description: OpenAPI docs UI

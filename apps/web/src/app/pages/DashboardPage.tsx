@@ -24,6 +24,23 @@ import { Link } from "react-router-dom";
 import { animalCategoryOptions, animalSexOptions } from "@/lib/animals";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
+import { formatDateOnlyUtc } from "@/lib/dates";
+
+type InventorySummaryRow = {
+  product?: {
+    name?: string;
+    unit?: string;
+    minStock?: number;
+  };
+  total?: number;
+};
+
+type StockChartRow = {
+  name: string;
+  unit: string;
+  stock: number;
+  min: number;
+};
 
 const DashboardPage = () => {
   const canViewAnimals = hasAnyRole(Access.animals);
@@ -147,9 +164,9 @@ const DashboardPage = () => {
   }, [lifecycleSummary]);
 
   const stockChartData = useMemo(() => {
-    const items = inventorySummary?.items ?? [];
+    const items = (inventorySummary?.items ?? []) as InventorySummaryRow[];
     return items
-      .map((row: any) => ({
+      .map((row): StockChartRow => ({
         name: row.product?.name ?? "-",
         unit: row.product?.unit ?? "",
         stock: row.total ?? 0,
@@ -525,9 +542,7 @@ const DashboardPage = () => {
               {(movementsData?.items ?? []).map((move: any) => (
                 <div key={move.id} className="flex items-center justify-between text-sm">
                   <span className="text-slate-600 dark:text-slate-300">{move.movementType}</span>
-                  <span className="text-xs text-slate-400">
-                    {new Date(move.occurredAt).toLocaleDateString()}
-                  </span>
+                  <span className="text-xs text-slate-400">{formatDateOnlyUtc(move.occurredAt)}</span>
                 </div>
               ))}
               {(movementsData?.items ?? []).length === 0 ? (

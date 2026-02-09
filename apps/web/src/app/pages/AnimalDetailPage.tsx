@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { getAnimalCategoryLabel } from "@/lib/animals";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
+import { formatDateOnlyUtc } from "@/lib/dates";
 
 const AnimalDetailPage = () => {
   const params = useParams();
@@ -62,7 +63,7 @@ const AnimalDetailPage = () => {
             <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
               <p className="text-xs text-slate-500 dark:text-slate-400">Nacimiento</p>
               <p className="text-sm font-medium">
-                {data.birthDate ? new Date(data.birthDate).toLocaleDateString() : "Sin fecha"}
+                {data.birthDate ? formatDateOnlyUtc(data.birthDate) : "Sin fecha"}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-900/40">
@@ -90,9 +91,7 @@ const AnimalDetailPage = () => {
                   className="flex items-center justify-between border-b border-slate-200 py-2 text-sm dark:border-slate-800"
                 >
                   <span>{event.type}</span>
-                  <span className="text-xs text-slate-400">
-                    {new Date(event.occurredAt).toLocaleDateString()}
-                  </span>
+                  <span className="text-xs text-slate-400">{formatDateOnlyUtc(event.occurredAt)}</span>
                 </div>
               ))
             ) : (
@@ -126,9 +125,7 @@ const AnimalDetailPage = () => {
                   className="flex items-center justify-between border-b border-slate-200 py-2 text-sm dark:border-slate-800"
                 >
                   <span>{move.movementType}</span>
-                  <span className="text-xs text-slate-400">
-                    {new Date(move.occurredAt).toLocaleDateString()}
-                  </span>
+                  <span className="text-xs text-slate-400">{formatDateOnlyUtc(move.occurredAt)}</span>
                 </div>
               ))
             ) : (

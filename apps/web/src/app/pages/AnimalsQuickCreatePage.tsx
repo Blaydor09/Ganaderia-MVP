@@ -18,6 +18,7 @@ import {
   getAnimalCategoryLabel,
 } from "@/lib/animals";
 import { getEstablishmentTypeLabel } from "@/lib/establishments";
+import { parseDateInputToUtcIso } from "@/lib/dates";
 
 const defaultSexByCategory: Record<string, "MALE" | "FEMALE"> = {
   VACA: "FEMALE",
@@ -118,7 +119,7 @@ const AnimalsQuickCreatePage = () => {
     }
 
     const birthDateIso = values.birthDate
-      ? new Date(`${values.birthDate}T00:00:00Z`).toISOString()
+      ? parseDateInputToUtcIso(values.birthDate)
       : undefined;
 
     try {

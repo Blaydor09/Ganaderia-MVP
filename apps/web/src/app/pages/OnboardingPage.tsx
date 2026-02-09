@@ -21,6 +21,7 @@ import {
 } from "@/lib/animals";
 import { getEstablishmentTypeLabel } from "@/lib/establishments";
 import { productTypeOptions } from "@/lib/products";
+import { parseDateInputToUtcIso } from "@/lib/dates";
 
 const steps = [
   {
@@ -295,7 +296,7 @@ const OnboardingPage = () => {
     }
 
     const birthDateIso = values.birthDate
-      ? new Date(`${values.birthDate}T00:00:00Z`).toISOString()
+      ? parseDateInputToUtcIso(values.birthDate)
       : undefined;
 
     try {

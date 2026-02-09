@@ -32,56 +32,90 @@ const run = async () => {
   const operatorPassword = await hashPassword("oper12345");
   const auditorPassword = await hashPassword("audit123");
 
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@demo.com" },
-    update: {},
-    create: {
-      name: "Admin Demo",
-      email: "admin@demo.com",
-      passwordHash: adminPassword,
-      roles: {
-        create: [{ role: { connect: { name: "ADMIN" } }, tenantId: tenant.id }],
+  const roleByName = new Map<string, string>();
+  for (const role of roles) {
+    const roleRow = await prisma.role.findUnique({ where: { name: role.name } });
+    if (!roleRow) {
+      throw new Error(`Role not found during seed: ${role.name}`);
+    }
+    roleByName.set(role.name, roleRow.id);
+  }
+
+  const ensureUserWithRole = async ({
+    name,
+    email,
+    passwordHash,
+    roleName,
+  }: {
+    name: string;
+    email: string;
+    passwordHash: string;
+    roleName: (typeof roles)[number]["name"];
+  }) => {
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {
+        name,
+        passwordHash,
+        isActive: true,
       },
-    },
+      create: {
+        name,
+        email,
+        passwordHash,
+      },
+    });
+
+    const roleId = roleByName.get(roleName);
+    if (!roleId) {
+      throw new Error(`Role id not found for: ${roleName}`);
+    }
+
+    await prisma.userRole.upsert({
+      where: {
+        userId_roleId_tenantId: {
+          userId: user.id,
+          roleId,
+          tenantId: tenant.id,
+        },
+      },
+      update: {},
+      create: {
+        userId: user.id,
+        roleId,
+        tenantId: tenant.id,
+      },
+    });
+
+    return user;
+  };
+
+  const admin = await ensureUserWithRole({
+    name: "Admin Demo",
+    email: "admin@demo.com",
+    passwordHash: adminPassword,
+    roleName: "ADMIN",
   });
 
-  await prisma.user.upsert({
-    where: { email: "vet@demo.com" },
-    update: {},
-    create: {
-      name: "Vet Demo",
-      email: "vet@demo.com",
-      passwordHash: vetPassword,
-      roles: {
-        create: [{ role: { connect: { name: "VETERINARIO" } }, tenantId: tenant.id }],
-      },
-    },
+  await ensureUserWithRole({
+    name: "Vet Demo",
+    email: "vet@demo.com",
+    passwordHash: vetPassword,
+    roleName: "VETERINARIO",
   });
 
-  await prisma.user.upsert({
-    where: { email: "oper@demo.com" },
-    update: {},
-    create: {
-      name: "Operador Demo",
-      email: "oper@demo.com",
-      passwordHash: operatorPassword,
-      roles: {
-        create: [{ role: { connect: { name: "OPERADOR" } }, tenantId: tenant.id }],
-      },
-    },
+  await ensureUserWithRole({
+    name: "Operador Demo",
+    email: "oper@demo.com",
+    passwordHash: operatorPassword,
+    roleName: "OPERADOR",
   });
 
-  await prisma.user.upsert({
-    where: { email: "audit@demo.com" },
-    update: {},
-    create: {
-      name: "Auditor Demo",
-      email: "audit@demo.com",
-      passwordHash: auditorPassword,
-      roles: {
-        create: [{ role: { connect: { name: "AUDITOR" } }, tenantId: tenant.id }],
-      },
-    },
+  await ensureUserWithRole({
+    name: "Auditor Demo",
+    email: "audit@demo.com",
+    passwordHash: auditorPassword,
+    roleName: "AUDITOR",
   });
 
   const existingFinca = await prisma.establishment.findFirst({

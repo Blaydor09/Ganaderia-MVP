@@ -8,6 +8,14 @@ import { ensureBaseRoles } from "../utils/roles";
 import { writeAudit } from "../utils/audit";
 import { normalizeEmail } from "../utils/email";
 
+const parseRefreshTokenPayload = (refreshToken: string) => {
+  try {
+    return verifyRefreshToken(refreshToken);
+  } catch {
+    throw new ApiError(401, "Invalid refresh token");
+  }
+};
+
 const createSession = async (input: {
   user: { id: string; name: string; email: string };
   roles: string[];
@@ -114,7 +122,7 @@ export const login = async (
 };
 
 export const refresh = async (refreshToken: string) => {
-  const payload = verifyRefreshToken(refreshToken);
+  const payload = parseRefreshTokenPayload(refreshToken);
 
   const tokens = await prisma.refreshToken.findMany({
     where: {
@@ -141,7 +149,11 @@ export const refresh = async (refreshToken: string) => {
   });
 
   if (!user) {
-    throw new ApiError(401, "User not found");
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  if (!user.isActive) {
+    throw new ApiError(401, "User inactive");
   }
 
   const roles = await getTenantRoles(user.id, payload.tenantId);
@@ -159,7 +171,7 @@ export const refresh = async (refreshToken: string) => {
 };
 
 export const logout = async (refreshToken: string) => {
-  const payload = verifyRefreshToken(refreshToken);
+  const payload = parseRefreshTokenPayload(refreshToken);
   const tokens = await prisma.refreshToken.findMany({
     where: { userId: payload.sub, revokedAt: null },
   });
@@ -173,7 +185,7 @@ export const logout = async (refreshToken: string) => {
 
   const match = tokenMatch.find((item) => item.valid);
   if (!match) {
-    throw new ApiError(400, "Token not found");
+    throw new ApiError(401, "Invalid refresh token");
   }
 
   await prisma.refreshToken.update({

@@ -58,14 +58,17 @@ Abrir: http://localhost:5173/landing
 ## Scripts
 ### Backend
 - `npm run dev` (TSX)
+- `npm run lint`
+- `npm run test`
 - `npm run build`
 - `npm run start`
 - `npm run prisma:migrate`
 - `npm run seed`
-- `npm run test`
 
 ### Frontend
 - `npm run dev`
+- `npm run lint`
+- `npm run test`
 - `npm run build`
 - `npm run preview`
 

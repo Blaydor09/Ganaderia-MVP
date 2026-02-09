@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.svg";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: Access.dashboard },

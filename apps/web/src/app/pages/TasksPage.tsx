@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { formatDateOnlyUtc } from "@/lib/dates";
 
 const TasksPage = () => {
   const { data } = useQuery({
@@ -28,7 +29,7 @@ const TasksPage = () => {
               <TR key={task.id}>
                 <TD>{task.title}</TD>
                 <TD>{task.taskType}</TD>
-                <TD>{new Date(task.dueAt).toLocaleDateString()}</TD>
+                <TD>{formatDateOnlyUtc(task.dueAt)}</TD>
                 <TD>{task.status}</TD>
               </TR>
             ))}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Inventario Ganaderia</title>
+  <desc id="desc">Logotipo circular verde con silueta de bovino</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4d7d66" />
+      <stop offset="100%" stop-color="#365848" />
+    </linearGradient>
+  </defs>
+  <circle cx="128" cy="128" r="124" fill="url(#bg)" />
+  <path
+    fill="#f8fafc"
+    d="M68 158c0-19 15-34 34-34h27l18-12 20 4 22-9-6 19 8 11c3 5 4 9 4 14 0 19-15 35-35 35h-58c-19 0-34-15-34-34zm55-71c4-4 11-4 15 0l9 9-11 7-13-8zM86 130c-7 0-12-6-12-13 0-6 5-12 12-12h16v25H86zm79-12 17-13c5-4 13-2 15 4 2 5-1 11-6 13l-16 6z"
+  />
+  <circle cx="153" cy="150" r="5" fill="#365848" />
+</svg>

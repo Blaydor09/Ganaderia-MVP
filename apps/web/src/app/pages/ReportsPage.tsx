@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { formatDateOnlyUtc } from "@/lib/dates";
 
 const ReportsPage = () => {
   const { data: consumption } = useQuery({
@@ -60,8 +61,7 @@ const ReportsPage = () => {
               <div key={row.animal.id} className="flex items-center justify-between">
                 <span>{row.animal.tag || "Sin arete"}</span>
                 <span className="text-xs text-slate-400">
-                  Carne: {new Date(row.meatUntil).toLocaleDateString()} · Leche:{" "}
-                  {new Date(row.milkUntil).toLocaleDateString()}
+                  Carne: {formatDateOnlyUtc(row.meatUntil)} | Leche: {formatDateOnlyUtc(row.milkUntil)}
                 </span>
               </div>
             ))}
