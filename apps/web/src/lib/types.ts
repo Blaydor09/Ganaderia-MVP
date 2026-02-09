@@ -4,10 +4,47 @@ export type AuthMeResponse = {
   email: string;
   roles: string[];
   tenantId: string;
+  scope: "tenant";
   tenant: {
     id: string;
     name: string;
+    status: "ACTIVE" | "SUSPENDED";
   } | null;
+};
+
+export type TenantUsageMetricKey =
+  | "USERS"
+  | "ACTIVE_ANIMALS"
+  | "PRODUCTS"
+  | "ACTIVE_BATCHES"
+  | "API_REQUESTS_MONTHLY"
+  | "STORAGE_MB";
+
+export type TenantPlanUsageMetric = {
+  metric: TenantUsageMetricKey;
+  name: string;
+  unit: string;
+  softLimit: number | null;
+  hardLimit: number | null;
+  current: number;
+  exceeded: boolean;
+};
+
+export type TenantPlanUsageSummary = {
+  tenantId: string;
+  subscription: {
+    id: string;
+    status: "ACTIVE" | "TRIALING" | "PAST_DUE" | "CANCELED";
+    startsAt: string;
+    endsAt: string | null;
+    plan: {
+      code: "FREE" | "PRO" | "ENTERPRISE";
+      name: string;
+      description: string | null;
+    };
+  };
+  metrics: TenantPlanUsageMetric[];
+  generatedAt: string;
 };
 
 export type SearchAnimal = {

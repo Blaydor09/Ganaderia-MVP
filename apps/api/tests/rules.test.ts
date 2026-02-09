@@ -31,7 +31,7 @@ describe("inventory rules", () => {
 
 describe("rbac", () => {
   it("blocks unauthorized roles", () => {
-    const req: any = { user: { id: "1", roles: ["OPERADOR"] } };
+    const req: any = { user: { id: "1", roles: ["OPERADOR"], scope: "tenant", tenantId: "t1" } };
     const res: any = { status: vi.fn().mockReturnThis(), json: vi.fn() };
     const next = vi.fn();
     requireRoles("ADMIN")(req, res, next);
@@ -40,7 +40,7 @@ describe("rbac", () => {
   });
 
   it("allows authorized roles", () => {
-    const req: any = { user: { id: "1", roles: ["ADMIN"] } };
+    const req: any = { user: { id: "1", roles: ["ADMIN"], scope: "tenant", tenantId: "t1" } };
     const res: any = { status: vi.fn().mockReturnThis(), json: vi.fn() };
     const next = vi.fn();
     requireRoles("ADMIN")(req, res, next);

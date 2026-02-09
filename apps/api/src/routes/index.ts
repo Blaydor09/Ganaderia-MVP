@@ -18,6 +18,7 @@ import tasks from "./tasks";
 import search from "./search";
 import tenants from "./tenants";
 import dashboard from "./dashboard";
+import platform from "./platform";
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use("/tasks", tasks);
 router.use("/search", search);
 router.use("/tenants", tenants);
 router.use("/dashboard", dashboard);
+router.use("/platform", platform);
 
 export default router;

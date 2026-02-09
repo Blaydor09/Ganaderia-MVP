@@ -7,6 +7,7 @@ import { ensureBaseRoles } from "../utils/roles";
 import { ApiError } from "../utils/errors";
 import { getUserTenants, switchTenant } from "../services/authService";
 import { writeAudit } from "../utils/audit";
+import { getTenantUsageSummary } from "../services/usageService";
 
 const router = Router();
 
@@ -16,6 +17,15 @@ router.get(
   asyncHandler(async (req, res) => {
     const items = await getUserTenants(req.user!.id);
     res.json({ items, activeTenantId: req.user!.tenantId });
+  })
+);
+
+router.get(
+  "/current/plan-usage",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const summary = await getTenantUsageSummary(req.user!.tenantId!);
+    res.json(summary);
   })
 );
 
@@ -35,6 +45,8 @@ router.post(
       data: {
         name: data.name.trim(),
         createdById: req.user!.id,
+        ownerId: req.user!.id,
+        status: "ACTIVE",
       },
     });
 
@@ -46,19 +58,34 @@ router.post(
       },
     });
 
+    const freePlan = await prisma.plan.findUnique({ where: { code: "FREE" } });
+    if (freePlan) {
+      await prisma.tenantSubscription.create({
+        data: {
+          tenantId: tenant.id,
+          planId: freePlan.id,
+          status: "ACTIVE",
+          createdById: req.user!.id,
+        },
+      });
+    }
+
     await writeAudit({
       userId: req.user!.id,
+      actorType: "tenant",
       tenantId: tenant.id,
       action: "CREATE",
       entity: "tenant",
       entityId: tenant.id,
       after: { id: tenant.id, name: tenant.name },
       ip: req.ip,
+      userAgent: req.headers["user-agent"],
     });
 
     const session = await switchTenant({
       userId: req.user!.id,
       tenantId: tenant.id,
+      previousTenantId: req.user!.tenantId,
       userAgent: req.headers["user-agent"],
       ip: req.ip,
     });

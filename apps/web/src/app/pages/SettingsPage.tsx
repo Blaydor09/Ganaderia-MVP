@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import type { TenantPlanUsageSummary } from "@/lib/types";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -17,6 +18,11 @@ const SettingsPage = () => {
   const { data } = useQuery({
     queryKey: ["tenants"],
     queryFn: async () => (await api.get("/tenants")).data,
+  });
+  const { data: planUsage } = useQuery({
+    queryKey: ["tenant-plan-usage"],
+    queryFn: async () =>
+      (await api.get("/tenants/current/plan-usage")).data as TenantPlanUsageSummary,
   });
 
   const activeTenantId = data?.activeTenantId ?? getTenantId();
@@ -111,6 +117,69 @@ const SettingsPage = () => {
               ))
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Plan y consumo
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Seguimiento de limites activos de tu cuenta.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {planUsage ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                <Badge>{planUsage.subscription.plan.name}</Badge>
+                <span>Estado: {planUsage.subscription.status}</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {planUsage.metrics.map((metric) => {
+                  const hardLimit = metric.hardLimit ?? null;
+                  const ratio =
+                    hardLimit && hardLimit > 0 ? Math.min(100, (metric.current / hardLimit) * 100) : 0;
+                  return (
+                    <div
+                      key={metric.metric}
+                      className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/80"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                          {metric.name}
+                        </p>
+                        {metric.exceeded ? (
+                          <Badge variant="danger">Excedido</Badge>
+                        ) : (
+                          <Badge variant="success">OK</Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {metric.current} {metric.unit}
+                        {hardLimit !== null ? ` / ${hardLimit} ${metric.unit}` : " / Sin limite"}
+                      </p>
+                      {hardLimit !== null ? (
+                        <div className="mt-2 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                          <div
+                            className={`h-2 rounded-full ${
+                              metric.exceeded ? "bg-red-500" : ratio >= 80 ? "bg-amber-500" : "bg-brand-600"
+                            }`}
+                            style={{ width: `${Math.max(2, ratio)}%` }}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+              No se pudo cargar el consumo del plan.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

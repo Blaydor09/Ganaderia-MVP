@@ -4,6 +4,7 @@ Sistema web para gestion e inventario bovino con trazabilidad sanitaria, control
 
 ## Stack
 - Frontend: Vite + React + TypeScript + Tailwind + shadcn/ui.
+- Frontend platform: Vite + React + TypeScript + Tailwind.
 - Backend: Node.js + Express + TypeScript.
 - DB: PostgreSQL + Prisma.
 
@@ -42,6 +43,16 @@ API: http://localhost:4000/api/v1
 Docs API: http://localhost:4000/api/v1/docs
 Landing page: http://localhost:5173/landing
 
+### 4) Frontend plataforma (Super Admin)
+```bash
+cd apps/platform
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Platform UI: http://localhost:5174
+
 ## Landing page
 ```bash
 cd apps/web
@@ -54,6 +65,7 @@ Abrir: http://localhost:5173/landing
 - vet@demo.com / vet12345
 - oper@demo.com / oper12345
 - audit@demo.com / audit123
+- nuevo@demo.com / nuevo12345 (rol: OPERADOR)
 
 ## Scripts
 ### Backend
@@ -74,6 +86,7 @@ Abrir: http://localhost:5173/landing
 
 ## Docs
 - Arquitectura: `docs/architecture.md`
+- Arquitectura SaaS: `docs/saas-multitenant-architecture.md`
 - ERD: `docs/erd.mmd`
 - Endpoints: `docs/api-endpoints.md`
 - Rutas app: `docs/routes.md`

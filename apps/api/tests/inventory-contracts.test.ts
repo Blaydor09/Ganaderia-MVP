@@ -1,15 +1,61 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app";
 import { signAccessToken } from "../src/utils/jwt";
+import { prisma } from "../src/config/prisma";
 
 const accessToken = signAccessToken({
   sub: "11111111-1111-4111-8111-111111111111",
   roles: ["ADMIN"],
+  scope: "tenant",
   tenantId: "22222222-2222-4222-8222-222222222222",
 });
 
 describe("inventory and batch public contracts", () => {
+  beforeEach(() => {
+    vi.spyOn(prisma.user, "findUnique").mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      isActive: true,
+    } as any);
+    vi.spyOn(prisma.tenant, "findUnique").mockResolvedValue({
+      id: "22222222-2222-4222-8222-222222222222",
+      status: "ACTIVE",
+    } as any);
+    vi.spyOn(prisma.userRole, "findMany").mockResolvedValue([
+      {
+        role: { name: "ADMIN" },
+      },
+    ] as any);
+    vi.spyOn(prisma.tenantSubscription, "findFirst").mockResolvedValue({
+      id: "sub-1",
+      tenantId: "22222222-2222-4222-8222-222222222222",
+      plan: {
+        code: "PRO",
+        limits: [
+          {
+            hardLimit: 1000000,
+            usageMetric: { key: "API_REQUESTS_MONTHLY" },
+          },
+        ],
+      },
+    } as any);
+    vi.spyOn(prisma.usageMetric, "findUnique").mockResolvedValue({
+      id: "metric-api-requests-monthly",
+      key: "API_REQUESTS_MONTHLY",
+    } as any);
+    vi.spyOn(prisma.usageCounter, "findUnique").mockResolvedValue({
+      value: 10,
+    } as any);
+    vi.spyOn(prisma.usageCounter, "upsert").mockResolvedValue({
+      value: 11,
+    } as any);
+    vi.spyOn(prisma.usageEvent, "create").mockResolvedValue({ id: "evt-1" } as any);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("rejects ADJUST transaction type on public inventory endpoint", async () => {
     const app = createApp();
     const response = await request(app)

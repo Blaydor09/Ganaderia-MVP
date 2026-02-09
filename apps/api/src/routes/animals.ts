@@ -16,6 +16,7 @@ import { generateAnimalCode } from "../utils/code";
 import { writeAudit } from "../utils/audit";
 import { getActiveWithdrawalForAnimal } from "../services/withdrawalService";
 import { ApiError } from "../utils/errors";
+import { assertTenantLimit, getCurrentUsageValue } from "../services/usageService";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -150,6 +151,24 @@ router.post(
     await ensureAssignableEstablishment(tenantId, data.establishmentId);
     await ensureSupplier(tenantId, data.supplierId);
     await ensureParentAnimals(tenantId, data.motherId, data.fatherId);
+
+    const nextStatus = data.status ?? "ACTIVO";
+    if (nextStatus === "ACTIVO") {
+      const currentAnimals = await getCurrentUsageValue(tenantId, "ACTIVE_ANIMALS");
+      await assertTenantLimit({
+        tenantId,
+        metricKey: "ACTIVE_ANIMALS",
+        nextValue: currentAnimals + 1,
+        auditContext: {
+          actorUserId: req.user!.id,
+          actorType: "tenant",
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+          resource: "animal",
+        },
+      });
+    }
+
     const tag = normalizeOptionalString(data.tag);
     const birthDate = parseOptionalDate(data.birthDate);
     const animal = await prisma.animal.create({
@@ -201,6 +220,23 @@ router.post(
     const notes = data.notes?.trim();
     const status = data.status ?? "ACTIVO";
     const birthEstimated = data.birthEstimated ?? false;
+
+    const requestedCount = data.items.reduce((sum, item) => sum + item.count, 0);
+    if (status === "ACTIVO" && requestedCount > 0) {
+      const currentAnimals = await getCurrentUsageValue(tenantId, "ACTIVE_ANIMALS");
+      await assertTenantLimit({
+        tenantId,
+        metricKey: "ACTIVE_ANIMALS",
+        nextValue: currentAnimals + requestedCount,
+        auditContext: {
+          actorUserId: req.user!.id,
+          actorType: "tenant",
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+          resource: "animal.bulk",
+        },
+      });
+    }
 
     const animals: Prisma.AnimalCreateManyInput[] = [];
     for (const item of data.items) {
@@ -422,6 +458,26 @@ router.post(
       skip_empty_lines: true,
       trim: true,
     }) as Record<string, string>[];
+
+    const incomingActiveCount = rows.reduce((count, row) => {
+      const rowStatus = (row.status as string | undefined) ?? "ACTIVO";
+      return rowStatus === "ACTIVO" ? count + 1 : count;
+    }, 0);
+    if (incomingActiveCount > 0) {
+      const currentAnimals = await getCurrentUsageValue(tenantId, "ACTIVE_ANIMALS");
+      await assertTenantLimit({
+        tenantId,
+        metricKey: "ACTIVE_ANIMALS",
+        nextValue: currentAnimals + incomingActiveCount,
+        auditContext: {
+          actorUserId: req.user!.id,
+          actorType: "tenant",
+          ip: req.ip,
+          userAgent: req.headers["user-agent"],
+          resource: "animal.import",
+        },
+      });
+    }
 
     const establishmentIds = Array.from(
       new Set(rows.map((row) => row.establishment_id).filter(Boolean))

@@ -16,6 +16,49 @@ enum RoleName {
   AUDITOR
 }
 
+enum PlatformRoleName {
+  platform_super_admin
+  platform_support
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PlanCode {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+}
+
+enum UsageMetricKey {
+  USERS
+  ACTIVE_ANIMALS
+  PRODUCTS
+  ACTIVE_BATCHES
+  API_REQUESTS_MONTHLY
+  STORAGE_MB
+}
+
+enum ActorType {
+  platform
+  tenant
+  system
+}
+
+enum TokenScope {
+  tenant
+  platform
+}
+
 enum AnimalSex {
   MALE
   FEMALE
@@ -101,31 +144,37 @@ enum ProductType {
 }
 
 model User {
-  id           String         @id @default(uuid())
-  name         String
-  email        String         @unique
-  passwordHash String
-  isActive     Boolean        @default(true)
-  roles        UserRole[]
-  createdTenants Tenant[] @relation("TenantCreatedBy")
-  auditLogs    AuditLog[]
-  refreshTokens RefreshToken[]
-  createdEstablishments Establishment[] @relation("EstablishmentCreatedBy")
-  createdSuppliers Supplier[] @relation("SupplierCreatedBy")
-  createdAnimals Animal[] @relation("AnimalCreatedBy")
-  createdAnimalPhotos AnimalPhoto[] @relation("AnimalPhotoCreatedBy")
-  createdAnimalEvents AnimalEvent[] @relation("AnimalEventCreatedBy")
-  createdMovements Movement[] @relation("MovementCreatedBy")
-  createdProducts Product[] @relation("ProductCreatedBy")
-  createdBatches Batch[] @relation("BatchCreatedBy")
+  id                           String                 @id @default(uuid())
+  name                         String
+  email                        String                 @unique
+  passwordHash                 String
+  isActive                     Boolean                @default(true)
+  roles                        UserRole[]
+  platformRoles                PlatformUserRole[]
+  createdTenants               Tenant[]               @relation("TenantCreatedBy")
+  ownedTenants                 Tenant[]               @relation("TenantOwner")
+  createdSubscriptions         TenantSubscription[]   @relation("SubscriptionCreatedBy")
+  auditLogs                    AuditLog[]
+  refreshTokens                RefreshToken[]
+  impersonationsStarted        ImpersonationSession[] @relation("ImpersonationPlatformUser")
+  impersonationsTargeted       ImpersonationSession[] @relation("ImpersonationTargetUser")
+  impersonationsRevoked        ImpersonationSession[] @relation("ImpersonationRevokedBy")
+  createdEstablishments        Establishment[]        @relation("EstablishmentCreatedBy")
+  createdSuppliers             Supplier[]             @relation("SupplierCreatedBy")
+  createdAnimals               Animal[]               @relation("AnimalCreatedBy")
+  createdAnimalPhotos          AnimalPhoto[]          @relation("AnimalPhotoCreatedBy")
+  createdAnimalEvents          AnimalEvent[]          @relation("AnimalEventCreatedBy")
+  createdMovements             Movement[]             @relation("MovementCreatedBy")
+  createdProducts              Product[]              @relation("ProductCreatedBy")
+  createdBatches               Batch[]                @relation("BatchCreatedBy")
   createdInventoryTransactions InventoryTransaction[] @relation("InventoryTransactionCreatedBy")
-  createdTreatments Treatment[] @relation("TreatmentCreatedBy")
-  createdAdministrations Administration[] @relation("AdministrationCreatedBy")
-  createdLabResults LabResult[] @relation("LabResultCreatedBy")
-  createdAlerts Alert[] @relation("AlertCreatedBy")
-  createdTasks Task[] @relation("TaskCreatedBy")
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdTreatments            Treatment[]            @relation("TreatmentCreatedBy")
+  createdAdministrations       Administration[]       @relation("AdministrationCreatedBy")
+  createdLabResults            LabResult[]            @relation("LabResultCreatedBy")
+  createdAlerts                Alert[]                @relation("AlertCreatedBy")
+  createdTasks                 Task[]                 @relation("TaskCreatedBy")
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
 }
 
 model Role {
@@ -135,42 +184,79 @@ model Role {
   users       UserRole[]
 }
 
-model Tenant {
-  id          String   @id @default(uuid())
-  name        String
-  createdById String?
-  createdBy   User?    @relation("TenantCreatedBy", fields: [createdById], references: [id])
-  users       UserRole[]
-  establishments Establishment[]
-  suppliers   Supplier[]
-  animals     Animal[]
-  animalPhotos AnimalPhoto[]
-  events      AnimalEvent[]
-  movements   Movement[]
-  products    Product[]
-  batches     Batch[]
-  inventoryTransactions InventoryTransaction[]
-  treatments  Treatment[]
-  administrations Administration[]
-  labResults  LabResult[]
-  auditLogs   AuditLog[]
-  alerts      Alert[]
-  tasks       Task[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model PlatformRole {
+  id          String             @id @default(uuid())
+  name        PlatformRoleName   @unique
+  description String
+  users       PlatformUserRole[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
 
+model PlatformUserRole {
+  id             String   @id @default(uuid())
+  userId         String
+  platformRoleId String
+  assignedById   String?
+  assignedAt     DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id])
+  role PlatformRole @relation(fields: [platformRoleId], references: [id])
+
+  @@unique([userId, platformRoleId])
+  @@index([platformRoleId])
+}
+
+model Tenant {
+  id                    String                 @id @default(uuid())
+  name                  String
+  slug                  String?                @unique
+  status                TenantStatus           @default(ACTIVE)
+  ownerId               String?
+  createdById           String?
+  suspendedAt           DateTime?
+  suspensionReason      String?
+  reactivatedAt         DateTime?
+  lastLoginAt           DateTime?
+  owner                 User?                  @relation("TenantOwner", fields: [ownerId], references: [id])
+  createdBy             User?                  @relation("TenantCreatedBy", fields: [createdById], references: [id])
+  users                 UserRole[]
+  subscriptions         TenantSubscription[]
+  usageCounters         UsageCounter[]
+  usageEvents           UsageEvent[]
+  impersonationSessions ImpersonationSession[]
+  establishments        Establishment[]
+  suppliers             Supplier[]
+  animals               Animal[]
+  animalPhotos          AnimalPhoto[]
+  events                AnimalEvent[]
+  movements             Movement[]
+  products              Product[]
+  batches               Batch[]
+  inventoryTransactions InventoryTransaction[]
+  treatments            Treatment[]
+  administrations       Administration[]
+  labResults            LabResult[]
+  auditLogs             AuditLog[]
+  alerts                Alert[]
+  tasks                 Task[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([ownerId])
   @@index([createdById])
+  @@index([status])
 }
 
 model UserRole {
-  id        String   @id @default(uuid())
-  userId    String
-  roleId    String
-  tenantId  String
+  id         String   @id @default(uuid())
+  userId     String
+  roleId     String
+  tenantId   String
   assignedAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
-  role Role @relation(fields: [roleId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@unique([userId, roleId, tenantId])
@@ -178,38 +264,163 @@ model UserRole {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  tokenHash String
-  expiresAt DateTime
-  revokedAt DateTime?
-  userAgent String?
-  ip        String?
-  createdAt DateTime @default(now())
+  id                     String     @id @default(uuid())
+  userId                 String
+  tokenHash              String
+  scope                  TokenScope @default(tenant)
+  tenantId               String?
+  impersonationSessionId String?
+  expiresAt              DateTime
+  revokedAt              DateTime?
+  userAgent              String?
+  ip                     String?
+  createdAt              DateTime   @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user                 User                  @relation(fields: [userId], references: [id])
+  impersonationSession ImpersonationSession? @relation(fields: [impersonationSessionId], references: [id])
 
   @@index([userId])
+  @@index([scope])
+  @@index([tenantId])
+}
+
+model Plan {
+  id            String               @id @default(uuid())
+  code          PlanCode             @unique
+  name          String
+  description   String?
+  isActive      Boolean              @default(true)
+  limits        PlanLimit[]
+  subscriptions TenantSubscription[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model UsageMetric {
+  id          String         @id @default(uuid())
+  key         UsageMetricKey @unique
+  name        String
+  description String?
+  unit        String
+  limits      PlanLimit[]
+  counters    UsageCounter[]
+  events      UsageEvent[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model PlanLimit {
+  id            String   @id @default(uuid())
+  planId        String
+  usageMetricId String
+  softLimit     Int?
+  hardLimit     Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  plan        Plan        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  usageMetric UsageMetric @relation(fields: [usageMetricId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, usageMetricId])
+  @@index([usageMetricId])
+}
+
+model TenantSubscription {
+  id          String             @id @default(uuid())
+  tenantId    String
+  planId      String
+  status      SubscriptionStatus @default(ACTIVE)
+  startsAt    DateTime           @default(now())
+  endsAt      DateTime?
+  renewedAt   DateTime?
+  canceledAt  DateTime?
+  createdById String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan      Plan   @relation(fields: [planId], references: [id])
+  createdBy User?  @relation("SubscriptionCreatedBy", fields: [createdById], references: [id])
+
+  @@index([tenantId, status])
+  @@index([planId])
+  @@index([createdById])
+}
+
+model UsageCounter {
+  id            String   @id @default(uuid())
+  tenantId      String
+  usageMetricId String
+  periodStart   DateTime
+  periodEnd     DateTime
+  value         Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usageMetric UsageMetric @relation(fields: [usageMetricId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, usageMetricId, periodStart, periodEnd])
+  @@index([tenantId, periodStart])
+}
+
+model UsageEvent {
+  id            String   @id @default(uuid())
+  tenantId      String
+  usageMetricId String
+  delta         Int
+  currentValue  Int?
+  source        String
+  resourceId    String?
+  metadata      Json?
+  occurredAt    DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usageMetric UsageMetric @relation(fields: [usageMetricId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, occurredAt])
+  @@index([usageMetricId, occurredAt])
+}
+
+model ImpersonationSession {
+  id             String    @id @default(uuid())
+  platformUserId String
+  tenantId       String
+  targetUserId   String?
+  reason         String?
+  startedAt      DateTime  @default(now())
+  expiresAt      DateTime
+  lastAccessAt   DateTime?
+  revokedAt      DateTime?
+  revokedById    String?
+
+  platformUser  User           @relation("ImpersonationPlatformUser", fields: [platformUserId], references: [id])
+  targetUser    User?          @relation("ImpersonationTargetUser", fields: [targetUserId], references: [id])
+  revokedBy     User?          @relation("ImpersonationRevokedBy", fields: [revokedById], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([tenantId, startedAt])
+  @@index([platformUserId, startedAt])
 }
 
 model Establishment {
-  id        String   @id @default(uuid())
-  name      String
-  type      EstablishmentType
-  parentId  String?
-  fincaId   String?
-  tenantId  String
-  createdById String?
-  animals   Animal[]
-  events    AnimalEvent[]
-  parent    Establishment? @relation("EstablishmentHierarchy", fields: [parentId], references: [id])
-  children  Establishment[] @relation("EstablishmentHierarchy")
-  originMovements      Movement[] @relation("MovementOrigin")
-  destinationMovements Movement[] @relation("MovementDestination")
-  createdBy User? @relation("EstablishmentCreatedBy", fields: [createdById], references: [id])
-  tenant    Tenant @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String            @id @default(uuid())
+  name                 String
+  type                 EstablishmentType
+  parentId             String?
+  fincaId              String?
+  tenantId             String
+  createdById          String?
+  animals              Animal[]
+  events               AnimalEvent[]
+  parent               Establishment?    @relation("EstablishmentHierarchy", fields: [parentId], references: [id])
+  children             Establishment[]   @relation("EstablishmentHierarchy")
+  originMovements      Movement[]        @relation("MovementOrigin")
+  destinationMovements Movement[]        @relation("MovementDestination")
+  createdBy            User?             @relation("EstablishmentCreatedBy", fields: [createdById], references: [id])
+  tenant               Tenant            @relation(fields: [tenantId], references: [id])
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
 
   @@index([parentId])
   @@index([fincaId])
@@ -218,34 +429,34 @@ model Establishment {
 }
 
 model Supplier {
-  id        String   @id @default(uuid())
-  name      String
-  contact   String?
-  phone     String?
-  email     String?
-  tenantId  String
+  id          String   @id @default(uuid())
+  name        String
+  contact     String?
+  phone       String?
+  email       String?
+  tenantId    String
   createdById String?
-  animals   Animal[]
-  batches   Batch[]
-  createdBy User? @relation("SupplierCreatedBy", fields: [createdById], references: [id])
-  tenant    Tenant @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  animals     Animal[]
+  batches     Batch[]
+  createdBy   User?    @relation("SupplierCreatedBy", fields: [createdById], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([createdById])
   @@index([tenantId])
 }
 
 model Animal {
-  id              String        @id @default(uuid())
+  id              String         @id @default(uuid())
   internalCode    String
   tag             String?
   sex             AnimalSex
   breed           String
   birthDate       DateTime?
-  birthEstimated  Boolean       @default(false)
+  birthEstimated  Boolean        @default(false)
   category        AnimalCategory
-  status          AnimalStatus  @default(ACTIVO)
+  status          AnimalStatus   @default(ACTIVO)
   origin          AnimalOrigin
   supplierId      String?
   motherId        String?
@@ -259,14 +470,14 @@ model Animal {
   movements       Movement[]
   treatments      Treatment[]
   labResults      LabResult[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   deletedAt       DateTime?
 
-  supplier      Supplier?     @relation(fields: [supplierId], references: [id])
+  supplier      Supplier?      @relation(fields: [supplierId], references: [id])
   establishment Establishment? @relation(fields: [establishmentId], references: [id])
-  createdBy     User? @relation("AnimalCreatedBy", fields: [createdById], references: [id])
-  tenant        Tenant @relation(fields: [tenantId], references: [id])
+  createdBy     User?          @relation("AnimalCreatedBy", fields: [createdById], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, internalCode])
   @@unique([tenantId, tag])
@@ -277,23 +488,23 @@ model Animal {
 }
 
 model AnimalPhoto {
-  id        String   @id @default(uuid())
-  animalId  String
-  url       String
-  tenantId  String
+  id          String   @id @default(uuid())
+  animalId    String
+  url         String
+  tenantId    String
   createdById String?
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
 
-  animal Animal @relation(fields: [animalId], references: [id])
-  createdBy User? @relation("AnimalPhotoCreatedBy", fields: [createdById], references: [id])
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  animal    Animal @relation(fields: [animalId], references: [id])
+  createdBy User?  @relation("AnimalPhotoCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([createdById])
   @@index([tenantId])
 }
 
 model AnimalEvent {
-  id              String     @id @default(uuid())
+  id              String    @id @default(uuid())
   animalId        String
   type            EventType
   occurredAt      DateTime
@@ -303,12 +514,12 @@ model AnimalEvent {
   valueText       String?
   notes           String?
   createdById     String?
-  createdAt       DateTime   @default(now())
+  createdAt       DateTime  @default(now())
 
-  animal        Animal        @relation(fields: [animalId], references: [id])
+  animal        Animal         @relation(fields: [animalId], references: [id])
   establishment Establishment? @relation(fields: [establishmentId], references: [id])
-  createdBy     User? @relation("AnimalEventCreatedBy", fields: [createdById], references: [id])
-  tenant        Tenant @relation(fields: [tenantId], references: [id])
+  createdBy     User?          @relation("AnimalEventCreatedBy", fields: [createdById], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
 
   @@index([occurredAt])
   @@index([createdById])
@@ -316,23 +527,23 @@ model AnimalEvent {
 }
 
 model Movement {
-  id             String        @id @default(uuid())
-  animalId       String
-  occurredAt     DateTime
-  originId       String?
-  destinationId  String?
-  movementType   MovementType
-  transporter    String?
-  notes          String?
-  tenantId       String
-  createdById    String?
-  createdAt      DateTime      @default(now())
+  id            String       @id @default(uuid())
+  animalId      String
+  occurredAt    DateTime
+  originId      String?
+  destinationId String?
+  movementType  MovementType
+  transporter   String?
+  notes         String?
+  tenantId      String
+  createdById   String?
+  createdAt     DateTime     @default(now())
 
   animal      Animal         @relation(fields: [animalId], references: [id])
   origin      Establishment? @relation("MovementOrigin", fields: [originId], references: [id])
   destination Establishment? @relation("MovementDestination", fields: [destinationId], references: [id])
-  createdBy   User? @relation("MovementCreatedBy", fields: [createdById], references: [id])
-  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  createdBy   User?          @relation("MovementCreatedBy", fields: [createdById], references: [id])
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
 
   @@index([occurredAt])
   @@index([originId])
@@ -342,32 +553,32 @@ model Movement {
 }
 
 model Product {
-  id                   String   @id @default(uuid())
-  name                 String
-  type                 ProductType?
-  vaccineTypes         String[] @default([])
-  activeIngredient     String
-  presentation         String
-  concentration        String
-  unit                 String
-  species              String   @default("bovinos")
-  meatWithdrawalDays   Int
-  milkWithdrawalDays   Int
-  requiresPrescription Boolean @default(false)
-  recommendedRoute     String?
-  typicalDose          String?
-  notes                String?
-  minStock             Int      @default(0)
-  tenantId             String
-  createdById          String?
-  batches              Batch[]
+  id                    String                 @id @default(uuid())
+  name                  String
+  type                  ProductType?
+  vaccineTypes          String[]               @default([])
+  activeIngredient      String
+  presentation          String
+  concentration         String
+  unit                  String
+  species               String                 @default("bovinos")
+  meatWithdrawalDays    Int
+  milkWithdrawalDays    Int
+  requiresPrescription  Boolean                @default(false)
+  recommendedRoute      String?
+  typicalDose           String?
+  notes                 String?
+  minStock              Int                    @default(0)
+  tenantId              String
+  createdById           String?
+  batches               Batch[]
   inventoryTransactions InventoryTransaction[]
-  administrations      Administration[]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  deletedAt            DateTime?
+  administrations       Administration[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
 
-  createdBy User? @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  createdBy User?  @relation("ProductCreatedBy", fields: [createdById], references: [id])
   tenant    Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([name])
@@ -376,53 +587,53 @@ model Product {
 }
 
 model Batch {
-  id                String   @id @default(uuid())
+  id                String                 @id @default(uuid())
   productId         String
   batchNumber       String
   expiresAt         DateTime
   supplierId        String?
   receivedAt        DateTime
-  cost              Decimal? @db.Decimal(10, 2)
+  cost              Decimal?               @db.Decimal(10, 2)
   quantityInitial   Float
   quantityAvailable Float
   tenantId          String
   createdById       String?
   transactions      InventoryTransaction[]
   administrations   Administration[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
   deletedAt         DateTime?
 
-  product  Product  @relation(fields: [productId], references: [id])
-  supplier Supplier? @relation(fields: [supplierId], references: [id])
-  createdBy User? @relation("BatchCreatedBy", fields: [createdById], references: [id])
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+  createdBy User?     @relation("BatchCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
 
-  @@index([expiresAt])
   @@unique([tenantId, productId, batchNumber])
+  @@index([expiresAt])
   @@index([createdById])
   @@index([tenantId])
 }
 
 model InventoryTransaction {
-  id         String           @id @default(uuid())
-  batchId    String
-  productId  String
-  type       InventoryTxType
-  quantity   Float
-  unit       String
-  occurredAt DateTime
-  reason     String?
-  refType    String?
-  refId      String?
-  tenantId   String
+  id          String          @id @default(uuid())
+  batchId     String
+  productId   String
+  type        InventoryTxType
+  quantity    Float
+  unit        String
+  occurredAt  DateTime
+  reason      String?
+  refType     String?
+  refId       String?
+  tenantId    String
   createdById String?
-  createdAt  DateTime @default(now())
+  createdAt   DateTime        @default(now())
 
-  batch   Batch   @relation(fields: [batchId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
-  createdBy User? @relation("InventoryTransactionCreatedBy", fields: [createdById], references: [id])
-  tenant  Tenant @relation(fields: [tenantId], references: [id])
+  batch     Batch   @relation(fields: [batchId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+  createdBy User?   @relation("InventoryTransactionCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
 
   @@index([occurredAt])
   @@index([createdById])
@@ -430,22 +641,22 @@ model InventoryTransaction {
 }
 
 model Treatment {
-  id         String         @id @default(uuid())
-  animalId   String
-  diagnosis  String
-  vetId      String?
-  startedAt  DateTime
-  endedAt    DateTime?
-  status     TreatmentStatus @default(ACTIVE)
-  notes      String?
-  tenantId   String
+  id          String          @id @default(uuid())
+  animalId    String
+  diagnosis   String
+  vetId       String?
+  startedAt   DateTime
+  endedAt     DateTime?
+  status      TreatmentStatus @default(ACTIVE)
+  notes       String?
+  tenantId    String
   createdById String?
-  createdAt  DateTime @default(now())
+  createdAt   DateTime        @default(now())
 
-  animal Animal @relation(fields: [animalId], references: [id])
+  animal          Animal           @relation(fields: [animalId], references: [id])
   administrations Administration[]
-  createdBy User? @relation("TreatmentCreatedBy", fields: [createdById], references: [id])
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  createdBy       User?            @relation("TreatmentCreatedBy", fields: [createdById], references: [id])
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
 
   @@index([startedAt])
   @@index([createdById])
@@ -473,8 +684,8 @@ model Administration {
   treatment Treatment @relation(fields: [treatmentId], references: [id])
   batch     Batch     @relation(fields: [batchId], references: [id])
   product   Product   @relation(fields: [productId], references: [id])
-  createdBy User? @relation("AdministrationCreatedBy", fields: [createdById], references: [id])
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  createdBy User?     @relation("AdministrationCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([administeredAt])
   @@index([createdById])
@@ -490,64 +701,75 @@ model LabResult {
   tenantId    String
   createdById String?
 
-  animal Animal @relation(fields: [animalId], references: [id])
-  createdBy User? @relation("LabResultCreatedBy", fields: [createdById], references: [id])
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  animal    Animal @relation(fields: [animalId], references: [id])
+  createdBy User?  @relation("LabResultCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([createdById])
   @@index([tenantId])
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String?
-  action    String
-  entity    String
-  entityId  String?
-  before    Json?
-  after     Json?
-  ip        String?
-  tenantId  String?
-  createdAt DateTime @default(now())
+  id          String    @id @default(uuid())
+  userId      String?
+  actorUserId String?
+  actorType   ActorType @default(tenant)
+  action      String
+  entity      String
+  entityId    String?
+  resource    String?
+  resourceId  String?
+  before      Json?
+  after       Json?
+  metadata    Json?
+  ip          String?
+  userAgent   String?
+  tenantId    String?
+  occurredAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
 
-  user User? @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
   tenant Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([createdAt])
+  @@index([occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@index([action, occurredAt])
   @@index([tenantId])
+  @@index([tenantId, occurredAt])
 }
 
 model Alert {
-  id        String    @id @default(uuid())
-  type      AlertType
-  title     String
-  message   String
-  dueAt     DateTime
-  status    TaskStatus @default(OPEN)
-  tenantId  String
+  id          String     @id @default(uuid())
+  type        AlertType
+  title       String
+  message     String
+  dueAt       DateTime
+  status      TaskStatus @default(OPEN)
+  tenantId    String
   createdById String?
-  createdAt DateTime  @default(now())
+  createdAt   DateTime   @default(now())
 
-  createdBy User? @relation("AlertCreatedBy", fields: [createdById], references: [id])
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  createdBy User?  @relation("AlertCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([createdById])
   @@index([tenantId])
 }
 
 model Task {
-  id        String    @id @default(uuid())
-  title     String
-  taskType  String
-  dueAt     DateTime
-  status    TaskStatus @default(OPEN)
-  notes     String?
-  tenantId  String
+  id          String     @id @default(uuid())
+  title       String
+  taskType    String
+  dueAt       DateTime
+  status      TaskStatus @default(OPEN)
+  notes       String?
+  tenantId    String
   createdById String?
-  createdAt DateTime  @default(now())
+  createdAt   DateTime   @default(now())
 
-  createdBy User? @relation("TaskCreatedBy", fields: [createdById], references: [id])
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  createdBy User?  @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([createdById])
   @@index([tenantId])

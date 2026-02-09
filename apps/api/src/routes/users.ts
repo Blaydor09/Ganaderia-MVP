@@ -9,6 +9,7 @@ import { ensureBaseRoles } from "../utils/roles";
 import { ApiError } from "../utils/errors";
 import { writeAudit } from "../utils/audit";
 import { normalizeEmail } from "../utils/email";
+import { assertTenantLimit, getCurrentUsageValue } from "../services/usageService";
 
 const router = Router();
 
@@ -62,6 +63,20 @@ router.post(
     if (existing) {
       throw new ApiError(409, "Email already registered");
     }
+
+    const currentUsers = await getCurrentUsageValue(tenantId, "USERS");
+    await assertTenantLimit({
+      tenantId,
+      metricKey: "USERS",
+      nextValue: currentUsers + 1,
+      auditContext: {
+        actorUserId: req.user!.id,
+        actorType: "tenant",
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        resource: "user",
+      },
+    });
 
     const passwordHash = await hashPassword(data.password);
 

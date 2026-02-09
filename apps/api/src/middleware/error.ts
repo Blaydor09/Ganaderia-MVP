@@ -10,7 +10,9 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   if (err instanceof ApiError) {
-    return res.status(err.status).json({ message: err.message, details: err.details });
+    return res
+      .status(err.status)
+      .json({ message: err.message, code: err.code, details: err.details });
   }
 
   if (err instanceof ZodError) {

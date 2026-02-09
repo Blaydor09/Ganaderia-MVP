@@ -6,6 +6,8 @@ import { requireRoles } from "../middleware/rbac";
 import { productCreateSchema, productUpdateSchema } from "../validators/productSchemas";
 import { getPagination } from "../utils/pagination";
 import { writeAudit } from "../utils/audit";
+import { assertTenantLimit, getCurrentUsageValue } from "../services/usageService";
+import { withTenantScope } from "../utils/tenantScope";
 
 const router = Router();
 
@@ -15,7 +17,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
     const tenantId = req.user!.tenantId;
-    const where: Record<string, unknown> = { deletedAt: null, tenantId };
+    const where: Record<string, unknown> = withTenantScope(tenantId, { deletedAt: null });
     if (req.query.search) {
       where.name = { contains: req.query.search, mode: "insensitive" };
     }
@@ -41,6 +43,19 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = productCreateSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
+    const currentProducts = await getCurrentUsageValue(tenantId, "PRODUCTS");
+    await assertTenantLimit({
+      tenantId,
+      metricKey: "PRODUCTS",
+      nextValue: currentProducts + 1,
+      auditContext: {
+        actorUserId: req.user!.id,
+        actorType: "tenant",
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        resource: "product",
+      },
+    });
     const created = await prisma.product.create({
       data: { ...data, tenantId, createdById: req.user?.id },
     });

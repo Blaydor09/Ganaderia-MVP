@@ -36,6 +36,7 @@ describe("auth refresh/logout", () => {
     const refreshToken = signRefreshToken({
       sub: userId,
       roles: ["ADMIN"],
+      scope: "tenant",
       tenantId,
     });
     const tokenHash = await hashPassword(refreshToken);
@@ -63,7 +64,6 @@ describe("auth refresh/logout", () => {
       .send({ refreshToken });
 
     expect(response.status).toBe(401);
-    expect(response.body.message).toBe("User inactive");
+    expect(response.body.message).toBe("Invalid credentials");
   });
 });
-

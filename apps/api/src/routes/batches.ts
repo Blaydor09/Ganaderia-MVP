@@ -6,6 +6,7 @@ import { requireRoles } from "../middleware/rbac";
 import { batchCreateSchema, batchUpdateSchema } from "../validators/batchSchemas";
 import { getPagination } from "../utils/pagination";
 import { writeAudit } from "../utils/audit";
+import { assertTenantLimit, getCurrentUsageValue } from "../services/usageService";
 
 const router = Router();
 
@@ -40,6 +41,19 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = batchCreateSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
+    const currentBatches = await getCurrentUsageValue(tenantId, "ACTIVE_BATCHES");
+    await assertTenantLimit({
+      tenantId,
+      metricKey: "ACTIVE_BATCHES",
+      nextValue: currentBatches + 1,
+      auditContext: {
+        actorUserId: req.user!.id,
+        actorType: "tenant",
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        resource: "batch",
+      },
+    });
     const product = await prisma.product.findFirst({
       where: { id: data.productId, tenantId, deletedAt: null },
       select: { id: true },

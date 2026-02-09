@@ -90,6 +90,7 @@ router.post(
     const result = await switchTenant({
       userId: req.user!.id,
       tenantId: data.tenantId,
+      previousTenantId: req.user!.tenantId,
       userAgent: req.headers["user-agent"],
       ip: req.ip,
     });
@@ -122,7 +123,8 @@ router.get(
         .filter((row: { tenantId?: string }) => row.tenantId === req.user!.tenantId)
         .map((row: { role: { name: string } }) => row.role.name),
       tenantId: req.user!.tenantId,
-      tenant: tenant ? { id: tenant.id, name: tenant.name } : null,
+      scope: req.user!.scope,
+      tenant: tenant ? { id: tenant.id, name: tenant.name, status: tenant.status } : null,
     });
   })
 );
