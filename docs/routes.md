@@ -33,6 +33,7 @@
 - Todas las rutas privadas usan auth JWT y control de roles (RBAC).
 - Si el usuario no tiene rol permitido, la vista muestra `AccessDeniedPage`.
 - El flujo de primer uso esperado es: `/register` -> `/onboarding` -> rutas operativas.
+- El dashboard (`/`) consume `GET /dashboard/overview` con filtros por query string (`range`, `fincaId`, `establishmentId`).
 
 ## Componentes globales
 - Topbar con tenant y usuario reales desde `GET /auth/me`.

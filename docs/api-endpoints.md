@@ -104,6 +104,22 @@ Contract notes:
 - GET /reports/consumption
 - GET /reports/weights
 
+## Dashboard
+- GET /dashboard/overview
+
+Contract notes:
+- Query params:
+  - `range=7d|30d|90d` (default `30d`)
+  - `fincaId` (uuid, opcional)
+  - `establishmentId` (uuid, opcional)
+- Precedencia de filtros de ubicacion:
+  - Si viene `establishmentId`, se ignora `fincaId`.
+  - Si no viene ninguno, consulta a nivel tenant.
+- Respuesta incluye:
+  - `kpis`, `animalDistribution`, `treatmentsSeries`, `lifecycleSeries`
+  - `inventoryTop`, `movementsRecent`
+  - `appliedFilters`, `generatedAt`
+
 ## Audit and search
 - GET /audit
 - GET /search

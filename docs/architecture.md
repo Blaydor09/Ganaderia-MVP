@@ -43,6 +43,10 @@
   - Creacion de eventos y movimientos desde interfaz.
   - Registro de aplicaciones y cierre de tratamientos desde interfaz.
   - Topbar y busqueda global conectadas a datos reales.
+- Dashboard operativo:
+  - Nuevo agregado backend `GET /dashboard/overview` para KPIs y series.
+  - Filtros de rango/ubicacion con precedencia `establishmentId > fincaId > tenant`.
+  - Dashboard frontend sin datos mock y con estados `loading/error/empty/stale`.
 
 ## Performance frontend
 - Paginas cargadas con lazy loading (`React.lazy` + `Suspense`).

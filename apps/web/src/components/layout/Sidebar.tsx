@@ -1,22 +1,22 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard,
-  PawPrint,
-  ClipboardList,
-  Stethoscope,
-  Pill,
-  Boxes,
-  BarChart3,
-  Settings,
-  Users,
   AlertTriangle,
-  Truck,
+  BarChart3,
+  Boxes,
+  ClipboardList,
+  LayoutDashboard,
   MapPinned,
+  PawPrint,
+  Pill,
+  Settings,
+  Stethoscope,
+  Truck,
+  Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { hasAnyRole } from "@/lib/auth";
+import logo from "@/assets/logo_system.png";
 import { Access } from "@/lib/access";
-import logo from "@/assets/logo.svg";
+import { hasAnyRole } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: Access.dashboard },
@@ -38,21 +38,24 @@ export const Sidebar = () => {
   const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex dark:border-slate-800 dark:bg-slate-950">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="h-11 w-11 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm dark:border-slate-700">
-          <img
-            src={logo}
-            alt="Inventario Ganaderia"
-            className="h-full w-full object-contain"
-          />
-        </div>
-        <div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Inventario</p>
-          <p className="font-display text-lg font-semibold">Ganaderia</p>
+    <aside className="sticky top-0 hidden h-screen w-72 flex-col border-r border-slate-200 bg-white/80 px-4 py-5 backdrop-blur-sm lg:flex dark:border-slate-800 dark:bg-slate-950/80">
+      <div className="mb-5 surface-muted p-3">
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm dark:border-slate-700">
+            <img src={logo} alt="Inventario Ganaderia" className="h-full w-full object-contain" />
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Inventario Ganaderia
+            </p>
+            <p className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Operacion sanitaria
+            </p>
+          </div>
         </div>
       </div>
-      <nav className="flex flex-1 flex-col gap-1">
+
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto pr-1">
         {visibleItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -61,10 +64,10 @@ export const Sidebar = () => {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium",
+                  "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
                   isActive
-                    ? "bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-100"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/70"
                 )
               }
             >
@@ -74,8 +77,9 @@ export const Sidebar = () => {
           );
         })}
       </nav>
-      <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
-        Version demo 1.0.2
+
+      <div className="surface-muted p-3 text-xs text-slate-500 dark:text-slate-400">
+        Version operativa 1.1
       </div>
     </aside>
   );

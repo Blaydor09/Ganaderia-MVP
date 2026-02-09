@@ -1,24 +1,27 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
-import { formatDateOnlyUtc } from "@/lib/dates";
-import { hasAnyRole } from "@/lib/auth";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Access } from "@/lib/access";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
+import { hasAnyRole } from "@/lib/auth";
+import { formatDateOnlyUtc } from "@/lib/dates";
+import type { InventoryAlertsResponse, InventoryBatch } from "@/lib/types";
 
 const adjustSchema = z.object({
   quantityAvailable: z.number().min(0),
@@ -26,19 +29,26 @@ const adjustSchema = z.object({
 
 type AdjustFormValues = z.infer<typeof adjustSchema>;
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  const responseMessage = (error as AxiosError<{ message?: string }>)?.response?.data?.message;
+  return responseMessage ?? fallback;
+};
+
 const InventoryPage = () => {
   const queryClient = useQueryClient();
   const canAdjust = hasAnyRole(Access.batchesUpdate);
-  const [adjustingBatch, setAdjustingBatch] = useState<any | null>(null);
+
+  const [adjustingBatch, setAdjustingBatch] = useState<InventoryBatch | null>(null);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+
   const { data: batches } = useQuery({
     queryKey: ["inventory"],
-    queryFn: async () => (await api.get("/inventory")).data,
+    queryFn: async () => (await api.get("/inventory")).data as InventoryBatch[],
   });
 
   const { data: alerts } = useQuery({
     queryKey: ["inventory", "alerts"],
-    queryFn: async () => (await api.get("/inventory/alerts")).data,
+    queryFn: async () => (await api.get("/inventory/alerts")).data as InventoryAlertsResponse,
   });
 
   const {
@@ -53,22 +63,23 @@ const InventoryPage = () => {
 
   useEffect(() => {
     if (!adjustingBatch) return;
-    reset({
-      quantityAvailable: adjustingBatch.quantityAvailable ?? 0,
-    });
+    reset({ quantityAvailable: adjustingBatch.quantityAvailable ?? 0 });
   }, [adjustingBatch, reset]);
 
   const onAdjustSubmit = async (values: AdjustFormValues) => {
     if (!adjustingBatch) return;
+
     const currentAvailable = Number(adjustingBatch.quantityAvailable ?? 0);
     const nextAvailable = Number(values.quantityAvailable);
     const delta = nextAvailable - currentAvailable;
+
     if (delta === 0) {
       toast.message("No hay cambios de stock");
       setIsAdjustOpen(false);
       setAdjustingBatch(null);
       return;
     }
+
     try {
       await api.post("/inventory/transactions", {
         batchId: adjustingBatch.id,
@@ -84,14 +95,18 @@ const InventoryPage = () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory", "alerts"] });
       queryClient.invalidateQueries({ queryKey: ["batches"] });
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message ?? "Error al ajustar stock");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Error al ajustar stock"));
     }
   };
 
+  const expiring = alerts?.expiring ?? [];
+  const lowStock = alerts?.lowStock ?? [];
+  const stockRows = batches ?? [];
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Inventario" subtitle="Stock por producto y lote" />
+      <PageHeader title="Inventario" subtitle="Stock por producto, lote y alertas operativas" />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
@@ -104,82 +119,81 @@ const InventoryPage = () => {
               <span>15 dias: {alerts?.expiring15?.length ?? 0}</span>
               <span>30 dias: {alerts?.expiring?.length ?? 0}</span>
             </div>
-            {(alerts?.expiring ?? []).map((batch: any) => (
+            {expiring.map((batch) => (
               <div key={batch.id} className="flex items-center justify-between">
-                <span>{batch.product?.name}</span>
-                <span className="text-xs text-slate-400">
-                  {formatDateOnlyUtc(batch.expiresAt)}
-                </span>
+                <span>{batch.product?.name ?? "Producto"}</span>
+                <span className="text-xs text-slate-400">{formatDateOnlyUtc(batch.expiresAt)}</span>
               </div>
             ))}
-            {(alerts?.expiring ?? []).length === 0 ? (
+            {expiring.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">Sin vencimientos cercanos.</p>
             ) : null}
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
             <p className="text-xs text-slate-500 dark:text-slate-400">Stock minimo</p>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {(alerts?.lowStock ?? []).map((row: any) => (
+            {lowStock.map((row) => (
               <div key={row.product.id} className="flex items-center justify-between">
                 <span>{row.product.name}</span>
                 <span className="text-xs text-slate-400">{row.total}</span>
               </div>
             ))}
-            {(alerts?.lowStock ?? []).length === 0 ? (
+            {lowStock.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">Sin productos en minimo.</p>
             ) : null}
           </CardContent>
         </Card>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
-        <Table>
-          <THead>
-            <TR>
-              <TH>Producto</TH>
-              <TH>Lote</TH>
-              <TH>Vencimiento</TH>
-              <TH>Disponible</TH>
-              <TH>Acciones</TH>
-            </TR>
-          </THead>
-          <TBody>
-            {(batches ?? []).map((batch: any) => (
-              <TR key={batch.id}>
-                <TD>{batch.product?.name}</TD>
-                <TD>{batch.batchNumber}</TD>
-                <TD>{formatDateOnlyUtc(batch.expiresAt)}</TD>
-                <TD>{batch.quantityAvailable}</TD>
-                <TD>
-                  {canAdjust ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setAdjustingBatch(batch);
-                        setIsAdjustOpen(true);
-                      }}
-                    >
-                      Ajustar
-                    </Button>
-                  ) : null}
-                </TD>
-              </TR>
-            ))}
-            {(batches ?? []).length === 0 ? (
+      {stockRows.length === 0 ? (
+        <EmptyState
+          title="Sin stock registrado"
+          description="Crea productos y lotes para empezar a registrar inventario."
+        />
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
+          <Table>
+            <THead>
               <TR>
-                <TD colSpan={5} className="text-sm text-slate-500 dark:text-slate-400">
-                  Sin stock registrado.
-                </TD>
+                <TH>Producto</TH>
+                <TH>Lote</TH>
+                <TH>Vencimiento</TH>
+                <TH>Disponible</TH>
+                <TH>Acciones</TH>
               </TR>
-            ) : null}
-          </TBody>
-        </Table>
-      </div>
+            </THead>
+            <TBody>
+              {stockRows.map((batch) => (
+                <TR key={batch.id}>
+                  <TD>{batch.product?.name ?? "Producto"}</TD>
+                  <TD>{batch.batchNumber}</TD>
+                  <TD>{formatDateOnlyUtc(batch.expiresAt)}</TD>
+                  <TD>{batch.quantityAvailable}</TD>
+                  <TD>
+                    {canAdjust ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setAdjustingBatch(batch);
+                          setIsAdjustOpen(true);
+                        }}
+                      >
+                        Ajustar
+                      </Button>
+                    ) : null}
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        </div>
+      )}
 
       <Dialog
         open={isAdjustOpen}
@@ -196,9 +210,7 @@ const InventoryPage = () => {
           </DialogHeader>
           <form className="space-y-3" onSubmit={handleSubmit(onAdjustSubmit)}>
             <div className="space-y-1 text-sm">
-              <label className="text-xs text-slate-500 dark:text-slate-400">
-                Disponible (dosis)
-              </label>
+              <label className="text-xs text-slate-500 dark:text-slate-400">Disponible</label>
               <Input
                 type="number"
                 min={0}

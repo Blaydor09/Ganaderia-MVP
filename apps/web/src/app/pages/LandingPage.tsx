@@ -34,7 +34,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import logo from "@/assets/logo.svg";
+import logo from "@/assets/logo_system.png";
 
 const heroBadges = [
   { label: "Retiros automaticos", variant: "warning" as const },

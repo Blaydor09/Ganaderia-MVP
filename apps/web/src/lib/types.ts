@@ -143,3 +143,153 @@ export type BatchListResponse = {
   page: number;
   pageSize: number;
 };
+
+export type DashboardRange = "7d" | "30d" | "90d";
+
+export type DashboardFilterParams = {
+  range: DashboardRange;
+  fincaId?: string;
+  establishmentId?: string;
+};
+
+export type DashboardKpiMetric = {
+  value: number;
+  deltaPct?: number;
+};
+
+export type DashboardKpis = {
+  animalsActive: DashboardKpiMetric;
+  treatmentsInRange: DashboardKpiMetric;
+  movementsInRange: DashboardKpiMetric;
+  withdrawalsActive: DashboardKpiMetric;
+  inventoryAlerts: {
+    value: number;
+    expiring: number;
+    lowStock: number;
+  };
+};
+
+export type TreatmentSeriesPoint = {
+  date: string;
+  count: number;
+};
+
+export type LifecycleSeriesPoint = {
+  date: string;
+  births: number;
+  deaths: number;
+  sales: number;
+};
+
+export type InventoryTopRow = {
+  productId: string;
+  productName: string;
+  unit: string;
+  stock: number;
+  minStock: number;
+};
+
+export type MovementRecentRow = {
+  id: string;
+  movementType: MovementType;
+  occurredAt: string;
+  animalId: string;
+  animalTag: string | null;
+  originName: string | null;
+  destinationName: string | null;
+};
+
+export type DashboardOverviewResponse = {
+  kpis: DashboardKpis;
+  animalDistribution: {
+    byCategory: Array<{ category: string; count: number }>;
+    bySex: Array<{ sex: string; count: number }>;
+  };
+  treatmentsSeries: TreatmentSeriesPoint[];
+  lifecycleSeries: LifecycleSeriesPoint[];
+  inventoryTop: InventoryTopRow[];
+  movementsRecent: MovementRecentRow[];
+  appliedFilters: {
+    range: DashboardRange;
+    from: string;
+    to: string;
+    fincaId: string | null;
+    establishmentId: string | null;
+  };
+  generatedAt: string;
+};
+
+export type InventoryBatch = {
+  id: string;
+  batchNumber: string;
+  expiresAt: string;
+  quantityAvailable: number;
+  product?: {
+    id: string;
+    name: string;
+    unit: string;
+  } | null;
+};
+
+export type InventoryLowStockRow = {
+  product: {
+    id: string;
+    name: string;
+    minStock: number;
+  };
+  total: number;
+};
+
+export type InventoryAlertsResponse = {
+  expiring: InventoryBatch[];
+  expiring7: InventoryBatch[];
+  expiring15: InventoryBatch[];
+  lowStock: InventoryLowStockRow[];
+};
+
+export type AlertRow = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  dueAt?: string | null;
+};
+
+export type ReportConsumptionRow = {
+  product?: {
+    id: string;
+    name: string;
+  } | null;
+  total: number;
+};
+
+export type ReportConsumptionResponse = {
+  items: ReportConsumptionRow[];
+};
+
+export type ReportWithdrawalItem = {
+  animal: {
+    id: string;
+    tag: string | null;
+    internalCode?: string | null;
+  };
+  meatUntil: string;
+  milkUntil: string;
+  products: string[];
+};
+
+export type ReportWithdrawalsActiveResponse = {
+  items: ReportWithdrawalItem[];
+  total: number;
+};
+
+export type ReportWeightRow = {
+  id: string;
+  animalId: string;
+  occurredAt: string;
+  valueNumber?: number | null;
+};
+
+export type ReportWeightsResponse = {
+  items: ReportWeightRow[];
+};

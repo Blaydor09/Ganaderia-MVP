@@ -25,6 +25,20 @@ export default {
       },
       boxShadow: {
         soft: "0 10px 30px rgba(15, 23, 42, 0.08)",
+        panel: "0 18px 45px rgba(15, 23, 42, 0.14)",
+        inset: "inset 0 1px 0 rgba(255,255,255,0.4)",
+      },
+      borderRadius: {
+        "4xl": "2rem",
+      },
+      keyframes: {
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "fade-up": "fade-up 320ms ease-out",
       },
     },
   },

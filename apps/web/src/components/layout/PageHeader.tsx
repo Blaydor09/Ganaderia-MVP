@@ -9,8 +9,8 @@ export const PageHeader = ({
   title: string;
   subtitle?: string;
   actions?: ReactNode;
-}) => {
-  return (
+}) => (
+  <header className="surface-panel animate-fade-up p-4 md:p-5">
     <div className="space-y-3">
       <Breadcrumbs />
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -22,8 +22,8 @@ export const PageHeader = ({
             <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
           ) : null}
         </div>
-        {actions}
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
     </div>
-  );
-};
+  </header>
+);

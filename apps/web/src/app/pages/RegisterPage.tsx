@@ -8,7 +8,7 @@ import { setTokens } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import logo from "@/assets/logo.svg";
+import logo from "@/assets/logo_system.png";
 import { ThemeShell } from "@/components/layout/ThemeProvider";
 
 const schema = z.object({

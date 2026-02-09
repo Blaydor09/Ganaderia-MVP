@@ -14,7 +14,7 @@ const THead = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTM
   ({ className, ...props }, ref) => (
     <thead
       ref={ref}
-      className={cn("bg-slate-50 dark:bg-slate-900/60", className)}
+      className={cn("sticky top-0 z-[1] bg-slate-50 dark:bg-slate-900/60", className)}
       {...props}
     />
   )
@@ -36,7 +36,7 @@ const TR = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableR
   ({ className, ...props }, ref) => (
     <tr
       ref={ref}
-      className={cn("hover:bg-slate-50 dark:hover:bg-slate-900/60", className)}
+      className={cn("interactive-row", className)}
       {...props}
     />
   )
@@ -48,7 +48,7 @@ const TH = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTab
     <th
       ref={ref}
       className={cn(
-        "px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400",
+        "px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ const TD = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTab
   ({ className, ...props }, ref) => (
     <td
       ref={ref}
-      className={cn("px-4 py-3 text-slate-700 dark:text-slate-200", className)}
+      className={cn("px-4 py-2.5 text-slate-700 dark:text-slate-200", className)}
       {...props}
     />
   )

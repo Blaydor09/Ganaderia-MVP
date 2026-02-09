@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
-import logo from "@/assets/logo.svg";
+import logo from "@/assets/logo_system.png";
 import { ThemeShell } from "@/components/layout/ThemeProvider";
 
 const schema = z.object({

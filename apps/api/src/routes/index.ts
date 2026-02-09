@@ -17,6 +17,7 @@ import alerts from "./alerts";
 import tasks from "./tasks";
 import search from "./search";
 import tenants from "./tenants";
+import dashboard from "./dashboard";
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use("/alerts", alerts);
 router.use("/tasks", tasks);
 router.use("/search", search);
 router.use("/tenants", tenants);
+router.use("/dashboard", dashboard);
 
 export default router;
