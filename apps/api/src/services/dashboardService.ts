@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
+import { buildTreatmentLocationWhere } from "./treatmentService";
 
 export type DashboardRange = "7d" | "30d" | "90d";
 
@@ -142,16 +143,24 @@ export const getDashboardOverview = async (
     input.fincaId
   );
 
+  const treatmentLocationWhere = buildTreatmentLocationWhere(
+    input.tenantId,
+    input.establishmentId,
+    input.fincaId
+  );
+  const scopedTreatmentLocationWhere =
+    Object.keys(treatmentLocationWhere).length > 0 ? treatmentLocationWhere : undefined;
+
   const treatmentWhere: Prisma.TreatmentWhereInput = {
     tenantId: input.tenantId,
     startedAt: { gte: from, lte: now },
-    ...withLocationByAnimal(input.tenantId, input.establishmentId, input.fincaId),
+    ...(scopedTreatmentLocationWhere ?? {}),
   };
 
   const previousTreatmentWhere: Prisma.TreatmentWhereInput = {
     tenantId: input.tenantId,
     startedAt: { gte: previousFrom, lte: previousTo },
-    ...withLocationByAnimal(input.tenantId, input.establishmentId, input.fincaId),
+    ...(scopedTreatmentLocationWhere ?? {}),
   };
 
   const movementWhere: Prisma.MovementWhereInput = {
@@ -169,15 +178,7 @@ export const getDashboardOverview = async (
   const withdrawalWhere: Prisma.AdministrationWhereInput = {
     tenantId: input.tenantId,
     OR: [{ meatWithdrawalUntil: { gt: now } }, { milkWithdrawalUntil: { gt: now } }],
-    treatment: input.establishmentId
-      ? { animal: { establishmentId: input.establishmentId, tenantId: input.tenantId } }
-      : input.fincaId
-        ? {
-            animal: {
-              establishment: { fincaId: input.fincaId, tenantId: input.tenantId },
-            },
-          }
-        : undefined,
+    treatment: scopedTreatmentLocationWhere,
   };
 
   const lifecycleWhere: Prisma.AnimalEventWhereInput = {
@@ -190,15 +191,7 @@ export const getDashboardOverview = async (
   const administrationsInRangeWhere: Prisma.AdministrationWhereInput = {
     tenantId: input.tenantId,
     administeredAt: { gte: from, lte: now },
-    treatment: input.establishmentId
-      ? { animal: { establishmentId: input.establishmentId, tenantId: input.tenantId } }
-      : input.fincaId
-        ? {
-            animal: {
-              establishment: { fincaId: input.fincaId, tenantId: input.tenantId },
-            },
-          }
-        : undefined,
+    treatment: scopedTreatmentLocationWhere,
   };
 
   const [animalsActive, byCategory, bySex] = await Promise.all([

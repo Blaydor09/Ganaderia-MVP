@@ -13,6 +13,7 @@ import { getPagination } from "../utils/pagination";
 import { ApiError } from "../utils/errors";
 import { computeWithdrawal } from "../services/withdrawalService";
 import { writeAudit } from "../utils/audit";
+import { buildTreatmentAnimalMembershipWhere } from "../services/treatmentService";
 
 const router = Router();
 
@@ -24,7 +25,7 @@ router.get(
     const tenantId = req.user!.tenantId;
     const where: Record<string, unknown> = { tenantId };
     if (req.query.animalId) {
-      where.treatment = { animalId: req.query.animalId };
+      where.treatment = buildTreatmentAnimalMembershipWhere(String(req.query.animalId));
     }
 
     const [items, total] = await Promise.all([
@@ -75,7 +76,7 @@ router.patch(
     const tenantId = req.user!.tenantId;
     const existing = await prisma.administration.findFirst({
       where: { id: req.params.id, tenantId },
-      include: { batch: { include: { product: true } } },
+      include: { batch: true },
     });
 
     if (!existing) {
@@ -95,8 +96,8 @@ router.patch(
     if (data.administeredAt) {
       withdrawal = computeWithdrawal(
         new Date(data.administeredAt),
-        existing.batch.product.meatWithdrawalDays,
-        existing.batch.product.milkWithdrawalDays
+        0,
+        0
       );
     }
 

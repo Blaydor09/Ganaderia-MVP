@@ -144,15 +144,25 @@ export type MovementListResponse = {
 
 export type Treatment = {
   id: string;
-  animalId: string;
-  diagnosis: string;
+  animalId?: string | null;
+  description: string;
+  mode: "INDIVIDUAL" | "GROUP";
   startedAt: string;
   endedAt?: string | null;
   status: "ACTIVE" | "CLOSED";
   animal?: {
     id: string;
     tag: string | null;
+    internalCode?: string | null;
   } | null;
+  animals?: Array<{
+    animalId: string;
+    animal?: {
+      id: string;
+      tag: string | null;
+      internalCode?: string | null;
+    } | null;
+  } | null>;
 };
 
 export type TreatmentListResponse = {
@@ -166,11 +176,13 @@ export type BatchForSelect = {
   id: string;
   productId: string;
   batchNumber: string;
+  expiresAt: string;
   quantityAvailable: number;
   product?: {
     id: string;
     name: string;
     unit: string;
+    recommendedRoute?: string | null;
   } | null;
 };
 

@@ -107,7 +107,12 @@ const AnimalDetailPage = () => {
                   key={treatment.id}
                   className="flex items-center justify-between border-b border-slate-200 py-2 text-sm dark:border-slate-800"
                 >
-                  <span>{treatment.diagnosis}</span>
+                  <span>
+                    {treatment.description}
+                    {treatment.mode === "GROUP"
+                      ? ` (Grupal: ${treatment.animals?.length ?? 0} animales)`
+                      : ""}
+                  </span>
                   <span className="text-xs text-slate-400">{treatment.status}</span>
                 </div>
               ))

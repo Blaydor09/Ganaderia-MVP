@@ -29,10 +29,16 @@ export const getAccessToken = () =>
 export const getRefreshToken = () =>
   typeof window === "undefined" ? null : sessionStorage.getItem(REFRESH_KEY);
 
-export const setTokens = (accessToken: string, refreshToken: string) => {
+export const setTokens = (accessToken: string, refreshToken?: string | null) => {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(ACCESS_KEY, accessToken);
-  sessionStorage.setItem(REFRESH_KEY, refreshToken);
+  if (typeof refreshToken === "string" && refreshToken.length > 0) {
+    sessionStorage.setItem(REFRESH_KEY, refreshToken);
+    return;
+  }
+  if (refreshToken === null) {
+    sessionStorage.removeItem(REFRESH_KEY);
+  }
 };
 
 export const clearTokens = () => {

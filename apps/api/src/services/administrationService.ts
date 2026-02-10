@@ -22,7 +22,6 @@ export type CreateAdministrationInput = {
 export const createAdministration = async (input: CreateAdministrationInput) => {
   const batch = await prisma.batch.findFirst({
     where: { id: input.batchId, tenantId: input.tenantId },
-    include: { product: true },
   });
 
   if (!batch) {
@@ -49,10 +48,25 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
     throw new ApiError(404, "Treatment not found");
   }
 
+  const linkedAnimalsCount = await prisma.treatmentAnimal.count({
+    where: { treatmentId: treatment.id, tenantId: input.tenantId },
+  });
+  const affectedAnimalsCount =
+    linkedAnimalsCount > 0 ? linkedAnimalsCount : treatment.animalId ? 1 : 0;
+
+  if (affectedAnimalsCount <= 0) {
+    throw new ApiError(400, "Treatment has no animals assigned");
+  }
+
+  const requiredQuantity = input.dose * affectedAnimalsCount;
+  if (!hasSufficientStock(batch.quantityAvailable, requiredQuantity)) {
+    throw new ApiError(400, "Insufficient stock");
+  }
+
   const withdrawal = computeWithdrawal(
     input.administeredAt,
-    batch.product.meatWithdrawalDays,
-    batch.product.milkWithdrawalDays
+    0,
+    0
   );
 
   const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -76,7 +90,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
 
     await tx.batch.update({
       where: { id: batch.id },
-      data: { quantityAvailable: { decrement: input.dose } },
+      data: { quantityAvailable: { decrement: requiredQuantity } },
     });
 
     await tx.inventoryTransaction.create({
@@ -84,7 +98,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
         batchId: batch.id,
         productId: batch.productId,
         type: "OUT",
-        quantity: input.dose,
+        quantity: requiredQuantity,
         unit: input.doseUnit,
         occurredAt: input.administeredAt,
         reason: "administration",

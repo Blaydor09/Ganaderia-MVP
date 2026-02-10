@@ -2,20 +2,14 @@ import { z } from "zod";
 
 const productTypeSchema = z.enum(["VITAMINAS", "ANTIBIOTICOS", "DESPARASITANTE", "VACUNAS"]);
 const vaccineTypesSchema = z.array(z.string().trim().min(1)).optional();
+const recommendedRouteSchema = z.enum(["subcutanea", "intramuscular"]);
 
 const baseProductSchema = z.object({
   name: z.string().min(1),
   type: productTypeSchema.optional(),
   vaccineTypes: vaccineTypesSchema,
-  activeIngredient: z.string().min(1),
-  presentation: z.string().min(1),
-  concentration: z.string().min(1),
-  unit: z.string().min(1),
-  meatWithdrawalDays: z.number().int().min(0),
-  milkWithdrawalDays: z.number().int().min(0),
-  requiresPrescription: z.boolean().optional(),
-  recommendedRoute: z.string().optional(),
-  typicalDose: z.string().optional(),
+  unit: z.string().min(1).optional(),
+  recommendedRoute: recommendedRouteSchema.optional(),
   notes: z.string().optional(),
   minStock: z.number().int().min(0).optional(),
 });

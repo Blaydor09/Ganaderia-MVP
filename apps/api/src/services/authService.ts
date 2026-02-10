@@ -31,7 +31,9 @@ export type ScopedSessionInput = {
   ip?: string;
 };
 
-export const createScopedSession = async (input: ScopedSessionInput) => {
+type SessionStore = Pick<typeof prisma, "refreshToken">;
+
+export const createScopedSession = async (input: ScopedSessionInput, store: SessionStore = prisma) => {
   if (input.scope === "tenant" && !input.tenantId) {
     throw new ApiError(500, "Tenant session requires tenantId");
   }
@@ -48,7 +50,7 @@ export const createScopedSession = async (input: ScopedSessionInput) => {
   const tokenHash = await hashPassword(refreshToken);
   const expiresAt = new Date(Date.now() + parseDurationToMs(env.jwtRefreshExpiresIn));
 
-  await prisma.refreshToken.create({
+  await store.refreshToken.create({
     data: {
       userId: input.user.id,
       tokenHash,
@@ -175,7 +177,7 @@ export const login = async (
   };
 };
 
-export const refresh = async (refreshToken: string) => {
+export const refresh = async (refreshToken: string, userAgent?: string, ip?: string) => {
   const payload = parseRefreshTokenPayload(refreshToken);
   if (payload.scope !== "tenant" || !payload.tenantId) {
     throw new ApiError(401, "Invalid refresh token");
@@ -218,15 +220,31 @@ export const refresh = async (refreshToken: string) => {
     throw new ApiError(403, "Tenant access denied");
   }
 
-  const newAccessToken = signAccessToken({
-    sub: user.id,
-    roles,
-    scope: "tenant",
-    tenantId: payload.tenantId,
-    impersonationSessionId: payload.impersonationSessionId,
+  const rotatedSession = await prisma.$transaction(async (tx) => {
+    await tx.refreshToken.update({
+      where: { id: match.token.id },
+      data: { revokedAt: new Date() },
+    });
+
+    return createScopedSession(
+      {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+        roles,
+        scope: "tenant",
+        tenantId: payload.tenantId,
+        impersonationSessionId: payload.impersonationSessionId,
+        userAgent,
+        ip,
+      },
+      tx
+    );
   });
 
-  return { accessToken: newAccessToken };
+  return rotatedSession;
 };
 
 export const logout = async (refreshToken: string) => {

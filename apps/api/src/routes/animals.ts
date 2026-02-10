@@ -17,9 +17,39 @@ import { writeAudit } from "../utils/audit";
 import { getActiveWithdrawalForAnimal } from "../services/withdrawalService";
 import { ApiError } from "../utils/errors";
 import { assertTenantLimit, getCurrentUsageValue } from "../services/usageService";
+import { buildTreatmentAnimalMembershipWhere } from "../services/treatmentService";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+
+const MAX_IMPORT_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 5_000;
+const CSV_ALLOWED_MIME_TYPES = new Set([
+  "text/csv",
+  "application/csv",
+  "application/vnd.ms-excel",
+  "text/plain",
+  "application/octet-stream",
+]);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_IMPORT_FILE_SIZE_BYTES,
+    files: 1,
+  },
+  fileFilter: (_req, file, cb) => {
+    const originalName = file.originalname?.toLowerCase() ?? "";
+    const hasCsvExtension = originalName.endsWith(".csv");
+    const allowedMimeType = CSV_ALLOWED_MIME_TYPES.has(file.mimetype);
+
+    if (!hasCsvExtension && !allowedMimeType) {
+      cb(new ApiError(400, "Only CSV files are allowed"));
+      return;
+    }
+
+    cb(null, true);
+  },
+});
 
 const normalizeOptionalString = (value?: string | null) => {
   if (typeof value !== "string") return value ?? null;
@@ -302,7 +332,6 @@ router.get(
         establishment: { include: { parent: true } },
         events: { orderBy: { occurredAt: "desc" } },
         movements: { orderBy: { occurredAt: "desc" } },
-        treatments: { include: { administrations: true } },
         photos: true,
       },
     });
@@ -311,7 +340,26 @@ router.get(
       return res.status(404).json({ message: "Animal not found" });
     }
 
-    res.json(animal);
+    const treatments = await prisma.treatment.findMany({
+      where: {
+        tenantId,
+        ...buildTreatmentAnimalMembershipWhere(animal.id),
+      },
+      include: {
+        animal: true,
+        animals: {
+          include: { animal: true },
+          orderBy: [{ createdAt: "asc" }, { animalId: "asc" }],
+        },
+        administrations: { orderBy: { administeredAt: "desc" } },
+      },
+      orderBy: { startedAt: "desc" },
+    });
+
+    res.json({
+      ...animal,
+      treatments,
+    });
   })
 );
 
@@ -457,7 +505,13 @@ router.post(
       columns: true,
       skip_empty_lines: true,
       trim: true,
+      bom: true,
+      max_record_size: 10_000,
     }) as Record<string, string>[];
+
+    if (rows.length > MAX_IMPORT_ROWS) {
+      throw new ApiError(400, `CSV exceeds ${MAX_IMPORT_ROWS} rows`);
+    }
 
     const incomingActiveCount = rows.reduce((count, row) => {
       const rowStatus = (row.status as string | undefined) ?? "ACTIVO";

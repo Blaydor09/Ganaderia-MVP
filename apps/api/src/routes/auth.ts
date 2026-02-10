@@ -7,6 +7,12 @@ import { authenticate } from "../middleware/auth";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
 import { z } from "zod";
+import {
+  clearTenantRefreshCookie,
+  readTenantRefreshCookie,
+  setTenantRefreshCookie,
+} from "../utils/authCookies";
+import { ApiError } from "../utils/errors";
 
 const router = Router();
 
@@ -16,6 +22,21 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+const refreshLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const resolveRefreshToken = (body: unknown, cookieToken?: string) => {
+  const parsed = refreshSchema.parse(body ?? {});
+  const token = parsed.refreshToken ?? cookieToken;
+  if (!token) {
+    throw new ApiError(400, "Refresh token is required");
+  }
+  return token;
+};
 
 router.post(
   "/login",
@@ -29,6 +50,7 @@ router.post(
       req.headers["user-agent"],
       req.ip
     );
+    setTenantRefreshCookie(res, result.refreshToken);
     res.json(result);
   })
 );
@@ -47,6 +69,7 @@ router.post(
       userAgent: req.headers["user-agent"],
       ip: req.ip,
     });
+    setTenantRefreshCookie(res, result.refreshToken);
     res.status(201).json(result);
   })
 );
@@ -65,18 +88,30 @@ router.get(
 
 router.post(
   "/refresh",
+  refreshLimiter,
   asyncHandler(async (req, res) => {
-    const data = refreshSchema.parse(req.body);
-    const result = await refresh(data.refreshToken);
+    const refreshToken = resolveRefreshToken(req.body, readTenantRefreshCookie(req));
+    const result = await refresh(refreshToken, req.headers["user-agent"], req.ip);
+    setTenantRefreshCookie(res, result.refreshToken);
     res.json(result);
   })
 );
 
 router.post(
   "/logout",
+  refreshLimiter,
   asyncHandler(async (req, res) => {
-    const data = refreshSchema.parse(req.body);
-    const result = await logout(data.refreshToken);
+    const bodyToken = refreshSchema.parse(req.body ?? {}).refreshToken;
+    const cookieToken = readTenantRefreshCookie(req);
+    const refreshToken = bodyToken ?? cookieToken;
+
+    if (!refreshToken) {
+      clearTenantRefreshCookie(res);
+      return res.json({ success: true });
+    }
+
+    const result = await logout(refreshToken);
+    clearTenantRefreshCookie(res);
     res.json(result);
   })
 );
@@ -94,6 +129,7 @@ router.post(
       userAgent: req.headers["user-agent"],
       ip: req.ip,
     });
+    setTenantRefreshCookie(res, result.refreshToken);
     res.json(result);
   })
 );

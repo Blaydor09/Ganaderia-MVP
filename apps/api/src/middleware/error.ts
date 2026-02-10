@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
+import { MulterError } from "multer";
 import { ApiError } from "../utils/errors";
 import { ZodError } from "zod";
 
@@ -17,6 +18,13 @@ export const errorHandler = (
 
   if (err instanceof ZodError) {
     return res.status(400).json({ message: "Validation error", details: err.flatten() });
+  }
+
+  if (err instanceof MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ message: "Uploaded file exceeds 2MB limit" });
+    }
+    return res.status(400).json({ message: err.message });
   }
 
   if (err instanceof JsonWebTokenError || err instanceof TokenExpiredError) {

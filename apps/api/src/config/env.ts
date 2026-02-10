@@ -34,7 +34,7 @@ const parseCorsOrigins = (value?: string) => {
 const isProduction = environment === "production";
 let corsOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
 if (!corsOrigins.length && !isProduction) {
-  corsOrigins = ["http://localhost:5173"];
+  corsOrigins = ["http://localhost:5173", "http://localhost:5174"];
 }
 if (!corsOrigins.length && isProduction) {
   throw new Error("Missing env CORS_ORIGIN");
@@ -47,6 +47,9 @@ const enableDocs =
   process.env.ENABLE_DOCS !== undefined
     ? process.env.ENABLE_DOCS === "true"
     : !isProduction;
+
+const jwtSecret = requireEnv("JWT_SECRET");
+const jwtRefreshSecret = requireEnv("JWT_REFRESH_SECRET");
 
 const registrationModeRaw = (process.env.REGISTRATION_MODE ?? "open").toLowerCase();
 const registrationMode =
@@ -65,13 +68,31 @@ if (registrationMode === "protected" && !registrationCode) {
   throw new Error("REGISTRATION_CODE is required when REGISTRATION_MODE=protected");
 }
 
+const weakSecretPattern = /^(dev|test|secret|change|default|example)/i;
+const ensureStrongSecret = (key: string, value: string) => {
+  if (value.length < 32 || weakSecretPattern.test(value)) {
+    throw new Error(`${key} must be at least 32 chars and not use default-like values`);
+  }
+};
+
+if (isProduction) {
+  if (enableDocs) {
+    throw new Error("ENABLE_DOCS must be false in production");
+  }
+  if (registrationMode === "open") {
+    throw new Error("REGISTRATION_MODE=open is not allowed in production");
+  }
+  ensureStrongSecret("JWT_SECRET", jwtSecret);
+  ensureStrongSecret("JWT_REFRESH_SECRET", jwtRefreshSecret);
+}
+
 export const env = {
   nodeEnv: environment,
   isProduction,
   port: Number(process.env.PORT ?? 4000),
   databaseUrl: requireEnv("DATABASE_URL"),
-  jwtSecret: requireEnv("JWT_SECRET"),
-  jwtRefreshSecret: requireEnv("JWT_REFRESH_SECRET"),
+  jwtSecret,
+  jwtRefreshSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "15m",
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
   corsOrigin: corsOrigins,

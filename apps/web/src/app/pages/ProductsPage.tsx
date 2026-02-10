@@ -26,6 +26,8 @@ const productTypeValues = [
   "VACUNAS",
 ] as const;
 const productTypeSchema = z.enum(productTypeValues);
+const recommendedRouteValues = ["subcutanea", "intramuscular"] as const;
+const recommendedRouteSchema = z.enum(recommendedRouteValues);
 
 const parseVaccineTypes = (value?: string) =>
   (value ?? "")
@@ -38,17 +40,8 @@ const schema = z
     name: z.string().min(1, "Requerido"),
     type: productTypeSchema.optional(),
     vaccineTypes: z.string().optional(),
-    activeIngredient: z.string().min(1, "Requerido"),
-    presentation: z.string().min(1, "Requerido"),
-    concentration: z.string().min(1, "Requerido"),
-    unit: z.string().min(1, "Requerido"),
-    meatWithdrawalDays: z.number().int().min(0),
-    milkWithdrawalDays: z.number().int().min(0),
-    requiresPrescription: z.boolean().optional(),
-    recommendedRoute: z.string().optional(),
-    typicalDose: z.string().optional(),
+    recommendedRoute: recommendedRouteSchema,
     notes: z.string().optional(),
-    minStock: z.number().int().min(0).optional(),
   })
   .superRefine((values, ctx) => {
     if (values.type === "VACUNAS") {
@@ -84,9 +77,7 @@ const ProductsPage = () => {
     defaultValues: {
       type: undefined,
       vaccineTypes: "",
-      requiresPrescription: false,
-      unit: "dosis",
-      minStock: undefined,
+      recommendedRoute: "subcutanea",
     },
   });
 
@@ -99,17 +90,8 @@ const ProductsPage = () => {
         name: values.name.trim(),
         type: values.type,
         vaccineTypes: values.type === "VACUNAS" ? vaccineTypes : undefined,
-        activeIngredient: values.activeIngredient.trim(),
-        presentation: values.presentation.trim(),
-        concentration: values.concentration.trim(),
-        unit: values.unit.trim(),
-        meatWithdrawalDays: values.meatWithdrawalDays,
-        milkWithdrawalDays: values.milkWithdrawalDays,
-        requiresPrescription: values.requiresPrescription,
-        recommendedRoute: values.recommendedRoute?.trim() || undefined,
-        typicalDose: values.typicalDose?.trim() || undefined,
+        recommendedRoute: values.recommendedRoute,
         notes: values.notes?.trim() || undefined,
-        minStock: values.minStock,
       });
       toast.success("Medicamento creado");
       reset();
@@ -124,7 +106,7 @@ const ProductsPage = () => {
     <div className="space-y-6">
       <PageHeader
         title="Medicamentos"
-        subtitle="Catalogo de productos y retiros"
+        subtitle="Catalogo de productos"
         actions={
           canCreate ? (
             <Dialog>
@@ -176,122 +158,22 @@ const ProductsPage = () => {
                         ) : null}
                       </div>
                     ) : null}
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Principio activo
-                      </label>
-                      <Input placeholder="Ej: Ivermectina" {...register("activeIngredient")} />
-                      {errors.activeIngredient ? (
-                        <p className="text-xs text-red-500">
-                          {errors.activeIngredient.message}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Presentacion
-                      </label>
-                      <Input placeholder="Ej: Frasco 50 ml" {...register("presentation")} />
-                      {errors.presentation ? (
-                        <p className="text-xs text-red-500">
-                          {errors.presentation.message}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Concentracion
-                      </label>
-                      <Input placeholder="Ej: 1%" {...register("concentration")} />
-                      {errors.concentration ? (
-                        <p className="text-xs text-red-500">
-                          {errors.concentration.message}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Unidad
-                      </label>
-                      <Input placeholder="Ej: dosis" {...register("unit")} />
-                      {errors.unit ? (
-                        <p className="text-xs text-red-500">{errors.unit.message}</p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Retiro carne (dias)
-                      </label>
-                      <Input
-                        type="number"
-                        min={0}
-                        {...register("meatWithdrawalDays", {
-                          setValueAs: (value) => (value === "" ? 0 : Number(value)),
-                        })}
-                      />
-                      {errors.meatWithdrawalDays ? (
-                        <p className="text-xs text-red-500">
-                          {errors.meatWithdrawalDays.message}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Retiro leche (dias)
-                      </label>
-                      <Input
-                        type="number"
-                        min={0}
-                        {...register("milkWithdrawalDays", {
-                          setValueAs: (value) => (value === "" ? 0 : Number(value)),
-                        })}
-                      />
-                      {errors.milkWithdrawalDays ? (
-                        <p className="text-xs text-red-500">
-                          {errors.milkWithdrawalDays.message}
-                        </p>
-                      ) : null}
-                    </div>
                     <div className="space-y-1 text-sm md:col-span-2">
                       <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Stock minimo (opcional)
+                        Via recomendada
                       </label>
-                      <Input
-                        type="number"
-                        min={0}
-                        {...register("minStock", {
-                          setValueAs: (value) =>
-                            value === "" ? undefined : Number(value),
-                        })}
-                      />
-                      {errors.minStock ? (
-                        <p className="text-xs text-red-500">{errors.minStock.message}</p>
+                      <select
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        {...register("recommendedRoute")}
+                      >
+                        <option value="subcutanea">Subcutanea</option>
+                        <option value="intramuscular">Intramuscular</option>
+                      </select>
+                      {errors.recommendedRoute ? (
+                        <p className="text-xs text-red-500">
+                          {errors.recommendedRoute.message}
+                        </p>
                       ) : null}
-                    </div>
-                    <div className="space-y-1 text-sm md:col-span-2">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Requiere receta
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          {...register("requiresPrescription")}
-                          className="h-4 w-4 rounded border-slate-300 text-brand-600 dark:border-slate-600"
-                        />
-                        <span>Si</span>
-                      </label>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Via recomendada (opcional)
-                      </label>
-                      <Input placeholder="Ej: Subcutanea" {...register("recommendedRoute")} />
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Dosis tipica (opcional)
-                      </label>
-                      <Input placeholder="Ej: 1 dosis/50kg" {...register("typicalDose")} />
                     </div>
                     <div className="space-y-1 text-sm md:col-span-2">
                       <label className="text-xs text-slate-500 dark:text-slate-400">
@@ -319,15 +201,11 @@ const ProductsPage = () => {
           <Card key={product.id}>
             <CardContent className="space-y-2">
               <h3 className="font-display text-lg font-semibold">{product.name}</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Principio: {product.activeIngredient}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Retiro carne: {product.meatWithdrawalDays} dias
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Retiro leche: {product.milkWithdrawalDays} dias
-              </p>
+              {product.recommendedRoute ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Via recomendada: {product.recommendedRoute}
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         ))}

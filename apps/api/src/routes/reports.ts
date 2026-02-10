@@ -3,6 +3,7 @@ import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
+import { buildTreatmentLocationWhere } from "../services/treatmentService";
 
 const router = Router();
 
@@ -15,11 +16,7 @@ router.get(
     const now = new Date();
     const establishmentId = (req.query.establishmentId as string | undefined) ?? undefined;
     const fincaId = (req.query.fincaId as string | undefined) ?? undefined;
-    const treatmentFilter = establishmentId
-      ? { animal: { establishmentId, tenantId } }
-      : fincaId
-        ? { animal: { establishment: { fincaId, tenantId } } }
-        : undefined;
+    const treatmentFilter = buildTreatmentLocationWhere(tenantId, establishmentId, fincaId);
     const administrations = await prisma.administration.findMany({
       where: {
         OR: [
@@ -30,30 +27,45 @@ router.get(
         treatment: treatmentFilter,
       },
       include: {
-        treatment: { include: { animal: true } },
+        treatment: {
+          include: {
+            animal: true,
+            animals: { include: { animal: true } },
+          },
+        },
         product: true,
       },
     });
 
     const map = new Map<string, any>();
     for (const admin of administrations) {
-      const animal = admin.treatment.animal;
-      if (!animal) continue;
-      const existing = map.get(animal.id) ?? {
-        animal,
-        meatUntil: admin.meatWithdrawalUntil,
-        milkUntil: admin.milkWithdrawalUntil,
-        productNames: new Set<string>(),
-      };
+      const treatmentAnimals = new Map<string, (typeof admin.treatment.animal)>();
+      if (admin.treatment.animal) {
+        treatmentAnimals.set(admin.treatment.animal.id, admin.treatment.animal);
+      }
+      for (const relation of admin.treatment.animals) {
+        if (!relation.animal) continue;
+        treatmentAnimals.set(relation.animal.id, relation.animal);
+      }
 
-      existing.productNames.add(admin.product.name);
-      if (admin.meatWithdrawalUntil > existing.meatUntil) {
-        existing.meatUntil = admin.meatWithdrawalUntil;
+      for (const animal of treatmentAnimals.values()) {
+        if (!animal) continue;
+        const existing = map.get(animal.id) ?? {
+          animal,
+          meatUntil: admin.meatWithdrawalUntil,
+          milkUntil: admin.milkWithdrawalUntil,
+          productNames: new Set<string>(),
+        };
+
+        existing.productNames.add(admin.product.name);
+        if (admin.meatWithdrawalUntil > existing.meatUntil) {
+          existing.meatUntil = admin.meatWithdrawalUntil;
+        }
+        if (admin.milkWithdrawalUntil > existing.milkUntil) {
+          existing.milkUntil = admin.milkWithdrawalUntil;
+        }
+        map.set(animal.id, existing);
       }
-      if (admin.milkWithdrawalUntil > existing.milkUntil) {
-        existing.milkUntil = admin.milkWithdrawalUntil;
-      }
-      map.set(animal.id, existing);
     }
 
     const items = Array.from(map.values()).map((row) => ({

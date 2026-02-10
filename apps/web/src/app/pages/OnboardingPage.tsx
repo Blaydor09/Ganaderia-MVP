@@ -90,16 +90,7 @@ type ProductEntry = {
   name: string;
   type: "" | "VITAMINAS" | "ANTIBIOTICOS" | "DESPARASITANTE" | "VACUNAS";
   vaccineTypes: string;
-  activeIngredient: string;
-  presentation: string;
-  concentration: string;
-  unit: string;
-  meatWithdrawalDays: string;
-  milkWithdrawalDays: string;
-  minStock: string;
-  requiresPrescription: boolean;
   recommendedRoute: string;
-  typicalDose: string;
   notes: string;
 };
 
@@ -117,16 +108,7 @@ const createProductEntry = (): ProductEntry => ({
   name: "",
   type: "",
   vaccineTypes: "",
-  activeIngredient: "",
-  presentation: "",
-  concentration: "",
-  unit: "dosis",
-  meatWithdrawalDays: "0",
-  milkWithdrawalDays: "0",
-  minStock: "",
-  requiresPrescription: false,
-  recommendedRoute: "",
-  typicalDose: "",
+  recommendedRoute: "subcutanea",
   notes: "",
 });
 
@@ -355,15 +337,7 @@ const OnboardingPage = () => {
   };
 
   const saveProducts = async () => {
-    const cleaned = products.filter((product) =>
-      [
-        product.name,
-        product.activeIngredient,
-        product.presentation,
-        product.concentration,
-        product.unit,
-      ].some((value) => value.trim().length > 0)
-    );
+    const cleaned = products.filter((product) => product.name.trim().length > 0);
 
     if (!cleaned.length) {
       markStepSaved("products");
@@ -373,28 +347,9 @@ const OnboardingPage = () => {
     try {
       for (const product of cleaned) {
         const name = product.name.trim();
-        const activeIngredient = product.activeIngredient.trim();
-        const presentation = product.presentation.trim();
-        const concentration = product.concentration.trim();
-        const unit = product.unit.trim();
 
-        if (!name || !activeIngredient || !presentation || !concentration || !unit) {
+        if (!name) {
           toast.error("Completa los campos requeridos en medicamentos.");
-          return false;
-        }
-
-        const meatWithdrawalDays = Number(product.meatWithdrawalDays || 0);
-        const milkWithdrawalDays = Number(product.milkWithdrawalDays || 0);
-        const minStock = product.minStock.trim()
-          ? Number(product.minStock)
-          : undefined;
-
-        if (Number.isNaN(meatWithdrawalDays) || Number.isNaN(milkWithdrawalDays)) {
-          toast.error("Retiros deben ser numeros validos.");
-          return false;
-        }
-        if (minStock !== undefined && Number.isNaN(minStock)) {
-          toast.error("Stock minimo debe ser un numero valido.");
           return false;
         }
 
@@ -410,17 +365,8 @@ const OnboardingPage = () => {
           name,
           type: product.type || undefined,
           vaccineTypes,
-          activeIngredient,
-          presentation,
-          concentration,
-          unit,
-          meatWithdrawalDays,
-          milkWithdrawalDays,
-          requiresPrescription: product.requiresPrescription,
-          recommendedRoute: product.recommendedRoute.trim() || undefined,
-          typicalDose: product.typicalDose.trim() || undefined,
+          recommendedRoute: product.recommendedRoute,
           notes: product.notes.trim() || undefined,
-          minStock,
         });
       }
 
@@ -485,7 +431,7 @@ const OnboardingPage = () => {
     );
   };
 
-  const updateProduct = (index: number, field: keyof ProductEntry, value: string | boolean) => {
+  const updateProduct = (index: number, field: keyof ProductEntry, value: string) => {
     setProducts((prev) =>
       prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
     );
@@ -946,126 +892,20 @@ const OnboardingPage = () => {
                         />
                       </div>
                     ) : null}
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Principio activo
-                      </label>
-                      <Input
-                        placeholder="Ej: Ivermectina"
-                        value={product.activeIngredient}
-                        onChange={(event) =>
-                          updateProduct(index, "activeIngredient", event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Presentacion
-                      </label>
-                      <Input
-                        placeholder="Ej: Frasco 50 ml"
-                        value={product.presentation}
-                        onChange={(event) =>
-                          updateProduct(index, "presentation", event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Concentracion
-                      </label>
-                      <Input
-                        placeholder="Ej: 1%"
-                        value={product.concentration}
-                        onChange={(event) =>
-                          updateProduct(index, "concentration", event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">Unidad</label>
-                      <Input
-                        placeholder="Ej: dosis"
-                        value={product.unit}
-                        onChange={(event) => updateProduct(index, "unit", event.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Retiro carne (dias)
-                      </label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={product.meatWithdrawalDays}
-                        onChange={(event) =>
-                          updateProduct(index, "meatWithdrawalDays", event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Retiro leche (dias)
-                      </label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={product.milkWithdrawalDays}
-                        onChange={(event) =>
-                          updateProduct(index, "milkWithdrawalDays", event.target.value)
-                        }
-                      />
-                    </div>
                     <div className="space-y-1 text-sm md:col-span-2">
                       <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Stock minimo (opcional)
+                        Via recomendada
                       </label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={product.minStock}
-                        onChange={(event) => updateProduct(index, "minStock", event.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1 text-sm md:col-span-2">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Requiere receta
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={product.requiresPrescription}
-                          onChange={(event) =>
-                            updateProduct(index, "requiresPrescription", event.target.checked)
-                          }
-                          className="h-4 w-4 rounded border-slate-300 text-brand-600 dark:border-slate-600"
-                        />
-                        <span>Si</span>
-                      </label>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Via recomendada (opcional)
-                      </label>
-                      <Input
-                        placeholder="Ej: Subcutanea"
+                      <select
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                         value={product.recommendedRoute}
                         onChange={(event) =>
                           updateProduct(index, "recommendedRoute", event.target.value)
                         }
-                      />
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Dosis tipica (opcional)
-                      </label>
-                      <Input
-                        placeholder="Ej: 1 dosis/50kg"
-                        value={product.typicalDose}
-                        onChange={(event) =>
-                          updateProduct(index, "typicalDose", event.target.value)
-                        }
-                      />
+                      >
+                        <option value="subcutanea">Subcutanea</option>
+                        <option value="intramuscular">Intramuscular</option>
+                      </select>
                     </div>
                     <div className="space-y-1 text-sm md:col-span-2">
                       <label className="text-xs text-slate-500 dark:text-slate-400">

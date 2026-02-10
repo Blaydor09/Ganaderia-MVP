@@ -37,9 +37,7 @@ export const Topbar = () => {
   const handleLogout = async () => {
     try {
       const refreshToken = getRefreshToken();
-      if (refreshToken) {
-        await api.post("/auth/logout", { refreshToken });
-      }
+      await api.post("/auth/logout", refreshToken ? { refreshToken } : {});
     } catch {
       // continue local logout even if server-side revocation fails
     } finally {

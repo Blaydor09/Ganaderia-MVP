@@ -10,12 +10,23 @@ import {
 } from "../../services/platformAuthService";
 import { authenticatePlatform } from "../../middleware/auth";
 import { prisma } from "../../config/prisma";
+import {
+  clearPlatformRefreshCookie,
+  readPlatformRefreshCookie,
+  setPlatformRefreshCookie,
+} from "../../utils/authCookies";
 
 const router = Router();
 
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const refreshLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -31,24 +42,42 @@ router.post(
       userAgent: req.headers["user-agent"],
       ip: req.ip,
     });
+    setPlatformRefreshCookie(res, result.refreshToken);
     res.json(result);
   })
 );
 
 router.post(
   "/refresh",
+  refreshLimiter,
   asyncHandler(async (req, res) => {
-    const data = refreshSchema.parse(req.body);
-    const result = await platformRefresh(data.refreshToken);
+    const bodyToken = refreshSchema.parse(req.body ?? {}).refreshToken;
+    const cookieToken = readPlatformRefreshCookie(req);
+    const refreshToken = bodyToken ?? cookieToken;
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Refresh token is required" });
+    }
+    const result = await platformRefresh(refreshToken, req.headers["user-agent"], req.ip);
+    setPlatformRefreshCookie(res, result.refreshToken);
     res.json(result);
   })
 );
 
 router.post(
   "/logout",
+  refreshLimiter,
   asyncHandler(async (req, res) => {
-    const data = refreshSchema.parse(req.body);
-    const result = await platformLogout(data.refreshToken);
+    const bodyToken = refreshSchema.parse(req.body ?? {}).refreshToken;
+    const cookieToken = readPlatformRefreshCookie(req);
+    const refreshToken = bodyToken ?? cookieToken;
+
+    if (!refreshToken) {
+      clearPlatformRefreshCookie(res);
+      return res.json({ success: true });
+    }
+
+    const result = await platformLogout(refreshToken);
+    clearPlatformRefreshCookie(res);
     res.json(result);
   })
 );

@@ -125,6 +125,11 @@ enum TreatmentStatus {
   CLOSED
 }
 
+enum TreatmentMode {
+  INDIVIDUAL
+  GROUP
+}
+
 enum TaskStatus {
   OPEN
   DONE
@@ -235,6 +240,7 @@ model Tenant {
   batches               Batch[]
   inventoryTransactions InventoryTransaction[]
   treatments            Treatment[]
+  treatmentAnimals      TreatmentAnimal[]
   administrations       Administration[]
   labResults            LabResult[]
   auditLogs             AuditLog[]
@@ -469,6 +475,7 @@ model Animal {
   events          AnimalEvent[]
   movements       Movement[]
   treatments      Treatment[]
+  treatmentLinks  TreatmentAnimal[]
   labResults      LabResult[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -557,16 +564,9 @@ model Product {
   name                  String
   type                  ProductType?
   vaccineTypes          String[]               @default([])
-  activeIngredient      String
-  presentation          String
-  concentration         String
-  unit                  String
+  unit                  String                 @default("dosis")
   species               String                 @default("bovinos")
-  meatWithdrawalDays    Int
-  milkWithdrawalDays    Int
-  requiresPrescription  Boolean                @default(false)
   recommendedRoute      String?
-  typicalDose           String?
   notes                 String?
   minStock              Int                    @default(0)
   tenantId              String
@@ -642,8 +642,9 @@ model InventoryTransaction {
 
 model Treatment {
   id          String          @id @default(uuid())
-  animalId    String
-  diagnosis   String
+  animalId    String?
+  description String
+  mode        TreatmentMode   @default(INDIVIDUAL)
   vetId       String?
   startedAt   DateTime
   endedAt     DateTime?
@@ -653,13 +654,34 @@ model Treatment {
   createdById String?
   createdAt   DateTime        @default(now())
 
-  animal          Animal           @relation(fields: [animalId], references: [id])
+  animal          Animal?          @relation(fields: [animalId], references: [id])
+  animals         TreatmentAnimal[]
   administrations Administration[]
   createdBy       User?            @relation("TreatmentCreatedBy", fields: [createdById], references: [id])
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
 
   @@index([startedAt])
+  @@index([animalId])
+  @@index([mode])
   @@index([createdById])
+  @@index([tenantId])
+}
+
+model TreatmentAnimal {
+  id          String   @id @default(uuid())
+  treatmentId String
+  animalId    String
+  tenantId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  treatment Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+  animal    Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([treatmentId, animalId])
+  @@index([treatmentId])
+  @@index([animalId])
   @@index([tenantId])
 }
 

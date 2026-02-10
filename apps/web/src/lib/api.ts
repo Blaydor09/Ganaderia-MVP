@@ -7,6 +7,7 @@ const defaultBaseUrl = import.meta.env.PROD
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? defaultBaseUrl,
+  withCredentials: true,
 });
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
@@ -34,13 +35,17 @@ let refreshInFlight: Promise<string | null> | null = null;
 
 const refreshAccessToken = async (): Promise<string | null> => {
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
 
   try {
-    const response = await api.post("/auth/refresh", { refreshToken });
+    const payload = refreshToken ? { refreshToken } : {};
+    const response = await api.post("/auth/refresh", payload);
     const newAccessToken = response.data?.accessToken;
     if (typeof newAccessToken !== "string" || !newAccessToken) return null;
-    setTokens(newAccessToken, refreshToken);
+    const nextRefreshToken =
+      typeof response.data?.refreshToken === "string"
+        ? response.data.refreshToken
+        : refreshToken ?? null;
+    setTokens(newAccessToken, nextRefreshToken);
     return newAccessToken;
   } catch {
     return null;

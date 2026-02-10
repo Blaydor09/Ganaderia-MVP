@@ -117,10 +117,10 @@ paths:
   /auth/refresh:
     post:
       tags: [Auth]
-      summary: Refresh access token
+      summary: Refresh access token (refresh token from body or HttpOnly cookie)
       security: []
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -128,20 +128,24 @@ paths:
               properties:
                 refreshToken:
                   type: string
-              required: [refreshToken]
       responses:
         '200':
-          description: Access token refreshed
+          description: Access token refreshed and refresh token rotated
+          headers:
+            Set-Cookie:
+              description: Rotated HttpOnly refresh token cookie
+              schema:
+                type: string
         '401':
           description: Invalid, expired, revoked token or inactive user
 
   /auth/logout:
     post:
       tags: [Auth]
-      summary: Revoke refresh token
+      summary: Revoke refresh token (body or HttpOnly cookie)
       security: []
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -149,7 +153,6 @@ paths:
               properties:
                 refreshToken:
                   type: string
-              required: [refreshToken]
       responses:
         '200':
           description: Token revoked
@@ -655,10 +658,26 @@ paths:
           description: Treatment list
     post:
       tags: [Treatments]
-      summary: Create treatment
+      summary: Create individual treatment
       responses:
         '201':
           description: Treatment created
+
+  /treatments/group/preview:
+    post:
+      tags: [Treatments]
+      summary: Preview grouped treatment animal selection
+      responses:
+        '200':
+          description: Preview payload with filtered and selected counts
+
+  /treatments/group:
+    post:
+      tags: [Treatments]
+      summary: Create grouped treatment with automatic administrations
+      responses:
+        '201':
+          description: Grouped treatment created
 
   /treatments/{id}/close:
     post:

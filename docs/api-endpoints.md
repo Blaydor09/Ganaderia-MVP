@@ -14,6 +14,8 @@
 - GET /auth/me
 
 Contract notes:
+- `/auth/refresh` and `/auth/logout` accept `refreshToken` from JSON body or HttpOnly cookie.
+- `/auth/refresh` rotates refresh token and returns a new `accessToken` + `refreshToken`.
 - `/auth/refresh` and `/auth/logout` return `401` for invalid or expired refresh token.
 - Inactive users (`isActive=false`) cannot refresh session (`401`).
 
@@ -84,12 +86,19 @@ Contract notes:
 
 ## Treatments and administrations
 - GET /treatments
-- POST /treatments
+- POST /treatments (individual)
+- POST /treatments/group/preview
+- POST /treatments/group
 - POST /treatments/:id/close
 - GET /treatments/by-animal/:animalId
 - GET /administrations
 - POST /administrations
 - PATCH /administrations/:id
+
+Contract notes:
+- Treatment payload now uses `description` (replaces previous `diagnosis`).
+- Grouped treatment creates a single treatment record and links multiple animals by filters.
+- Grouped treatment creation also creates administrations and inventory OUT transactions atomically.
 
 ## Alerts and tasks
 - GET /alerts

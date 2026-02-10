@@ -3,7 +3,7 @@ import { ApiError } from "../utils/errors";
 import { normalizeEmail } from "../utils/email";
 import { verifyPassword } from "../utils/password";
 import { createScopedSession } from "./authService";
-import { signAccessToken, verifyRefreshToken } from "../utils/jwt";
+import { verifyRefreshToken } from "../utils/jwt";
 import { writeAudit } from "../utils/audit";
 
 export const platformLogin = async (input: {
@@ -74,7 +74,7 @@ const parseRefreshTokenPayload = (refreshToken: string) => {
   }
 };
 
-export const platformRefresh = async (refreshToken: string) => {
+export const platformRefresh = async (refreshToken: string, userAgent?: string, ip?: string) => {
   const payload = parseRefreshTokenPayload(refreshToken);
   if (payload.scope !== "platform") {
     throw new ApiError(401, "Invalid refresh token");
@@ -114,12 +114,25 @@ export const platformRefresh = async (refreshToken: string) => {
   }
 
   const roles = Array.from(new Set(memberships.map((item) => item.role.name)));
-  const accessToken = signAccessToken({
-    sub: user.id,
-    roles,
-    scope: "platform",
+  const rotatedSession = await prisma.$transaction(async (tx) => {
+    await tx.refreshToken.update({
+      where: { id: match.id },
+      data: { revokedAt: new Date() },
+    });
+
+    return createScopedSession(
+      {
+        user: { id: user.id, name: user.name, email: user.email },
+        roles,
+        scope: "platform",
+        userAgent,
+        ip,
+      },
+      tx
+    );
   });
-  return { accessToken };
+
+  return rotatedSession;
 };
 
 export const platformLogout = async (refreshToken: string) => {

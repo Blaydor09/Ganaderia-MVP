@@ -11,7 +11,9 @@ export const getActiveWithdrawalForAnimal = async (animalId: string, tenantId: s
   const now = new Date();
   const latest = await prisma.administration.findMany({
     where: {
-      treatment: { animalId },
+      treatment: {
+        OR: [{ animalId }, { animals: { some: { animalId } } }],
+      },
       tenantId,
       OR: [
         { meatWithdrawalUntil: { gt: now } },

@@ -412,12 +412,7 @@ const run = async () => {
     data: {
       name: "Ivermectina",
       type: "DESPARASITANTE",
-      activeIngredient: "Ivermectina",
-      presentation: "Frasco 50ml",
-      concentration: "1%",
       unit: "ml",
-      meatWithdrawalDays: 28,
-      milkWithdrawalDays: 7,
       minStock: 50,
       tenantId: tenant.id,
     },
@@ -527,10 +522,19 @@ const run = async () => {
   const treatment = await prisma.treatment.create({
     data: {
       animalId: animal.id,
-      diagnosis: "Desparasitacion",
+      description: "Desparasitacion",
+      mode: "INDIVIDUAL",
       startedAt: new Date(),
       status: "ACTIVE",
       createdById: admin.id,
+      tenantId: tenant.id,
+    },
+  });
+
+  await prisma.treatmentAnimal.create({
+    data: {
+      treatmentId: treatment.id,
+      animalId: animal.id,
       tenantId: tenant.id,
     },
   });

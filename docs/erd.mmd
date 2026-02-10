@@ -10,6 +10,8 @@ erDiagram
   ANIMALS ||--o{ ANIMAL_EVENTS : logs
   ANIMALS ||--o{ MOVEMENTS : moves
   ANIMALS ||--o{ TREATMENTS : has
+  ANIMALS ||--o{ TREATMENT_ANIMALS : grouped
+  TREATMENTS ||--o{ TREATMENT_ANIMALS : targets
   TREATMENTS ||--o{ ADMINISTRATIONS : has
   PRODUCTS ||--o{ ADMINISTRATIONS : used
   BATCHES ||--o{ ADMINISTRATIONS : consumed
@@ -97,13 +99,12 @@ erDiagram
   PRODUCTS {
     uuid id PK
     string name
-    string active_ingredient
-    string presentation
-    string concentration
+    string type
+    string[] vaccine_types
     string unit
-    int meat_withdrawal_days
-    int milk_withdrawal_days
-    boolean requires_prescription
+    string species
+    string recommended_route
+    string notes
     int min_stock
     datetime created_at
     datetime updated_at
@@ -139,13 +140,22 @@ erDiagram
   TREATMENTS {
     uuid id PK
     uuid animal_id FK
-    string diagnosis
+    string description
+    string mode
     uuid vet_id FK
     datetime started_at
     datetime ended_at
     string status
     string notes
     uuid created_by FK
+  }
+  TREATMENT_ANIMALS {
+    uuid id PK
+    uuid treatment_id FK
+    uuid animal_id FK
+    uuid tenant_id FK
+    datetime created_at
+    datetime updated_at
   }
   ADMINISTRATIONS {
     uuid id PK
