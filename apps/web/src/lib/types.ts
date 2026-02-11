@@ -212,6 +212,27 @@ export type BatchListResponse = {
   pageSize: number;
 };
 
+export type ProductType = "VITAMINAS" | "ANTIBIOTICOS" | "DESPARASITANTE" | "VACUNAS";
+
+export type ProductItem = {
+  id: string;
+  name: string;
+  type?: ProductType | null;
+  vaccineTypes: string[];
+  unit: string;
+  species: string;
+  recommendedRoute?: string | null;
+  notes?: string | null;
+  minStock: number;
+};
+
+export type ProductListResponse = {
+  items: ProductItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export type DashboardRange = "7d" | "30d" | "90d";
 
 export type DashboardFilterParams = {
@@ -297,6 +318,54 @@ export type InventoryBatch = {
     name: string;
     unit: string;
   } | null;
+};
+
+export type InventoryBatchListResponse = {
+  items: InventoryBatch[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type InventorySummaryRow = {
+  product: {
+    id: string;
+    name: string;
+    minStock: number;
+    unit: string;
+  };
+  total: number;
+};
+
+export type InventorySummaryResponse = {
+  items: InventorySummaryRow[];
+};
+
+export type InventoryTransactionItem = {
+  id: string;
+  batchId: string;
+  productId: string;
+  type: "IN" | "OUT" | "ADJUST";
+  quantity: number;
+  unit: string;
+  occurredAt: string;
+  reason?: string | null;
+  batch?: {
+    id: string;
+    batchNumber: string;
+  } | null;
+  product?: {
+    id: string;
+    name: string;
+    unit: string;
+  } | null;
+};
+
+export type InventoryTransactionListResponse = {
+  items: InventoryTransactionItem[];
+  total: number;
+  page: number;
+  pageSize: number;
 };
 
 export type InventoryLowStockRow = {

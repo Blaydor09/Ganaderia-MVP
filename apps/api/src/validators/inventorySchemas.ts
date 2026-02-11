@@ -6,5 +6,5 @@ export const inventoryTxSchema = z.object({
   quantity: z.number().positive(),
   unit: z.string().min(1),
   occurredAt: z.string().datetime(),
-  reason: z.string().optional(),
+  reason: z.string().trim().min(3).max(160),
 }).strict();

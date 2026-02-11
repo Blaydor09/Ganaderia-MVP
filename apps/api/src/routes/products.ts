@@ -10,6 +10,7 @@ import { assertTenantLimit, getCurrentUsageValue } from "../services/usageServic
 import { withTenantScope } from "../utils/tenantScope";
 
 const router = Router();
+const normalizeProductName = (value: string) => value.trim().replace(/\s+/g, " ");
 
 router.get(
   "/",
@@ -43,6 +44,18 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = productCreateSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
+    const normalizedName = normalizeProductName(data.name);
+    const duplicate = await prisma.product.findFirst({
+      where: {
+        tenantId,
+        deletedAt: null,
+        name: { equals: normalizedName, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      return res.status(409).json({ message: "Product name already exists" });
+    }
     const currentProducts = await getCurrentUsageValue(tenantId, "PRODUCTS");
     await assertTenantLimit({
       tenantId,
@@ -57,7 +70,14 @@ router.post(
       },
     });
     const created = await prisma.product.create({
-      data: { ...data, tenantId, createdById: req.user?.id },
+      data: {
+        ...data,
+        name: normalizedName,
+        notes: data.notes?.trim() || undefined,
+        unit: data.unit?.trim() || undefined,
+        tenantId,
+        createdById: req.user?.id,
+      },
     });
 
     await writeAudit({
@@ -81,15 +101,36 @@ router.patch(
     const data = productUpdateSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
     const existing = await prisma.product.findFirst({
-      where: { id: req.params.id, tenantId },
+      where: { id: req.params.id, tenantId, deletedAt: null },
     });
     if (!existing) {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    const normalizedName = data.name ? normalizeProductName(data.name) : undefined;
+    if (normalizedName) {
+      const duplicate = await prisma.product.findFirst({
+        where: {
+          tenantId,
+          deletedAt: null,
+          id: { not: existing.id },
+          name: { equals: normalizedName, mode: "insensitive" },
+        },
+        select: { id: true },
+      });
+      if (duplicate) {
+        return res.status(409).json({ message: "Product name already exists" });
+      }
+    }
+
     const updated = await prisma.product.update({
       where: { id: req.params.id },
-      data,
+      data: {
+        ...data,
+        name: normalizedName,
+        unit: data.unit?.trim() || undefined,
+        notes: data.notes?.trim() || undefined,
+      },
     });
 
     await writeAudit({
@@ -113,10 +154,25 @@ router.delete(
   asyncHandler(async (req, res) => {
     const tenantId = req.user!.tenantId;
     const existing = await prisma.product.findFirst({
-      where: { id: req.params.id, tenantId },
+      where: { id: req.params.id, tenantId, deletedAt: null },
     });
     if (!existing) {
       return res.status(404).json({ message: "Product not found" });
+    }
+
+    const activeBatchesCount = await prisma.batch.count({
+      where: {
+        tenantId,
+        productId: existing.id,
+        deletedAt: null,
+      },
+    });
+
+    if (activeBatchesCount > 0) {
+      return res.status(409).json({
+        message:
+          "Product has active batches and cannot be deleted. Close or remove batches first.",
+      });
     }
 
     const deleted = await prisma.product.update({

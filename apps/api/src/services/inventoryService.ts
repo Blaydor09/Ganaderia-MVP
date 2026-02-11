@@ -5,7 +5,7 @@ import { writeAudit } from "../utils/audit";
 
 export type CreateInventoryTxInput = {
   batchId: string;
-  type: "IN" | "OUT" | "ADJUST";
+  type: "IN" | "OUT";
   quantity: number;
   unit: string;
   occurredAt: Date;

@@ -1,10 +1,12 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
 import { inventoryTxSchema } from "../validators/inventorySchemas";
 import { createInventoryTransaction, getInventoryAlerts } from "../services/inventoryService";
+import { getPagination } from "../utils/pagination";
 
 const router = Router();
 
@@ -43,13 +45,115 @@ router.get(
   "/",
   authenticate,
   asyncHandler(async (req, res) => {
+    const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
     const tenantId = req.user!.tenantId;
-    const batches = await prisma.batch.findMany({
-      where: { deletedAt: null, tenantId },
-      include: { product: true },
-      orderBy: { expiresAt: "asc" },
+    const where: Prisma.BatchWhereInput = { deletedAt: null, tenantId };
+    const now = new Date();
+    const soon30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    if (req.query.search) {
+      const search = String(req.query.search).trim();
+      if (search.length > 0) {
+        where.OR = [
+          { batchNumber: { contains: search, mode: "insensitive" } },
+          {
+            product: {
+              is: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        ];
+      }
+    }
+    if (req.query.status) {
+      const status = String(req.query.status).toUpperCase();
+      if (status === "ACTIVE") {
+        where.expiresAt = { gt: soon30 };
+        where.quantityAvailable = { gt: 0 };
+      }
+      if (status === "EXPIRING") {
+        where.expiresAt = { gt: now, lte: soon30 };
+        where.quantityAvailable = { gt: 0 };
+      }
+      if (status === "EXPIRED") {
+        where.expiresAt = { lte: now };
+      }
+      if (status === "OUT_OF_STOCK") {
+        where.quantityAvailable = { lte: 0 };
+      }
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.batch.findMany({
+        where,
+        skip,
+        take: pageSize,
+        include: { product: true },
+        orderBy: [{ expiresAt: "asc" }, { createdAt: "desc" }],
+      }),
+      prisma.batch.count({ where }),
+    ]);
+
+    res.json({
+      items,
+      total,
+      page,
+      pageSize,
     });
-    res.json(batches);
+  })
+);
+
+router.get(
+  "/transactions",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
+    const tenantId = req.user!.tenantId;
+    const where: Prisma.InventoryTransactionWhereInput = { tenantId };
+
+    if (req.query.search) {
+      const search = String(req.query.search).trim();
+      if (search.length > 0) {
+        where.OR = [
+          { reason: { contains: search, mode: "insensitive" } },
+          {
+            batch: {
+              is: {
+                batchNumber: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+          {
+            product: {
+              is: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        ];
+      }
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.inventoryTransaction.findMany({
+        where,
+        skip,
+        take: pageSize,
+        include: {
+          batch: {
+            select: { id: true, batchNumber: true },
+          },
+          product: {
+            select: { id: true, name: true, unit: true },
+          },
+        },
+        orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+      }),
+      prisma.inventoryTransaction.count({ where }),
+    ]);
+
+    res.json({ items, total, page, pageSize });
   })
 );
 

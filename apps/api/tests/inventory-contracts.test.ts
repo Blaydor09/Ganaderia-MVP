@@ -94,4 +94,21 @@ describe("inventory and batch public contracts", () => {
     expect(response.status).toBe(400);
     expect(response.body.message).toBe("Validation error");
   });
+
+  it("rejects inventory transaction without reason", async () => {
+    const app = createApp();
+    const response = await request(app)
+      .post("/api/v1/inventory/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        batchId: "33333333-3333-4333-8333-333333333333",
+        type: "IN",
+        quantity: 1,
+        unit: "dosis",
+        occurredAt: "2026-02-09T12:00:00.000Z",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Validation error");
+  });
 });

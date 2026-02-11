@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
@@ -16,8 +17,42 @@ router.get(
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
     const tenantId = req.user!.tenantId;
-    const where: Record<string, unknown> = { deletedAt: null, tenantId };
-    if (req.query.productId) where.productId = req.query.productId;
+    const where: Prisma.BatchWhereInput = { deletedAt: null, tenantId };
+    const now = new Date();
+    const soon30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    if (req.query.productId) where.productId = String(req.query.productId);
+    if (req.query.search) {
+      const search = String(req.query.search).trim();
+      if (search.length > 0) {
+        where.OR = [
+          { batchNumber: { contains: search, mode: "insensitive" } },
+          {
+            product: {
+              is: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        ];
+      }
+    }
+    if (req.query.status) {
+      const status = String(req.query.status).toUpperCase();
+      if (status === "ACTIVE") {
+        where.expiresAt = { gt: soon30 };
+        where.quantityAvailable = { gt: 0 };
+      }
+      if (status === "EXPIRING") {
+        where.expiresAt = { gt: now, lte: soon30 };
+        where.quantityAvailable = { gt: 0 };
+      }
+      if (status === "EXPIRED") {
+        where.expiresAt = { lte: now };
+      }
+      if (status === "OUT_OF_STOCK") {
+        where.quantityAvailable = { lte: 0 };
+      }
+    }
 
     const [items, total] = await Promise.all([
       prisma.batch.findMany({
@@ -106,7 +141,7 @@ router.patch(
     const data = batchUpdateSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
     const existing = await prisma.batch.findFirst({
-      where: { id: req.params.id, tenantId },
+      where: { id: req.params.id, tenantId, deletedAt: null },
     });
     if (!existing) {
       return res.status(404).json({ message: "Batch not found" });
@@ -153,10 +188,36 @@ router.delete(
   asyncHandler(async (req, res) => {
     const tenantId = req.user!.tenantId;
     const existing = await prisma.batch.findFirst({
-      where: { id: req.params.id, tenantId },
+      where: { id: req.params.id, tenantId, deletedAt: null },
     });
     if (!existing) {
       return res.status(404).json({ message: "Batch not found" });
+    }
+    if (existing.quantityAvailable > 0) {
+      return res.status(409).json({
+        message: "Batch has available stock and cannot be deleted",
+      });
+    }
+
+    const [administrationsCount, transactionsCount] = await Promise.all([
+      prisma.administration.count({
+        where: {
+          batchId: existing.id,
+          tenantId,
+        },
+      }),
+      prisma.inventoryTransaction.count({
+        where: {
+          batchId: existing.id,
+          tenantId,
+        },
+      }),
+    ]);
+
+    if (administrationsCount > 0 || transactionsCount > 0) {
+      return res.status(409).json({
+        message: "Batch has movement history and cannot be deleted",
+      });
     }
 
     const deleted = await prisma.batch.update({
