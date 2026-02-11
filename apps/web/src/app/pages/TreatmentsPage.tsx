@@ -19,8 +19,11 @@ import { toast } from "sonner";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
 import { getAnimalCategoryLabel } from "@/lib/animals";
-import { formatDateOnlyUtc, parseDateTimeInputToIso } from "@/lib/dates";
-import { getTreatmentAnimalCount, getTreatmentScopeLabel } from "@/lib/treatments";
+import {
+  formatDateOnlyUtc,
+  parseDateInputToUtcIso,
+} from "@/lib/dates";
+import { getTreatmentAnimalCount } from "@/lib/treatments";
 import type {
   AnimalListResponse,
   BatchListResponse,
@@ -46,9 +49,7 @@ type IndividualTreatmentFormValues = z.infer<typeof individualTreatmentSchema>;
 
 const groupMedicationSchema = z.object({
   batchId: z.string().min(1, "Requerido"),
-  administeredAt: z.string().min(1, "Requerido"),
   dose: z.number().positive("Requerido"),
-  notes: z.string().optional(),
 });
 
 const groupTreatmentSchema = z
@@ -82,30 +83,9 @@ const groupTreatmentSchema = z
 
 type GroupTreatmentFormValues = z.infer<typeof groupTreatmentSchema>;
 
-const administrationSchema = z.object({
-  treatmentId: z.string().min(1, "Requerido"),
-  batchId: z.string().min(1, "Requerido"),
-  administeredAt: z.string().min(1, "Requerido"),
-  dose: z.number().positive("Requerido"),
-  notes: z.string().optional(),
-});
-
-type AdministrationFormValues = z.infer<typeof administrationSchema>;
-
-const closeSchema = z.object({
-  endedAt: z.string().min(1, "Requerido"),
-});
-
-type CloseFormValues = z.infer<typeof closeSchema>;
-
 type GroupPreviewResponse = {
   totalFiltered: number;
   selectedCount: number;
-  preview: Array<{
-    id: string;
-    tag: string | null;
-    internalCode: string;
-  }>;
 };
 
 type AdministrationAuditItem = {
@@ -133,9 +113,7 @@ type AdministrationAuditListResponse = {
 
 const emptyMedication = () => ({
   batchId: "",
-  administeredAt: "",
   dose: undefined as unknown as number,
-  notes: "",
 });
 
 const quantityFormatter = new Intl.NumberFormat("es-NI", {
@@ -238,9 +216,6 @@ const TreatmentsPage = () => {
   const queryClient = useQueryClient();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createMode, setCreateMode] = useState<"INDIVIDUAL" | "GROUP">("INDIVIDUAL");
-  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
-  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
-  const [activeTreatment, setActiveTreatment] = useState<Treatment | null>(null);
 
   const canCreateTreatment = hasAnyRole(Access.treatmentsCreate);
   const canModifyTreatment = hasAnyRole(["ADMIN"]);
@@ -294,16 +269,6 @@ const TreatmentsPage = () => {
     queryKey: ["batches", "administration-form"],
     queryFn: async () => (await api.get("/batches?page=1&pageSize=200")).data as BatchListResponse,
   });
-
-  const batchById = useMemo(
-    () => new Map((batches?.items ?? []).map((batch) => [batch.id, batch])),
-    [batches?.items]
-  );
-
-  const activeTreatments = useMemo(
-    () => (data?.items ?? []).filter((treatment) => treatment.status === "ACTIVE"),
-    [data]
-  );
 
   const administrationsByTreatmentId = useMemo(() => {
     const map = new Map<string, AdministrationAuditItem[]>();
@@ -432,33 +397,12 @@ const TreatmentsPage = () => {
     [selectableBatches]
   );
 
-  const {
-    register: registerAdmin,
-    handleSubmit: handleSubmitAdmin,
-    reset: resetAdmin,
-    setValue: setAdminValue,
-    formState: { errors: adminErrors, isSubmitting: isSubmittingAdmin },
-  } = useForm<AdministrationFormValues>({
-    resolver: zodResolver(administrationSchema),
-    defaultValues: {
-      treatmentId: "",
-      batchId: "",
-    },
-  });
-
-  const {
-    register: registerClose,
-    handleSubmit: handleSubmitClose,
-    reset: resetClose,
-    formState: { errors: closeErrors, isSubmitting: isSubmittingClose },
-  } = useForm<CloseFormValues>({ resolver: zodResolver(closeSchema) });
-
   const onCreateIndividualTreatment = async (values: IndividualTreatmentFormValues) => {
     try {
       await api.post("/treatments", {
         animalId: values.animalId,
         description: values.description.trim(),
-        startedAt: parseDateTimeInputToIso(values.startedAt),
+        startedAt: parseDateInputToUtcIso(values.startedAt),
       });
       toast.success("Tratamiento individual creado");
       resetIndividual();
@@ -518,7 +462,7 @@ const TreatmentsPage = () => {
     try {
       const response = await api.post("/treatments/group", {
         description: values.description.trim(),
-        startedAt: parseDateTimeInputToIso(values.startedAt),
+        startedAt: parseDateInputToUtcIso(values.startedAt),
         scope: values.scope,
         limit: values.scope === "LIMIT" ? values.limit : undefined,
         filters: {
@@ -533,8 +477,6 @@ const TreatmentsPage = () => {
           dose: medication.dose,
           doseUnit: doseUnit!,
           route: route!,
-          administeredAt: parseDateTimeInputToIso(medication.administeredAt),
-          notes: medication.notes?.trim() || undefined,
         })),
       });
       const selectedCount = response.data?.selectedAnimalsCount as number | undefined;
@@ -555,72 +497,6 @@ const TreatmentsPage = () => {
       await invalidateAfterGroupCreate();
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "Error al crear tratamiento grupal");
-    }
-  };
-
-  const onCreateAdministration = async (values: AdministrationFormValues) => {
-    const selectedBatch = batchById.get(values.batchId);
-    if (!selectedBatch) {
-      toast.error("Lote no encontrado");
-      return;
-    }
-
-    const doseUnit = selectedBatch.product?.unit?.trim();
-    if (!doseUnit) {
-      toast.error("El medicamento del lote no tiene unidad configurada");
-      return;
-    }
-
-    const route = selectedBatch.product?.recommendedRoute?.trim();
-    if (!route) {
-      toast.error("El medicamento del lote no tiene via recomendada");
-      return;
-    }
-
-    try {
-      await api.post("/administrations", {
-        treatmentId: values.treatmentId,
-        batchId: values.batchId,
-        administeredAt: parseDateTimeInputToIso(values.administeredAt),
-        dose: values.dose,
-        doseUnit,
-        route,
-        notes: values.notes?.trim() || undefined,
-      });
-      toast.success("Aplicacion registrada");
-      resetAdmin({ treatmentId: "", batchId: "" });
-      setAdminDialogOpen(false);
-      setActiveTreatment(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["treatments"] }),
-        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
-        queryClient.invalidateQueries({ queryKey: ["inventory", "alerts"] }),
-        queryClient.invalidateQueries({ queryKey: ["batches"] }),
-        queryClient.invalidateQueries({ queryKey: ["reports", "withdrawals"] }),
-        queryClient.invalidateQueries({ queryKey: ["withdrawals"] }),
-        queryClient.invalidateQueries({ queryKey: ["dashboard", "overview"] }),
-      ]);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message ?? "Error al registrar aplicacion");
-    }
-  };
-
-  const onCloseTreatment = async (values: CloseFormValues) => {
-    if (!activeTreatment) return;
-    try {
-      await api.post(`/treatments/${activeTreatment.id}/close`, {
-        endedAt: parseDateTimeInputToIso(values.endedAt),
-      });
-      toast.success("Tratamiento cerrado");
-      resetClose();
-      setCloseDialogOpen(false);
-      setActiveTreatment(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["treatments"] }),
-        queryClient.invalidateQueries({ queryKey: ["dashboard", "overview"] }),
-      ]);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message ?? "Error al cerrar tratamiento");
     }
   };
 
@@ -703,8 +579,8 @@ const TreatmentsPage = () => {
                       ) : null}
                     </div>
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">Fecha inicio</label>
-                      <Input type="datetime-local" {...registerIndividual("startedAt")} />
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Fecha (dd/mm/aaaa)</label>
+                      <Input type="date" {...registerIndividual("startedAt")} />
                       {individualErrors.startedAt ? (
                         <p className="text-xs text-red-500">{individualErrors.startedAt.message}</p>
                       ) : null}
@@ -723,8 +599,8 @@ const TreatmentsPage = () => {
                       ) : null}
                     </div>
                     <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">Fecha inicio</label>
-                      <Input type="datetime-local" {...registerGroup("startedAt")} />
+                      <label className="text-xs text-slate-500 dark:text-slate-400">Fecha (dd/mm/aaaa)</label>
+                      <Input type="date" {...registerGroup("startedAt")} />
                       {groupErrors.startedAt ? (
                         <p className="text-xs text-red-500">{groupErrors.startedAt.message}</p>
                       ) : null}
@@ -897,15 +773,6 @@ const TreatmentsPage = () => {
                                 ) : null}
                               </div>
                               <div className="space-y-1 text-sm">
-                                <label className="text-xs text-slate-500 dark:text-slate-400">Fecha y hora</label>
-                                <Input type="datetime-local" {...registerGroup(`medications.${index}.administeredAt`)} />
-                                {groupErrors.medications?.[index]?.administeredAt ? (
-                                  <p className="text-xs text-red-500">
-                                    {groupErrors.medications[index]?.administeredAt?.message}
-                                  </p>
-                                ) : null}
-                              </div>
-                              <div className="space-y-1 text-sm">
                                 <label className="text-xs text-slate-500 dark:text-slate-400">Dosis por animal</label>
                                 <Input
                                   type="number"
@@ -921,14 +788,6 @@ const TreatmentsPage = () => {
                                     {groupErrors.medications[index]?.dose?.message}
                                   </p>
                                 ) : null}
-                              </div>
-                              <div className="space-y-1 text-sm md:col-span-2">
-                                <label className="text-xs text-slate-500 dark:text-slate-400">Notas</label>
-                                <textarea
-                                  className="min-h-[80px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                                  placeholder="Observaciones"
-                                  {...registerGroup(`medications.${index}.notes`)}
-                                />
                               </div>
                               <div
                                 className={`rounded-xl border px-3 py-2 text-sm md:col-span-2 ${
@@ -993,7 +852,7 @@ const TreatmentsPage = () => {
               <TH>Medicamento / Lote</TH>
               <TH>Dosis aplicada</TH>
               <TH>Descripcion</TH>
-              <TH>Inicio</TH>
+              <TH>Fecha registro</TH>
               <TH>Estado</TH>
               <TH>Acciones</TH>
             </TR>
@@ -1056,112 +915,6 @@ const TreatmentsPage = () => {
           </TBody>
         </Table>
       </div>
-
-      <Dialog
-        open={adminDialogOpen}
-        onOpenChange={(open) => {
-          setAdminDialogOpen(open);
-          if (!open) {
-            setActiveTreatment(null);
-            resetAdmin({ treatmentId: "", batchId: "" });
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar aplicacion</DialogTitle>
-          </DialogHeader>
-          <form className="space-y-3" onSubmit={handleSubmitAdmin(onCreateAdministration)}>
-            <div className="space-y-1 text-sm">
-              <label className="text-xs text-slate-500 dark:text-slate-400">Tratamiento</label>
-              <select
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                {...registerAdmin("treatmentId")}
-              >
-                <option value="">Selecciona</option>
-                {activeTreatments.map((treatment) => (
-                  <option key={treatment.id} value={treatment.id}>
-                    {getTreatmentScopeLabel(treatment)} - {treatment.description}
-                  </option>
-                ))}
-              </select>
-              {adminErrors.treatmentId ? <p className="text-xs text-red-500">{adminErrors.treatmentId.message}</p> : null}
-            </div>
-            <div className="space-y-1 text-sm">
-              <label className="text-xs text-slate-500 dark:text-slate-400">Lote</label>
-              <select
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                {...registerAdmin("batchId")}
-              >
-                <option value="">Selecciona</option>
-                {(batches?.items ?? []).map((batch) => (
-                  <option key={batch.id} value={batch.id}>
-                    {batch.product?.name || "Producto"} - {batch.batchNumber} ({batch.quantityAvailable} {batch.product?.unit || ""})
-                  </option>
-                ))}
-              </select>
-              {adminErrors.batchId ? <p className="text-xs text-red-500">{adminErrors.batchId.message}</p> : null}
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1 text-sm">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Fecha y hora</label>
-                <Input type="datetime-local" {...registerAdmin("administeredAt")} />
-                {adminErrors.administeredAt ? <p className="text-xs text-red-500">{adminErrors.administeredAt.message}</p> : null}
-              </div>
-              <div className="space-y-1 text-sm">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Dosis</label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  {...registerAdmin("dose", {
-                    setValueAs: (value) => (value === "" ? undefined : Number(value)),
-                  })}
-                />
-                {adminErrors.dose ? <p className="text-xs text-red-500">{adminErrors.dose.message}</p> : null}
-              </div>
-              <div className="space-y-1 text-sm md:col-span-2">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Notas</label>
-                <textarea
-                  className="min-h-[90px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                  placeholder="Observaciones"
-                  {...registerAdmin("notes")}
-                />
-              </div>
-            </div>
-            <Button type="submit" disabled={isSubmittingAdmin}>
-              {isSubmittingAdmin ? "Guardando..." : "Registrar aplicacion"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={closeDialogOpen}
-        onOpenChange={(open) => {
-          setCloseDialogOpen(open);
-          if (!open) {
-            setActiveTreatment(null);
-            resetClose();
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cerrar tratamiento</DialogTitle>
-          </DialogHeader>
-          <form className="space-y-3" onSubmit={handleSubmitClose(onCloseTreatment)}>
-            <div className="space-y-1 text-sm">
-              <label className="text-xs text-slate-500 dark:text-slate-400">Fecha fin</label>
-              <Input type="datetime-local" {...registerClose("endedAt")} />
-              {closeErrors.endedAt ? <p className="text-xs text-red-500">{closeErrors.endedAt.message}</p> : null}
-            </div>
-            <Button type="submit" disabled={isSubmittingClose}>
-              {isSubmittingClose ? "Guardando..." : "Cerrar tratamiento"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -188,7 +188,6 @@ router.post(
         dose: medication.dose,
         doseUnit: medication.doseUnit.trim(),
         route: medication.route.trim(),
-        administeredAt: new Date(medication.administeredAt),
         site: medication.site?.trim() || undefined,
         notes: medication.notes?.trim() || undefined,
       })),

@@ -23,7 +23,6 @@ const treatmentGroupMedicationSchema = z.object({
   dose: z.number().positive(),
   doseUnit: z.string().min(1),
   route: z.string().min(1),
-  administeredAt: z.string().datetime(),
   site: z.string().optional(),
   notes: z.string().optional(),
 });

@@ -17,7 +17,6 @@ export type GroupMedicationInput = {
   dose: number;
   doseUnit: string;
   route: string;
-  administeredAt: Date;
   site?: string;
   notes?: string;
 };
@@ -234,18 +233,14 @@ export const createGroupTreatment = async (input: GroupTreatmentCreateInput) => 
         throw new ApiError(400, "Insufficient stock");
       }
 
-      const withdrawal = computeWithdrawal(
-        medication.administeredAt,
-        0,
-        0
-      );
+      const withdrawal = computeWithdrawal(input.startedAt, 0, 0);
 
       const administration = await tx.administration.create({
         data: {
           treatmentId: treatment.id,
           batchId: batch.id,
           productId: batch.productId,
-          administeredAt: medication.administeredAt,
+          administeredAt: input.startedAt,
           dose: medication.dose,
           doseUnit: medication.doseUnit,
           route: medication.route,
@@ -265,7 +260,7 @@ export const createGroupTreatment = async (input: GroupTreatmentCreateInput) => 
           type: "OUT",
           quantity: quantityRequired,
           unit: medication.doseUnit,
-          occurredAt: medication.administeredAt,
+          occurredAt: input.startedAt,
           reason: "group_administration",
           refType: "ADMINISTRATION",
           refId: administration.id,
