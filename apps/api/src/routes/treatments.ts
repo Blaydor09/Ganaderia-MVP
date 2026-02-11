@@ -41,6 +41,24 @@ router.get(
             include: { animal: true },
             orderBy: [{ createdAt: "asc" }, { animalId: "asc" }],
           },
+          administrations: {
+            include: {
+              batch: {
+                select: {
+                  id: true,
+                  batchNumber: true,
+                },
+              },
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  unit: true,
+                },
+              },
+            },
+            orderBy: { administeredAt: "desc" },
+          },
         },
       }),
       prisma.treatment.count({ where }),

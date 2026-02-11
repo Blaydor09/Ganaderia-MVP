@@ -18,8 +18,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
+import { getAnimalCategoryLabel } from "@/lib/animals";
 import { formatDateOnlyUtc, parseDateTimeInputToIso } from "@/lib/dates";
-import { getTreatmentScopeLabel } from "@/lib/treatments";
+import { getTreatmentAnimalCount, getTreatmentScopeLabel } from "@/lib/treatments";
 import type {
   AnimalListResponse,
   BatchListResponse,
@@ -107,6 +108,29 @@ type GroupPreviewResponse = {
   }>;
 };
 
+type AdministrationAuditItem = {
+  id: string;
+  treatmentId: string;
+  dose: number;
+  doseUnit: string;
+  batch?: {
+    id: string;
+    batchNumber: string;
+  } | null;
+  product?: {
+    id: string;
+    name: string;
+    unit?: string;
+  } | null;
+};
+
+type AdministrationAuditListResponse = {
+  items: AdministrationAuditItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 const emptyMedication = () => ({
   batchId: "",
   administeredAt: "",
@@ -119,6 +143,96 @@ const quantityFormatter = new Intl.NumberFormat("es-NI", {
 });
 
 const formatQuantity = (value: number) => quantityFormatter.format(value);
+const animalSexLabels: Record<string, string> = {
+  MALE: "Macho",
+  FEMALE: "Hembra",
+};
+
+const formatAnimalSex = (value?: string) => (value ? (animalSexLabels[value] ?? value) : "-");
+
+const getTreatmentAnimalsForSummary = (treatment: Treatment) => {
+  const directAnimal = treatment.animal ? [treatment.animal] : [];
+  const linkedAnimals = (treatment.animals ?? [])
+    .map((relation) => relation?.animal ?? null)
+    .filter((animal): animal is NonNullable<Treatment["animal"]> => Boolean(animal));
+
+  if (treatment.mode === "GROUP") {
+    return linkedAnimals;
+  }
+
+  return directAnimal.length > 0 ? directAnimal : linkedAnimals;
+};
+
+const getTreatmentCategorySummary = (treatment: Treatment) => {
+  const categories = Array.from(
+    new Set(
+      getTreatmentAnimalsForSummary(treatment)
+        .map((animal) => animal.category)
+        .filter((category): category is string => Boolean(category))
+    )
+  );
+
+  if (categories.length === 0) return "-";
+  if (categories.length === 1) return getAnimalCategoryLabel(categories[0]);
+  return "Mixto";
+};
+
+const getTreatmentSexSummary = (treatment: Treatment) => {
+  const sexes = Array.from(
+    new Set(
+      getTreatmentAnimalsForSummary(treatment)
+        .map((animal) => animal.sex)
+        .filter((sex): sex is string => Boolean(sex))
+    )
+  );
+
+  if (sexes.length === 0) return "-";
+  if (sexes.length === 1) return formatAnimalSex(sexes[0]);
+  return "Mixto";
+};
+
+const getTreatmentMedicationBatchSummary = (administrations: AdministrationAuditItem[]) => {
+  const labels = Array.from(
+    new Set(
+      administrations
+        .map((administration) => {
+          const productName = administration?.product?.name?.trim();
+          const batchNumber = administration?.batch?.batchNumber?.trim();
+          if (productName && batchNumber) return `${productName} (${batchNumber})`;
+          return productName || batchNumber || null;
+        })
+        .filter((label): label is string => Boolean(label))
+    )
+  );
+
+  if (labels.length === 0) return "Sin aplicar";
+  if (labels.length <= 2) return labels.join(", ");
+  return `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
+};
+
+const getTreatmentAppliedDoseSummary = (
+  animalsCount: number,
+  administrations: AdministrationAuditItem[]
+) => {
+  if (animalsCount <= 0 || administrations.length === 0) return "Sin aplicar";
+
+  const totalsByUnit = new Map<string, number>();
+
+  for (const administration of administrations) {
+    if (!administration || !Number.isFinite(administration.dose)) continue;
+    const unit =
+      administration.doseUnit?.trim() ||
+      administration.product?.unit?.trim() ||
+      "dosis";
+    const total = administration.dose * animalsCount;
+    totalsByUnit.set(unit, (totalsByUnit.get(unit) ?? 0) + total);
+  }
+
+  if (totalsByUnit.size === 0) return "Sin aplicar";
+  return Array.from(totalsByUnit.entries())
+    .map(([unit, total]) => `${formatQuantity(total)} ${unit}`)
+    .join(" + ");
+};
 
 const TreatmentsPage = () => {
   const queryClient = useQueryClient();
@@ -129,8 +243,7 @@ const TreatmentsPage = () => {
   const [activeTreatment, setActiveTreatment] = useState<Treatment | null>(null);
 
   const canCreateTreatment = hasAnyRole(Access.treatmentsCreate);
-  const canCreateAdministration = hasAnyRole(Access.administrationsCreate);
-  const canCloseTreatment = hasAnyRole(Access.treatmentsClose);
+  const canModifyTreatment = hasAnyRole(["ADMIN"]);
 
   const invalidateAfterGroupCreate = async () => {
     await Promise.all([
@@ -147,6 +260,29 @@ const TreatmentsPage = () => {
   const { data } = useQuery({
     queryKey: ["treatments"],
     queryFn: async () => (await api.get("/treatments?page=1&pageSize=50")).data as TreatmentListResponse,
+  });
+
+  const { data: administrationsAudit } = useQuery({
+    queryKey: ["administrations", "treatments-audit"],
+    queryFn: async () => {
+      const pageSize = 100;
+      const maxPages = 20;
+      let page = 1;
+      let total = 0;
+      const aggregated: AdministrationAuditItem[] = [];
+
+      do {
+        const response = (
+          await api.get(`/administrations?page=${page}&pageSize=${pageSize}`)
+        ).data as AdministrationAuditListResponse;
+
+        total = response.total;
+        aggregated.push(...(response.items ?? []));
+        page += 1;
+      } while (aggregated.length < total && page <= maxPages);
+
+      return aggregated;
+    },
   });
 
   const { data: animals } = useQuery({
@@ -168,6 +304,17 @@ const TreatmentsPage = () => {
     () => (data?.items ?? []).filter((treatment) => treatment.status === "ACTIVE"),
     [data]
   );
+
+  const administrationsByTreatmentId = useMemo(() => {
+    const map = new Map<string, AdministrationAuditItem[]>();
+    for (const administration of administrationsAudit ?? []) {
+      if (!administration?.treatmentId) continue;
+      const current = map.get(administration.treatmentId) ?? [];
+      current.push(administration);
+      map.set(administration.treatmentId, current);
+    }
+    return map;
+  }, [administrationsAudit]);
 
   const {
     register: registerIndividual,
@@ -841,6 +988,10 @@ const TreatmentsPage = () => {
           <THead>
             <TR>
               <TH>Alcance</TH>
+              <TH>Categoria</TH>
+              <TH>Sexo</TH>
+              <TH>Medicamento / Lote</TH>
+              <TH>Dosis aplicada</TH>
               <TH>Descripcion</TH>
               <TH>Inicio</TH>
               <TH>Estado</TH>
@@ -850,44 +1001,54 @@ const TreatmentsPage = () => {
           <TBody>
             {(data?.items ?? []).map((treatment) => (
               <TR key={treatment.id}>
-                <TD>{getTreatmentScopeLabel(treatment)}</TD>
+                {(() => {
+                  const animalsCount = getTreatmentAnimalCount(treatment);
+                  const treatmentAdministrations =
+                    (treatment.administrations ?? []).filter(
+                      (administration): administration is AdministrationAuditItem =>
+                        Boolean(administration)
+                    ).length > 0
+                      ? ((treatment.administrations ?? []).filter(
+                          (administration): administration is AdministrationAuditItem =>
+                            Boolean(administration)
+                        ))
+                      : (administrationsByTreatmentId.get(treatment.id) ?? []);
+
+                  return (
+                    <>
+                <TD>
+                      {animalsCount} {animalsCount === 1 ? "animal" : "animales"}
+                </TD>
+                <TD>{getTreatmentCategorySummary(treatment)}</TD>
+                <TD>{getTreatmentSexSummary(treatment)}</TD>
+                      <TD>{getTreatmentMedicationBatchSummary(treatmentAdministrations)}</TD>
+                      <TD>{getTreatmentAppliedDoseSummary(animalsCount, treatmentAdministrations)}</TD>
                 <TD>{treatment.description}</TD>
                 <TD>{formatDateOnlyUtc(treatment.startedAt)}</TD>
                 <TD>{treatment.status}</TD>
                 <TD>
                   <div className="flex flex-wrap gap-2">
-                    {canCreateAdministration && treatment.status === "ACTIVE" ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setActiveTreatment(treatment);
-                          setAdminDialogOpen(true);
-                          setAdminValue("treatmentId", treatment.id);
-                        }}
-                      >
-                        Aplicar
-                      </Button>
-                    ) : null}
-                    {canCloseTreatment && treatment.status === "ACTIVE" ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setActiveTreatment(treatment);
-                          setCloseDialogOpen(true);
-                        }}
-                      >
-                        Cerrar
-                      </Button>
-                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!canModifyTreatment}
+                      onClick={() => {
+                        if (!canModifyTreatment) return;
+                        toast.info("La opcion modificar estara disponible pronto.");
+                      }}
+                    >
+                      Modificar
+                    </Button>
                   </div>
                 </TD>
+                    </>
+                  );
+                })()}
               </TR>
             ))}
             {(data?.items ?? []).length === 0 ? (
               <TR>
-                <TD colSpan={5} className="text-sm text-slate-500 dark:text-slate-400">
+                <TD colSpan={9} className="text-sm text-slate-500 dark:text-slate-400">
                   Sin tratamientos registrados.
                 </TD>
               </TR>

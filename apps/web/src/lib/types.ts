@@ -154,6 +154,8 @@ export type Treatment = {
     id: string;
     tag: string | null;
     internalCode?: string | null;
+    category?: string;
+    sex?: string;
   } | null;
   animals?: Array<{
     animalId: string;
@@ -161,6 +163,23 @@ export type Treatment = {
       id: string;
       tag: string | null;
       internalCode?: string | null;
+      category?: string;
+      sex?: string;
+    } | null;
+  } | null>;
+  administrations?: Array<{
+    id: string;
+    dose: number;
+    doseUnit: string;
+    batchId?: string;
+    batch?: {
+      id: string;
+      batchNumber: string;
+    } | null;
+    product?: {
+      id: string;
+      name: string;
+      unit?: string;
     } | null;
   } | null>;
 };
