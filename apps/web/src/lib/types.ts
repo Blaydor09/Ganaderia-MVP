@@ -82,11 +82,31 @@ export type AnimalListResponse = {
   pageSize: number;
 };
 
+export type EstablishmentType = "FINCA" | "POTRERO" | "CORRAL";
+
 export type EstablishmentNode = {
   id: string;
   name: string;
-  type: "FINCA" | "POTRERO" | "CORRAL";
+  type: EstablishmentType;
+  parentId?: string | null;
+  fincaId?: string | null;
+  animalCount?: number;
   children?: EstablishmentNode[];
+};
+
+export type LegacyCorralSummary = {
+  id: string;
+  name: string;
+  type: "CORRAL";
+  parentId?: string | null;
+  fincaId?: string | null;
+  fincaName: string;
+  animalCount: number;
+  suggestedPotreros: Array<{
+    id: string;
+    name: string;
+    animalCount: number;
+  }>;
 };
 
 export type EventType =
@@ -430,3 +450,4 @@ export type ReportWeightRow = {
 export type ReportWeightsResponse = {
   items: ReportWeightRow[];
 };
+

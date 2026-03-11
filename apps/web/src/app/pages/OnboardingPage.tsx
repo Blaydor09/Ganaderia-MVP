@@ -19,7 +19,7 @@ import {
   animalStatusOptions,
   getAnimalCategoryLabel,
 } from "@/lib/animals";
-import { getEstablishmentTypeLabel } from "@/lib/establishments";
+import { getOperationalEstablishmentOptions } from "@/lib/establishments";
 import { productTypeOptions } from "@/lib/products";
 import { parseDateInputToUtcIso } from "@/lib/dates";
 
@@ -28,7 +28,7 @@ const steps = [
     key: "establishments",
     title: "Establecimientos",
     description:
-      "Define tu finca y areas principales para ubicar animales, movimientos y reportes.",
+      "Define tu finca y potreros principales para ubicar animales, movimientos y reportes.",
   },
   {
     key: "animals",
@@ -132,7 +132,6 @@ const OnboardingPage = () => {
 
   const [fincaName, setFincaName] = useState("");
   const [potreros, setPotreros] = useState<string[]>([""]);
-  const [corralName, setCorralName] = useState("");
 
   const [manualAnimals, setManualAnimals] = useState<ManualAnimal[]>([
     createManualAnimal(),
@@ -144,21 +143,10 @@ const OnboardingPage = () => {
     queryFn: async () => (await api.get("/establishments?tree=true")).data,
   });
 
-  const locationOptions = useMemo(() => {
-    const fincas = (establishments ?? []) as any[];
-    const options: { value: string; label: string }[] = [];
-    for (const finca of fincas) {
-      const children = finca.children ?? [];
-      for (const child of children) {
-        if (child.type === "FINCA") continue;
-        options.push({
-          value: child.id,
-          label: `${finca.name} / ${getEstablishmentTypeLabel(child.type)} ${child.name}`,
-        });
-      }
-    }
-    return options;
-  }, [establishments]);
+  const locationOptions = useMemo(
+    () => getOperationalEstablishmentOptions(establishments ?? []),
+    [establishments]
+  );
 
   const defaultLines = useMemo(
     () =>
@@ -205,10 +193,9 @@ const OnboardingPage = () => {
 
   const saveEstablishments = async () => {
     const finca = fincaName.trim();
-    const corral = corralName.trim();
     const potreroNames = potreros.map((item) => item.trim()).filter(Boolean);
 
-    if (!finca && !corral && potreroNames.length === 0) {
+    if (!finca && potreroNames.length === 0) {
       markStepSaved("establishments");
       return true;
     }
@@ -226,15 +213,6 @@ const OnboardingPage = () => {
       const fincaId = fincaResponse.data.id as string;
 
       const creations: Promise<unknown>[] = [];
-      if (corral) {
-        creations.push(
-          api.post("/establishments", {
-            name: corral,
-            type: "CORRAL",
-            parentId: fincaId,
-          })
-        );
-      }
       for (const potreroName of potreroNames) {
         creations.push(
           api.post("/establishments", {
@@ -523,16 +501,7 @@ const OnboardingPage = () => {
                   Agregar potrero
                 </Button>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  Corral (opcional)
-                </label>
-                <Input
-                  placeholder="Ej: Corral Principal"
-                  value={corralName}
-                  onChange={(event) => setCorralName(event.target.value)}
-                />
-              </div>
+
             </CardContent>
           </Card>
         ) : null}
@@ -961,3 +930,4 @@ const OnboardingPage = () => {
 };
 
 export default OnboardingPage;
+

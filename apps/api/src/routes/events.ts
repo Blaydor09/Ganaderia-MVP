@@ -7,7 +7,7 @@ import { requireRoles } from "../middleware/rbac";
 import { eventCreateSchema, eventUpdateSchema } from "../validators/eventSchemas";
 import { getPagination } from "../utils/pagination";
 import { writeAudit } from "../utils/audit";
-
+import { assertOperationalEstablishmentOrThrow } from "../utils/tenantScope";
 const router = Router();
 
 router.get(
@@ -105,11 +105,12 @@ router.post(
     if (data.establishmentId) {
       const establishment = await prisma.establishment.findFirst({
         where: { id: data.establishmentId, tenantId },
-        select: { id: true },
+        select: { id: true, type: true },
       });
       if (!establishment) {
         return res.status(400).json({ message: "Establishment not found" });
       }
+      assertOperationalEstablishmentOrThrow(establishment, "Establishment");
     }
     const created = await prisma.animalEvent.create({
       data: {
@@ -155,11 +156,12 @@ router.patch(
     if (data.establishmentId) {
       const establishment = await prisma.establishment.findFirst({
         where: { id: data.establishmentId, tenantId },
-        select: { id: true },
+        select: { id: true, type: true },
       });
       if (!establishment) {
         return res.status(400).json({ message: "Establishment not found" });
       }
+      assertOperationalEstablishmentOrThrow(establishment, "Establishment");
     }
 
     const updated = await prisma.animalEvent.update({
@@ -218,3 +220,4 @@ router.delete(
 );
 
 export default router;
+

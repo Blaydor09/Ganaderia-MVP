@@ -18,6 +18,7 @@ import { getActiveWithdrawalForAnimal } from "../services/withdrawalService";
 import { ApiError } from "../utils/errors";
 import { assertTenantLimit, getCurrentUsageValue } from "../services/usageService";
 import { buildTreatmentAnimalMembershipWhere } from "../services/treatmentService";
+import { assertOperationalEstablishmentOrThrow } from "../utils/tenantScope";
 
 const router = Router();
 
@@ -70,9 +71,7 @@ const ensureAssignableEstablishment = async (tenantId: string, establishmentId?:
   if (!establishment) {
     throw new ApiError(400, "Establishment not found");
   }
-  if (establishment.type === "FINCA") {
-    throw new ApiError(400, "Establishment must be potrero or corral");
-  }
+  assertOperationalEstablishmentOrThrow(establishment, "Establishment");
 };
 
 const ensureSupplier = async (tenantId: string, supplierId?: string | null) => {
@@ -544,9 +543,9 @@ router.post(
       if (establishments.length !== establishmentIds.length) {
         throw new ApiError(400, "Invalid establishment_id in CSV");
       }
-      const invalid = establishments.find((est) => est.type === "FINCA");
+      const invalid = establishments.find((est) => est.type !== "POTRERO");
       if (invalid) {
-        throw new ApiError(400, "Establishment must be potrero or corral");
+        throw new ApiError(400, "Establishment must be potrero");
       }
     }
 
@@ -587,3 +586,4 @@ router.post(
 );
 
 export default router;
+

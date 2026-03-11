@@ -17,7 +17,7 @@ import {
   animalStatusOptions,
   getAnimalCategoryLabel,
 } from "@/lib/animals";
-import { getEstablishmentTypeLabel } from "@/lib/establishments";
+import { getOperationalEstablishmentOptions } from "@/lib/establishments";
 import { parseDateInputToUtcIso } from "@/lib/dates";
 
 const defaultSexByCategory: Record<string, "MALE" | "FEMALE"> = {
@@ -59,21 +59,10 @@ const AnimalsQuickCreatePage = () => {
     queryFn: async () => (await api.get("/establishments?tree=true")).data,
   });
 
-  const locationOptions = useMemo(() => {
-    const fincas = (establishments ?? []) as any[];
-    const options: { value: string; label: string }[] = [];
-    for (const finca of fincas) {
-      const children = finca.children ?? [];
-      for (const child of children) {
-        if (child.type === "FINCA") continue;
-        options.push({
-          value: child.id,
-          label: `${finca.name} / ${getEstablishmentTypeLabel(child.type)} ${child.name}`,
-        });
-      }
-    }
-    return options;
-  }, [establishments]);
+  const locationOptions = useMemo(
+    () => getOperationalEstablishmentOptions(establishments ?? []),
+    [establishments]
+  );
 
   const defaultLines = useMemo(
     () =>
@@ -311,3 +300,4 @@ const AnimalsQuickCreatePage = () => {
 };
 
 export default AnimalsQuickCreatePage;
+

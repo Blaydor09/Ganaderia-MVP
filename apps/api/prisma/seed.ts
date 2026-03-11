@@ -375,35 +375,6 @@ const run = async () => {
         },
       });
 
-  const corralExisting = await prisma.establishment.findFirst({
-    where: {
-      name: "Corral Principal",
-      type: "CORRAL",
-      fincaId: finca.id,
-      tenantId: tenant.id,
-    },
-  });
-  const corral = corralExisting
-    ? await prisma.establishment.update({
-        where: { id: corralExisting.id },
-        data: {
-          name: "Corral Principal",
-          type: "CORRAL",
-          parentId: finca.id,
-          fincaId: finca.id,
-          tenantId: tenant.id,
-        },
-      })
-    : await prisma.establishment.create({
-        data: {
-          name: "Corral Principal",
-          type: "CORRAL",
-          parentId: finca.id,
-          fincaId: finca.id,
-          tenantId: tenant.id,
-        },
-      });
-
   const supplier = await prisma.supplier.create({
     data: { name: "Proveedor Vet", tenantId: tenant.id },
   });
@@ -444,7 +415,7 @@ const run = async () => {
       category: "VACA",
       status: "ACTIVO",
       origin: "BORN",
-      establishmentId: corral.id,
+      establishmentId: potreroNorte.id,
       tenantId: tenant.id,
     },
   });
@@ -484,7 +455,7 @@ const run = async () => {
         status: "ACTIVO",
         origin: "BOUGHT",
         supplierId: supplier.id,
-        establishmentId: corral.id,
+        establishmentId: potreroNorte.id,
         tenantId: tenant.id,
       },
     {
@@ -605,3 +576,4 @@ run()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

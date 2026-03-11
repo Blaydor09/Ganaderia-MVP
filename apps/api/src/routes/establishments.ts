@@ -1,12 +1,21 @@
-﻿import { randomUUID } from "crypto";
+import { randomUUID } from "crypto";
+import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
-import { establishmentCreateSchema, establishmentUpdateSchema } from "../validators/establishmentSchemas";
+import {
+  establishmentCreateSchema,
+  establishmentUpdateSchema,
+  legacyCorralAnimalMigrationSchema,
+} from "../validators/establishmentSchemas";
 import { ApiError } from "../utils/errors";
 import { writeAudit } from "../utils/audit";
+import {
+  assertOperationalEstablishmentOrThrow,
+  visibleEstablishmentTypes,
+} from "../utils/tenantScope";
 
 const router = Router();
 
@@ -68,7 +77,15 @@ router.get(
     const tenantId = req.user!.tenantId;
     const tree = parseBoolean(req.query.tree);
     const includeCounts = parseBoolean(req.query.includeCounts);
-    const where: Record<string, unknown> = { tenantId };
+    const includeLegacy = parseBoolean(req.query.includeLegacy);
+    const legacyOnly = parseBoolean(req.query.legacyOnly);
+    const where: Prisma.EstablishmentWhereInput = { tenantId };
+
+    if (legacyOnly) {
+      where.type = "CORRAL";
+    } else if (!includeLegacy) {
+      where.type = { in: visibleEstablishmentTypes };
+    }
 
     if (tree) {
       const fincaId = req.query.fincaId as string | undefined;
@@ -76,9 +93,9 @@ router.get(
         where.OR = [{ id: fincaId }, { fincaId }];
       }
     } else {
-      if (req.query.type) where.type = req.query.type;
-      if (req.query.parentId) where.parentId = req.query.parentId;
-      if (req.query.fincaId) where.fincaId = req.query.fincaId;
+      if (req.query.type) where.type = req.query.type as any;
+      if (req.query.parentId) where.parentId = req.query.parentId as string;
+      if (req.query.fincaId) where.fincaId = req.query.fincaId as string;
     }
 
     const items = await prisma.establishment.findMany({
@@ -93,6 +110,142 @@ router.get(
     const enriched = includeCounts ? withCounts(items, countMap) : items;
 
     res.json(tree ? buildTree(enriched) : enriched);
+  })
+);
+
+router.get(
+  "/legacy-summary",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
+    const corrals = await prisma.establishment.findMany({
+      where: { tenantId, type: "CORRAL" },
+      include: {
+        parent: {
+          select: { id: true, name: true },
+        },
+      },
+      orderBy: [{ name: "asc" }],
+    });
+
+    const corralAnimalCountMap = await getAnimalCountMap(
+      tenantId,
+      corrals.map((item) => item.id)
+    );
+
+    const fincaIds = Array.from(
+      new Set(corrals.map((item) => item.fincaId).filter(Boolean))
+    ) as string[];
+
+    const potreros = fincaIds.length
+      ? await prisma.establishment.findMany({
+          where: {
+            tenantId,
+            type: "POTRERO",
+            fincaId: { in: fincaIds },
+          },
+          orderBy: [{ name: "asc" }],
+        })
+      : [];
+
+    const potreroAnimalCountMap = await getAnimalCountMap(
+      tenantId,
+      potreros.map((item) => item.id)
+    );
+
+    const potrerosByFinca = new Map<
+      string,
+      Array<{ id: string; name: string; animalCount: number }>
+    >();
+
+    for (const potrero of potreros) {
+      if (!potrero.fincaId) continue;
+      const current = potrerosByFinca.get(potrero.fincaId) ?? [];
+      current.push({
+        id: potrero.id,
+        name: potrero.name,
+        animalCount: potreroAnimalCountMap.get(potrero.id) ?? 0,
+      });
+      potrerosByFinca.set(potrero.fincaId, current);
+    }
+
+    res.json(
+      corrals.map((corral) => ({
+        id: corral.id,
+        name: corral.name,
+        type: corral.type,
+        parentId: corral.parentId,
+        fincaId: corral.fincaId,
+        fincaName: corral.parent?.name ?? "Finca sin nombre",
+        animalCount: corralAnimalCountMap.get(corral.id) ?? 0,
+        suggestedPotreros: corral.fincaId ? potrerosByFinca.get(corral.fincaId) ?? [] : [],
+      }))
+    );
+  })
+);
+
+router.post(
+  "/legacy-corrals/:id/migrate-animals",
+  authenticate,
+  requireRoles("ADMIN"),
+  asyncHandler(async (req, res) => {
+    const data = legacyCorralAnimalMigrationSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
+
+    const [legacyCorral, destination] = await Promise.all([
+      prisma.establishment.findFirst({
+        where: { id: req.params.id, tenantId },
+      }),
+      prisma.establishment.findFirst({
+        where: { id: data.destinationId, tenantId },
+      }),
+    ]);
+
+    if (!legacyCorral || legacyCorral.type !== "CORRAL") {
+      throw new ApiError(404, "Legacy corral not found");
+    }
+
+    assertOperationalEstablishmentOrThrow(destination, "Destination establishment");
+
+    if (!legacyCorral.fincaId || !destination.fincaId || legacyCorral.fincaId !== destination.fincaId) {
+      throw new ApiError(400, "Destination potrero must belong to the same finca");
+    }
+
+    const migrated = await prisma.animal.updateMany({
+      where: {
+        establishmentId: legacyCorral.id,
+        deletedAt: null,
+        tenantId,
+      },
+      data: {
+        establishmentId: destination.id,
+      },
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      tenantId,
+      action: "MIGRATE_LEGACY_CORRAL_ANIMALS",
+      entity: "establishment",
+      entityId: legacyCorral.id,
+      before: {
+        id: legacyCorral.id,
+        name: legacyCorral.name,
+        type: legacyCorral.type,
+      },
+      after: {
+        destinationId: destination.id,
+        destinationName: destination.name,
+        movedAnimals: migrated.count,
+      },
+      ip: req.ip,
+    });
+
+    res.json({
+      sourceId: legacyCorral.id,
+      destinationId: destination.id,
+      movedAnimals: migrated.count,
+    });
   })
 );
 
@@ -169,15 +322,6 @@ router.post(
       throw new ApiError(400, "Parent must be finca");
     }
 
-    if (data.type === "CORRAL") {
-      const existingCorral = await prisma.establishment.findFirst({
-        where: { type: "CORRAL", fincaId: parent.id, tenantId },
-      });
-      if (existingCorral) {
-        throw new ApiError(400, "Corral already exists for this finca");
-      }
-    }
-
     const created = await prisma.establishment.create({
       data: {
         name: data.name,
@@ -218,6 +362,13 @@ router.patch(
       return res.status(404).json({ message: "Establishment not found" });
     }
 
+    if (existing.type === "CORRAL") {
+      throw new ApiError(
+        400,
+        "Legacy corrals cannot be edited. Migrate their animals to a potrero instead"
+      );
+    }
+
     if (data.type && data.type !== existing.type) {
       throw new ApiError(400, "Changing establishment type is not supported");
     }
@@ -247,20 +398,6 @@ router.patch(
 
       if (parent.type !== "FINCA") {
         throw new ApiError(400, "Parent must be finca");
-      }
-
-      if (existing.type === "CORRAL" && parent.id !== existing.fincaId) {
-        const existingCorral = await prisma.establishment.findFirst({
-          where: {
-            type: "CORRAL",
-            fincaId: parent.id,
-            tenantId,
-            NOT: { id: existing.id },
-          },
-        });
-        if (existingCorral) {
-          throw new ApiError(400, "Corral already exists for this finca");
-        }
       }
 
       nextParentId = parent.id;
@@ -335,3 +472,4 @@ router.delete(
 );
 
 export default router;
+

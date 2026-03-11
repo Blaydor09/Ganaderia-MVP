@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
 import { formatDateOnlyUtc, parseDateTimeInputToIso } from "@/lib/dates";
+import { getOperationalEstablishmentOptions } from "@/lib/establishments";
 import type {
   AnimalListResponse,
   EstablishmentNode,
@@ -107,16 +108,10 @@ const MovementsPage = () => {
     return map;
   }, [animals]);
 
-  const locationOptions = useMemo(() => {
-    const options: { value: string; label: string }[] = [];
-    for (const finca of establishments ?? []) {
-      for (const child of finca.children ?? []) {
-        if (child.type === "FINCA") continue;
-        options.push({ value: child.id, label: `${finca.name} / ${child.name}` });
-      }
-    }
-    return options;
-  }, [establishments]);
+  const locationOptions = useMemo(
+    () => getOperationalEstablishmentOptions(establishments ?? []),
+    [establishments]
+  );
 
   const {
     register,
@@ -294,3 +289,4 @@ const MovementsPage = () => {
 };
 
 export default MovementsPage;
+

@@ -167,7 +167,7 @@ const workflowSteps = [
   {
     title: "Configuracion por establecimiento y roles",
     description:
-      "Se define acceso por perfil y estructura de finca, potrero, corral y bodega.",
+      "Se define acceso por perfil y estructura de finca, potreros y bodega.",
   },
   {
     title: "Carga inicial con plantillas",
@@ -222,7 +222,7 @@ const auditMatrix = [
 
 const faqItems = [
   {
-    question: "Sirve para varias fincas y corrales en paralelo?",
+    question: "Sirve para varias fincas y potreros en paralelo?",
     answer:
       "Si. La estructura por establecimiento permite separar y consolidar informacion en una misma cuenta.",
   },
@@ -559,7 +559,7 @@ const LandingPage = () => {
                 <div className="space-y-2 rounded-2xl border border-brand-100 bg-white/90 p-4 text-sm text-slate-600">
                   <p className="flex items-center gap-2">
                     <MapPinned className="h-4 w-4 text-brand-700" />
-                    Estructura por finca, potrero y corral.
+                    Estructura por finca y potreros operativos.
                   </p>
                   <p className="flex items-center gap-2">
                     <ClipboardCheck className="h-4 w-4 text-brand-700" />
@@ -826,3 +826,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+

@@ -1,8 +1,9 @@
-﻿import { prisma } from "../config/prisma";
+import { prisma } from "../config/prisma";
 import { ApiError } from "../utils/errors";
 import { getActiveWithdrawalForAnimal } from "./withdrawalService";
 import { isWithdrawalActive } from "./rules";
 import { writeAudit } from "../utils/audit";
+import { assertOperationalEstablishmentOrThrow } from "../utils/tenantScope";
 
 type Establishment = NonNullable<
   Awaited<ReturnType<typeof prisma.establishment.findUnique>>
@@ -65,12 +66,7 @@ export const createMovement = async (input: CreateMovementInput) => {
     est: Establishment | null,
     label: string
   ) => asserts est is Establishment = (est, label) => {
-    if (!est) {
-      throw new ApiError(400, `${label} is required`);
-    }
-    if (est.type === "FINCA") {
-      throw new ApiError(400, `${label} must be potrero or corral`);
-    }
+    assertOperationalEstablishmentOrThrow(est, label);
   };
 
   const ensureOriginMatches = () => {
@@ -190,3 +186,4 @@ export const createMovement = async (input: CreateMovementInput) => {
 
   return movement;
 };
+
