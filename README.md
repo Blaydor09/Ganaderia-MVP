@@ -18,6 +18,11 @@ Sistema web para gestion e inventario bovino con trazabilidad sanitaria, control
 ```bash
 docker compose up -d
 ```
+Espera a que PostgreSQL quede listo antes de seguir. Si quieres verificarlo:
+```bash
+docker compose logs db --tail 20
+```
+Debes ver un mensaje parecido a `database system is ready to accept connections`.
 
 ### 2) Backend
 ```bash
@@ -29,6 +34,7 @@ npm run prisma:migrate
 npm run seed
 npm run dev
 ```
+Si `npm run dev` falla con `EADDRINUSE`, el puerto `4000` ya esta ocupado por otra instancia. Cierra ese proceso o cambia `PORT` en `apps/api/.env`. Si cambias el puerto, actualiza tambien `VITE_API_URL` en `apps/web/.env` y `apps/platform/.env`.
 
 ### 3) Frontend
 ```bash

@@ -4,16 +4,16 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/index.js",
-    "lint": "tsc --noEmit -p tsconfig.json",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy",
-    "seed": "tsx prisma/seed.ts",
-    "pretest": "prisma generate",
-    "test": "vitest run"
+    "dev": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs tsx watch src/index.ts",
+    "build": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs tsc -p tsconfig.build.json",
+    "start": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs node dist/index.js",
+    "lint": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs tsc --noEmit -p tsconfig.json",
+    "prisma:generate": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs prisma generate",
+    "prisma:migrate": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs prisma migrate dev",
+    "prisma:deploy": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs prisma migrate deploy",
+    "seed": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs tsx prisma/seed.ts",
+    "pretest": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs prisma generate",
+    "test": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs vitest run"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",

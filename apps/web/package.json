@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "dev": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs vite",
+    "build": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs vite build",
+    "preview": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs vite preview",
+    "lint": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs tsc --noEmit -p tsconfig.json",
+    "test": "$repo=(Get-Location).ProviderPath; if ($repo.StartsWith('\\\\?\\')) { $repo=$repo.Substring(4) }; Set-Location -LiteralPath $repo; node ../../scripts/run-local-bin.cjs vitest run"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
