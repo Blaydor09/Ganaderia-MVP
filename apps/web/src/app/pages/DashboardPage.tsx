@@ -14,10 +14,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -33,6 +30,7 @@ import { DashboardFiltersBar } from "@/components/dashboard/DashboardFiltersBar"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { ChartCard } from "@/components/dashboard/ChartCard";
+import { DistributionDonutChart } from "@/components/dashboard/DistributionDonutChart";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Access } from "@/lib/access";
 import { animalCategoryOptions, animalSexOptions } from "@/lib/animals";
@@ -104,9 +102,10 @@ const DashboardPage = () => {
     const byCategory = new Map(
       (overview?.animalDistribution.byCategory ?? []).map((item) => [item.category, item.count])
     );
-    return animalCategoryOptions.map((option) => ({
+    return animalCategoryOptions.map((option, index) => ({
       name: option.label,
       value: byCategory.get(option.value) ?? 0,
+      color: categoryColors[index % categoryColors.length],
     }));
   }, [overview]);
 
@@ -114,9 +113,10 @@ const DashboardPage = () => {
     const bySex = new Map(
       (overview?.animalDistribution.bySex ?? []).map((item) => [item.sex, item.count])
     );
-    return animalSexOptions.map((option) => ({
+    return animalSexOptions.map((option, index) => ({
       name: option.label,
       value: bySex.get(option.value) ?? 0,
+      color: sexColors[index % sexColors.length],
     }));
   }, [overview]);
 
@@ -304,62 +304,25 @@ const DashboardPage = () => {
               {canViewAnimals ? (
                 <div className="grid gap-6 md:grid-cols-2">
                   <ChartCard eyebrow="Distribucion" title="Animales por categoria">
-                    <div className="h-64">
+                    <div className="h-72">
                       {categoryTotal === 0 ? (
                         <div className="grid h-full place-items-center text-sm text-slate-500 dark:text-slate-400">
                           Sin datos para graficar
                         </div>
                       ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Tooltip />
-                            <Legend verticalAlign="bottom" height={36} />
-                            <Pie
-                              data={categoryChartData}
-                              dataKey="value"
-                              nameKey="name"
-                              innerRadius={48}
-                              outerRadius={90}
-                              paddingAngle={3}
-                            >
-                              {categoryChartData.map((entry, index) => (
-                                <Cell
-                                  key={`category-${entry.name}`}
-                                  fill={categoryColors[index % categoryColors.length]}
-                                />
-                              ))}
-                            </Pie>
-                          </PieChart>
-                        </ResponsiveContainer>
+                        <DistributionDonutChart data={categoryChartData} total={categoryTotal} />
                       )}
                     </div>
                   </ChartCard>
 
                   <ChartCard eyebrow="Distribucion" title="Animales por sexo">
-                    <div className="h-64">
+                    <div className="h-72">
                       {sexTotal === 0 ? (
                         <div className="grid h-full place-items-center text-sm text-slate-500 dark:text-slate-400">
                           Sin datos para graficar
                         </div>
                       ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Tooltip />
-                            <Legend verticalAlign="bottom" height={36} />
-                            <Pie
-                              data={sexChartData}
-                              dataKey="value"
-                              nameKey="name"
-                              innerRadius={48}
-                              outerRadius={90}
-                              paddingAngle={3}
-                            >
-                              {sexChartData.map((entry, index) => (
-                                <Cell key={`sex-${entry.name}`} fill={sexColors[index % sexColors.length]} />
-                              ))}
-                            </Pie>
-                          </PieChart>
-                        </ResponsiveContainer>
+                        <DistributionDonutChart data={sexChartData} total={sexTotal} />
                       )}
                     </div>
                   </ChartCard>
