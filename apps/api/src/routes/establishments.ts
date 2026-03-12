@@ -276,21 +276,41 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = establishmentCreateSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
+    const name = data.name.trim();
+
+    if (!name) {
+      throw new ApiError(400, "Name is required");
+    }
 
     if (data.type === "FINCA") {
       if (data.parentId) {
         throw new ApiError(400, "Finca cannot have parent");
       }
+
+      const potreroNames = (data.potreros ?? []).filter(Boolean);
+      if (!potreroNames.length) {
+        throw new ApiError(400, "At least one potrero is required");
+      }
+
       const id = randomUUID();
       const created = await prisma.establishment.create({
         data: {
           id,
-          name: data.name,
+          name,
           type: data.type,
           parentId: null,
           fincaId: id,
           tenantId,
           createdById: req.user?.id,
+          children: {
+            create: potreroNames.map((potreroName) => ({
+              name: potreroName,
+              type: "POTRERO",
+              fincaId: id,
+              tenantId,
+              createdById: req.user?.id,
+            })),
+          },
         },
       });
 
@@ -300,10 +320,17 @@ router.post(
         action: "CREATE",
         entity: "establishment",
         entityId: created.id,
-        after: created,
+        after: {
+          ...created,
+          potreros: potreroNames,
+        },
         ip: req.ip,
       });
       return res.status(201).json(created);
+    }
+
+    if ((data.potreros ?? []).some(Boolean)) {
+      throw new ApiError(400, "Potreros are only supported when creating a finca");
     }
 
     if (!data.parentId) {
@@ -324,7 +351,7 @@ router.post(
 
     const created = await prisma.establishment.create({
       data: {
-        name: data.name,
+        name,
         type: data.type,
         parentId: parent.id,
         fincaId: parent.id,
@@ -407,7 +434,7 @@ router.patch(
     const updated = await prisma.establishment.update({
       where: { id: req.params.id },
       data: {
-        name: data.name,
+        name: data.name?.trim(),
         parentId: nextParentId,
         fincaId: nextFincaId,
       },
@@ -434,29 +461,84 @@ router.delete(
   requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
     const tenantId = req.user!.tenantId;
-    const [childrenCount, animalsCount] = await Promise.all([
-      prisma.establishment.count({ where: { parentId: req.params.id, tenantId } }),
-      prisma.animal.count({
-        where: { establishmentId: req.params.id, deletedAt: null, tenantId },
-      }),
-    ]);
+    const existing = await prisma.establishment.findFirst({
+      where: { id: req.params.id, tenantId },
+    });
 
-    if (childrenCount > 0) {
-      throw new ApiError(400, "Establishment has child locations");
+    if (!existing) {
+      return res.status(404).json({ message: "Establishment not found" });
     }
+
+    const scopedEstablishments =
+      existing.type === "FINCA"
+        ? await prisma.establishment.findMany({
+            where: {
+              tenantId,
+              OR: [{ id: existing.id }, { fincaId: existing.id }],
+            },
+            select: { id: true, name: true, type: true },
+          })
+        : [{ id: existing.id, name: existing.name, type: existing.type }];
+
+    const establishmentIds = scopedEstablishments.map((item) => item.id);
+
+    if (existing.type !== "FINCA") {
+      const childrenCount = await prisma.establishment.count({
+        where: { parentId: existing.id, tenantId },
+      });
+
+      if (childrenCount > 0) {
+        throw new ApiError(400, "Establishment has child locations");
+      }
+    }
+
+    const [animalsCount, eventsCount, originMovementsCount, destinationMovementsCount] =
+      await Promise.all([
+        prisma.animal.count({
+          where: {
+            establishmentId: { in: establishmentIds },
+            deletedAt: null,
+            tenantId,
+          },
+        }),
+        prisma.animalEvent.count({
+          where: {
+            establishmentId: { in: establishmentIds },
+            tenantId,
+          },
+        }),
+        prisma.movement.count({
+          where: {
+            originId: { in: establishmentIds },
+            tenantId,
+          },
+        }),
+        prisma.movement.count({
+          where: {
+            destinationId: { in: establishmentIds },
+            tenantId,
+          },
+        }),
+      ]);
 
     if (animalsCount > 0) {
       throw new ApiError(400, "Establishment has assigned animals");
     }
 
-    const existing = await prisma.establishment.findFirst({
-      where: { id: req.params.id, tenantId },
-    });
-    if (!existing) {
-      return res.status(404).json({ message: "Establishment not found" });
+    if (eventsCount > 0 || originMovementsCount > 0 || destinationMovementsCount > 0) {
+      throw new ApiError(400, "Establishment has historical records");
     }
 
-    await prisma.establishment.delete({ where: { id: req.params.id } });
+    if (existing.type === "FINCA") {
+      await prisma.establishment.deleteMany({
+        where: {
+          id: { in: establishmentIds },
+          tenantId,
+        },
+      });
+    } else {
+      await prisma.establishment.delete({ where: { id: existing.id } });
+    }
 
     await writeAudit({
       userId: req.user?.id,
@@ -464,12 +546,18 @@ router.delete(
       action: "DELETE",
       entity: "establishment",
       entityId: existing.id,
-      before: existing,
+      before: {
+        ...existing,
+        deletedEstablishments: scopedEstablishments,
+      },
       ip: req.ip,
     });
-    res.json({ success: true });
+    res.json({ success: true, deletedIds: establishmentIds });
   })
 );
 
 export default router;
+
+
+
 

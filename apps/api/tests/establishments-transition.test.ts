@@ -94,6 +94,125 @@ describe("establishments transition", () => {
     );
   });
 
+  it("creates a finca together with its initial potreros", async () => {
+    const create = vi.spyOn(prisma.establishment, "create").mockResolvedValue({
+      id: "55555555-5555-4555-8555-555555555555",
+      name: "Finca Central",
+      type: "FINCA",
+      parentId: null,
+      fincaId: "55555555-5555-4555-8555-555555555555",
+    } as any);
+
+    const app = createApp();
+    const response = await request(app)
+      .post("/api/v1/establishments")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        name: "Finca Central",
+        type: "FINCA",
+        potreros: ["Potrero Norte", "Potrero Sur"],
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.id).toBe("55555555-5555-4555-8555-555555555555");
+
+    const createArgs = create.mock.calls[0]?.[0] as any;
+    expect(createArgs.data.name).toBe("Finca Central");
+    expect(createArgs.data.type).toBe("FINCA");
+    expect(createArgs.data.parentId).toBeNull();
+    expect(createArgs.data.tenantId).toBe(tenantId);
+    expect(createArgs.data.createdById).toBe(userId);
+    expect(createArgs.data.id).toBeTypeOf("string");
+    expect(createArgs.data.fincaId).toBe(createArgs.data.id);
+    expect(createArgs.data.children).toEqual({
+      create: [
+        {
+          name: "Potrero Norte",
+          type: "POTRERO",
+          fincaId: createArgs.data.id,
+          tenantId,
+          createdById: userId,
+        },
+        {
+          name: "Potrero Sur",
+          type: "POTRERO",
+          fincaId: createArgs.data.id,
+          tenantId,
+          createdById: userId,
+        },
+      ],
+    });
+  });
+
+  it("rejects finca creation without initial potreros", async () => {
+    const create = vi.spyOn(prisma.establishment, "create");
+    const app = createApp();
+    const response = await request(app)
+      .post("/api/v1/establishments")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        name: "Finca Central",
+        type: "FINCA",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Validation error");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("deletes a finca together with its empty child locations", async () => {
+    vi.spyOn(prisma.establishment, "findFirst").mockResolvedValue({
+      id: "55555555-5555-4555-8555-555555555555",
+      name: "Finca Central",
+      type: "FINCA",
+      fincaId: "55555555-5555-4555-8555-555555555555",
+    } as any);
+    vi.spyOn(prisma.establishment, "findMany").mockResolvedValue([
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        name: "Finca Central",
+        type: "FINCA",
+      },
+      {
+        id: "44444444-4444-4444-8444-444444444444",
+        name: "Potrero Norte",
+        type: "POTRERO",
+      },
+    ] as any);
+    vi.spyOn(prisma.animal, "count").mockResolvedValue(0);
+    vi.spyOn(prisma.animalEvent, "count").mockResolvedValue(0);
+    const movementCount = vi.spyOn(prisma.movement, "count").mockResolvedValue(0);
+    const deleteMany = vi.spyOn(prisma.establishment, "deleteMany").mockResolvedValue({
+      count: 2,
+    } as any);
+
+    const app = createApp();
+    const response = await request(app)
+      .delete("/api/v1/establishments/55555555-5555-4555-8555-555555555555")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      deletedIds: [
+        "55555555-5555-4555-8555-555555555555",
+        "44444444-4444-4444-8444-444444444444",
+      ],
+    });
+    expect(movementCount).toHaveBeenCalledTimes(2);
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: {
+          in: [
+            "55555555-5555-4555-8555-555555555555",
+            "44444444-4444-4444-8444-444444444444",
+          ],
+        },
+        tenantId,
+      },
+    });
+  });
+
   it("migrates active animals from a legacy corral to a potrero of the same finca", async () => {
     vi.spyOn(prisma.establishment, "findFirst")
       .mockResolvedValueOnce({
@@ -146,4 +265,3 @@ describe("establishments transition", () => {
     expect(response.body.message).toBe("Validation error");
   });
 });
-

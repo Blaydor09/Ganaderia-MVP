@@ -22,6 +22,8 @@ import {
 import { getOperationalEstablishmentOptions } from "@/lib/establishments";
 import { productTypeOptions } from "@/lib/products";
 import { parseDateInputToUtcIso } from "@/lib/dates";
+import { hasAnyRole } from "@/lib/auth";
+import { Access } from "@/lib/access";
 
 const steps = [
   {
@@ -147,6 +149,7 @@ const OnboardingPage = () => {
     () => getOperationalEstablishmentOptions(establishments ?? []),
     [establishments]
   );
+  const canCreateEstablishments = hasAnyRole(Access.establishmentsCreate);
 
   const defaultLines = useMemo(
     () =>
@@ -192,6 +195,11 @@ const OnboardingPage = () => {
   };
 
   const saveEstablishments = async () => {
+    if (!canCreateEstablishments) {
+      markStepSaved("establishments");
+      return true;
+    }
+
     const finca = fincaName.trim();
     const potreroNames = potreros.map((item) => item.trim()).filter(Boolean);
 
@@ -205,27 +213,17 @@ const OnboardingPage = () => {
       return false;
     }
 
+    if (!potreroNames.length) {
+      toast.error("Ingresa al menos un potrero para la finca.");
+      return false;
+    }
+
     try {
-      const fincaResponse = await api.post("/establishments", {
+      await api.post("/establishments", {
         name: finca,
         type: "FINCA",
+        potreros: potreroNames,
       });
-      const fincaId = fincaResponse.data.id as string;
-
-      const creations: Promise<unknown>[] = [];
-      for (const potreroName of potreroNames) {
-        creations.push(
-          api.post("/establishments", {
-            name: potreroName,
-            type: "POTRERO",
-            parentId: fincaId,
-          })
-        );
-      }
-
-      if (creations.length) {
-        await Promise.all(creations);
-      }
 
       await queryClient.invalidateQueries({ queryKey: ["establishments"] });
       await queryClient.invalidateQueries({ queryKey: ["establishments", "onboarding"] });
@@ -455,53 +453,66 @@ const OnboardingPage = () => {
               </p>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  Finca principal
-                </label>
-                <Input
-                  placeholder="Ej: Finca Los Sauces"
-                  value={fincaName}
-                  onChange={(event) => setFincaName(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                  Potreros (opcional)
-                </label>
-                {potreros.map((value, index) => (
-                  <div key={`potrero-${index}`} className="flex items-center gap-2">
+              {canCreateEstablishments ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                      Finca principal
+                    </label>
                     <Input
-                      placeholder={`Potrero ${index + 1}`}
-                      value={value}
-                      onChange={(event) => {
-                        const next = [...potreros];
-                        next[index] = event.target.value;
-                        setPotreros(next);
-                      }}
+                      placeholder="Ej: Finca Los Sauces"
+                      value={fincaName}
+                      onChange={(event) => setFincaName(event.target.value)}
                     />
-                    {potreros.length > 1 ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          setPotreros((prev) => prev.filter((_, i) => i !== index))
-                        }
-                      >
-                        Quitar
-                      </Button>
-                    ) : null}
                   </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setPotreros((prev) => [...prev, ""])}
-                >
-                  Agregar potrero
-                </Button>
-              </div>
-
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                        Potreros
+                      </label>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Registra al menos un potrero inicial para la finca.
+                      </p>
+                    </div>
+                    {potreros.map((value, index) => (
+                      <div key={`potrero-${index}`} className="flex items-center gap-2">
+                        <Input
+                          placeholder={`Potrero ${index + 1}`}
+                          value={value}
+                          onChange={(event) => {
+                            const next = [...potreros];
+                            next[index] = event.target.value;
+                            setPotreros(next);
+                          }}
+                        />
+                        {potreros.length > 1 ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                              setPotreros((prev) => prev.filter((_, i) => i !== index))
+                            }
+                          >
+                            Quitar
+                          </Button>
+                        ) : null}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setPotreros((prev) => [...prev, ""])}
+                    >
+                      Agregar potrero
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                  Solo el usuario administrador puede registrar fincas y potreros. Si ya fueron
+                  creados, puedes continuar con la carga inicial.
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : null}
@@ -930,4 +941,6 @@ const OnboardingPage = () => {
 };
 
 export default OnboardingPage;
+
+
 
