@@ -16,7 +16,7 @@ import {
 import { ChevronDown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { downloadCsv } from "@/lib/csv";
-import { getAnimalCategoryLabel, getAnimalStatusLabel } from "@/lib/animals";
+import { getAnimalCategoryLabel, getAnimalIdentifier, getAnimalStatusLabel } from "@/lib/animals";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
 
@@ -44,22 +44,30 @@ const AnimalsPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["animals", search, page],
     queryFn: async () =>
-      (await api.get(`/animals?page=${page}&pageSize=${pageSize}&tag=${search}`)).data,
+      (
+        await api.get("/animals", {
+          params: { page, pageSize, tag: search },
+        })
+      ).data,
   });
 
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
-        header: "Arete",
+        header: "Identificador",
         accessorKey: "tag",
         cell: (info) => {
-          const tag = info.getValue() as string | null;
+          const identifier = getAnimalIdentifier(info.row.original, "");
           return (
             <Link
-              className={tag ? "text-brand-700 hover:underline" : "text-slate-400 hover:underline"}
+              className={
+                identifier
+                  ? "text-brand-700 hover:underline"
+                  : "text-slate-400 hover:underline"
+              }
               to={`/animals/${info.row.original.id}`}
             >
-              {tag || "Sin arete"}
+              {identifier || "Sin identificador"}
             </Link>
           );
         },
@@ -125,12 +133,7 @@ const AnimalsPage = () => {
           <div className="flex flex-wrap gap-2">
             {canManageAnimals ? (
               <Button asChild>
-                <Link to="/animals/quick">Registro rapido</Link>
-              </Button>
-            ) : null}
-            {canManageAnimals ? (
-              <Button variant="secondary" asChild>
-                <Link to="/animals/new">Registrar animal</Link>
+                <Link to="/animals/quick">Registro animal</Link>
               </Button>
             ) : null}
             <DropdownMenu>
@@ -155,7 +158,7 @@ const AnimalsPage = () => {
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          placeholder="Buscar por arete"
+          placeholder="Buscar por identificador"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="w-64"
@@ -206,14 +209,9 @@ const AnimalsPage = () => {
                   <div className="flex flex-col items-center gap-2 py-8 text-slate-500 dark:text-slate-400">
                     <span>No hay animales registrados.</span>
                     {canManageAnimals ? (
-                      <div className="flex gap-2">
-                        <Button size="sm" asChild>
-                          <Link to="/animals/quick">Registro rapido</Link>
-                        </Button>
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to="/animals/new">Registrar animal</Link>
-                        </Button>
-                      </div>
+                      <Button size="sm" asChild>
+                        <Link to="/animals/quick">Registro animal</Link>
+                      </Button>
                     ) : null}
                   </div>
                 </TD>

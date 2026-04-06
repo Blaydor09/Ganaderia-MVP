@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   animalCategoryOptions,
+  animalQuickRegistrationCategoryOptions,
   animalOriginOptions,
   animalSexOptions,
   animalStatusOptions,
@@ -64,11 +65,9 @@ const quickSchema = z
   .object({
     lines: z.array(quickLineSchema),
     breed: z.string().min(1, "Requerido"),
-    birthDate: z.string().optional(),
-    birthEstimated: z.boolean().optional(),
+    registrationDate: z.string().min(1, "Requerido"),
     origin: z.enum(["BORN", "BOUGHT"]),
-    status: z.enum(["ACTIVO", "VENDIDO", "MUERTO", "FAENADO", "PERDIDO"]).optional(),
-    establishmentId: z.string().optional(),
+    establishmentId: z.string().min(1, "Selecciona un establecimiento"),
     notes: z.string().optional(),
   })
   .refine((values) => values.lines.some((line) => line.count > 0), {
@@ -120,6 +119,8 @@ const parseVaccineTypes = (value?: string) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const getTodayDateInputValue = () => new Date().toISOString().slice(0, 10);
+
 const OnboardingPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -153,7 +154,7 @@ const OnboardingPage = () => {
 
   const defaultLines = useMemo(
     () =>
-      animalCategoryOptions.map((option) => ({
+      animalQuickRegistrationCategoryOptions.map((option) => ({
         category: option.value,
         sex: defaultSexByCategory[option.value] ?? "FEMALE",
         count: 0,
@@ -171,8 +172,7 @@ const OnboardingPage = () => {
     defaultValues: {
       lines: defaultLines,
       origin: "BORN",
-      status: "ACTIVO",
-      birthEstimated: false,
+      registrationDate: getTodayDateInputValue(),
       establishmentId: "",
     },
   });
@@ -253,19 +253,15 @@ const OnboardingPage = () => {
       return true;
     }
 
-    const birthDateIso = values.birthDate
-      ? parseDateInputToUtcIso(values.birthDate)
-      : undefined;
+    const registrationDateIso = parseDateInputToUtcIso(values.registrationDate);
 
     try {
       await api.post("/animals/quick", {
         items,
         breed: values.breed.trim(),
-        birthDate: birthDateIso,
-        birthEstimated: values.birthEstimated ?? false,
+        registrationDate: registrationDateIso,
         origin: values.origin,
-        status: values.status || undefined,
-        establishmentId: values.establishmentId || undefined,
+        establishmentId: values.establishmentId,
         notes: values.notes?.trim() || undefined,
       });
       markStepSaved("animals");
@@ -447,7 +443,7 @@ const OnboardingPage = () => {
         {currentStep.key === "establishments" ? (
           <Card>
             <CardHeader>
-              <h2 className="font-display text-lg font-semibold">Registro rapido</h2>
+              <h2 className="font-display text-lg font-semibold">Configuracion inicial</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Completa lo minimo para ubicar animales y movimientos.
               </p>
@@ -520,7 +516,7 @@ const OnboardingPage = () => {
         {currentStep.key === "animals" ? (
           <Card>
             <CardHeader>
-              <h2 className="font-display text-lg font-semibold">Registro rapido</h2>
+              <h2 className="font-display text-lg font-semibold">Registro animal</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Elige la forma mas rapida de cargar animales iniciales.
               </p>
@@ -598,8 +594,11 @@ const OnboardingPage = () => {
                         ) : null}
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Fecha nacimiento</label>
-                        <Input type="date" {...register("birthDate")} />
+                        <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Fecha de registro</label>
+                        <Input type="date" {...register("registrationDate")} />
+                        {errors.registrationDate ? (
+                          <p className="text-xs text-red-500">{errors.registrationDate.message}</p>
+                        ) : null}
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Origen</label>
@@ -614,40 +613,22 @@ const OnboardingPage = () => {
                           ))}
                         </select>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Estado</label>
-                        <select
-                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
-                          {...register("status")}
-                        >
-                          {animalStatusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                       <div className="space-y-1 md:col-span-2">
                         <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Establecimiento</label>
                         <select
                           className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                           {...register("establishmentId")}
                         >
-                          <option value="">Sin asignar</option>
+                          <option value="">Selecciona un establecimiento</option>
                           {locationOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
                             </option>
                           ))}
                         </select>
-                      </div>
-                      <div className="flex items-center gap-2 md:col-span-2">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-300 dark:border-slate-600"
-                          {...register("birthEstimated")}
-                        />
-                        <span className="text-xs text-slate-600 dark:text-slate-300">Fecha estimada</span>
+                        {errors.establishmentId ? (
+                          <p className="text-xs text-red-500">{errors.establishmentId.message}</p>
+                        ) : null}
                       </div>
                     </div>
                     <div className="space-y-1">
@@ -941,6 +922,4 @@ const OnboardingPage = () => {
 };
 
 export default OnboardingPage;
-
-
 

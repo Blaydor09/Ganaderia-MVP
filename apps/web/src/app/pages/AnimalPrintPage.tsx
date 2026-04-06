@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { getAnimalCategoryLabel } from "@/lib/animals";
+import { getAnimalCategoryLabel, getAnimalIdentifier } from "@/lib/animals";
 
 const AnimalPrintPage = () => {
   const params = useParams();
@@ -21,13 +21,13 @@ const AnimalPrintPage = () => {
     return <div className="p-6">Cargando ficha...</div>;
   }
 
-  const tagLabel = data.tag || "Sin arete";
+  const animalIdentifier = getAnimalIdentifier(data);
 
   return (
     <div className="p-8 text-slate-900">
       <h1 className="text-2xl font-semibold">Ficha del animal</h1>
       <div className="mt-4 grid gap-2 text-sm">
-        <p><strong>Arete:</strong> {tagLabel}</p>
+        <p><strong>Identificador:</strong> {animalIdentifier}</p>
         <p><strong>Categoria:</strong> {getAnimalCategoryLabel(data.category)}</p>
         <p><strong>Raza:</strong> {data.breed}</p>
         <p><strong>Sexo:</strong> {data.sex}</p>

@@ -17,7 +17,14 @@ router.get(
 
     const [animals, products, batches] = await Promise.all([
       prisma.animal.findMany({
-        where: { tag: { contains: q, mode: "insensitive" }, deletedAt: null, tenantId },
+        where: {
+          deletedAt: null,
+          tenantId,
+          OR: [
+            { tag: { contains: q, mode: "insensitive" } },
+            { internalCode: { contains: q, mode: "insensitive" } },
+          ],
+        },
         take: 5,
       }),
       prisma.product.findMany({

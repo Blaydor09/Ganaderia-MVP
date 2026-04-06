@@ -146,13 +146,19 @@ router.get(
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
     const tenantId = req.user!.tenantId;
-    const where: Record<string, unknown> = { deletedAt: null, tenantId };
-    if (req.query.tag) where.tag = { contains: req.query.tag, mode: "insensitive" };
-    if (req.query.category) where.category = req.query.category;
-    if (req.query.status) where.status = req.query.status;
-    if (req.query.establishmentId) where.establishmentId = req.query.establishmentId;
+    const where: Prisma.AnimalWhereInput = { deletedAt: null, tenantId };
+    if (req.query.tag) {
+      const search = String(req.query.tag);
+      where.OR = [
+        { tag: { contains: search, mode: "insensitive" } },
+        { internalCode: { contains: search, mode: "insensitive" } },
+      ];
+    }
+    if (req.query.category) where.category = String(req.query.category) as Prisma.AnimalWhereInput["category"];
+    if (req.query.status) where.status = String(req.query.status) as Prisma.AnimalWhereInput["status"];
+    if (req.query.establishmentId) where.establishmentId = String(req.query.establishmentId);
     if (req.query.fincaId) {
-      where.establishment = { fincaId: req.query.fincaId, tenantId };
+      where.establishment = { fincaId: String(req.query.fincaId), tenantId };
     }
 
     const [items, total] = await Promise.all([
@@ -244,14 +250,12 @@ router.post(
     const tenantId = req.user!.tenantId;
     await ensureAssignableEstablishment(tenantId, data.establishmentId);
 
-    const birthDate = parseOptionalDate(data.birthDate);
+    const registrationDate = parseOptionalDate(data.registrationDate);
     const breed = data.breed.trim();
     const notes = data.notes?.trim();
-    const status = data.status ?? "ACTIVO";
-    const birthEstimated = data.birthEstimated ?? false;
 
     const requestedCount = data.items.reduce((sum, item) => sum + item.count, 0);
-    if (status === "ACTIVO" && requestedCount > 0) {
+    if (requestedCount > 0) {
       const currentAnimals = await getCurrentUsageValue(tenantId, "ACTIVE_ANIMALS");
       await assertTenantLimit({
         tenantId,
@@ -275,16 +279,15 @@ router.post(
           tag: null,
           sex: item.sex,
           breed,
-          birthDate,
-          birthEstimated,
           category: item.category,
-          status,
+          status: "ACTIVO",
           origin: data.origin,
+          establishmentId: data.establishmentId,
           tenantId,
           createdById: req.user?.id,
         };
-        if (data.establishmentId) {
-          record.establishmentId = data.establishmentId;
+        if (registrationDate) {
+          record.createdAt = registrationDate;
         }
         if (notes) {
           record.notes = notes;
@@ -310,8 +313,9 @@ router.post(
         count,
         items: data.items,
         origin: data.origin,
-        status,
-        establishmentId: data.establishmentId ?? null,
+        status: "ACTIVO",
+        establishmentId: data.establishmentId,
+        registrationDate: data.registrationDate ?? null,
       },
       ip: req.ip,
     });
@@ -586,4 +590,3 @@ router.post(
 );
 
 export default router;
-

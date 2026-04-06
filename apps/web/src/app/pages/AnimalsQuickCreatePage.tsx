@@ -11,10 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
-  animalCategoryOptions,
+  animalQuickRegistrationCategoryOptions,
   animalOriginOptions,
   animalSexOptions,
-  animalStatusOptions,
   getAnimalCategoryLabel,
 } from "@/lib/animals";
 import { getOperationalEstablishmentOptions } from "@/lib/establishments";
@@ -34,15 +33,15 @@ const lineSchema = z.object({
   count: z.number().int().min(0),
 });
 
+const getTodayDateInputValue = () => new Date().toISOString().slice(0, 10);
+
 const schema = z
   .object({
     lines: z.array(lineSchema),
     breed: z.string().min(1, "Requerido"),
-    birthDate: z.string().optional(),
-    birthEstimated: z.boolean().optional(),
+    registrationDate: z.string().min(1, "Requerido"),
     origin: z.enum(["BORN", "BOUGHT"]),
-    status: z.enum(["ACTIVO", "VENDIDO", "MUERTO", "FAENADO", "PERDIDO"]).optional(),
-    establishmentId: z.string().optional(),
+    establishmentId: z.string().min(1, "Selecciona un establecimiento"),
     notes: z.string().optional(),
   })
   .refine((values) => values.lines.some((line) => line.count > 0), {
@@ -66,7 +65,7 @@ const AnimalsQuickCreatePage = () => {
 
   const defaultLines = useMemo(
     () =>
-      animalCategoryOptions.map((option) => ({
+      animalQuickRegistrationCategoryOptions.map((option) => ({
         category: option.value,
         sex: defaultSexByCategory[option.value] ?? "FEMALE",
         count: 0,
@@ -84,8 +83,7 @@ const AnimalsQuickCreatePage = () => {
     defaultValues: {
       lines: defaultLines,
       origin: "BORN",
-      status: "ACTIVO",
-      birthEstimated: false,
+      registrationDate: getTodayDateInputValue(),
       establishmentId: "",
     },
   });
@@ -107,22 +105,18 @@ const AnimalsQuickCreatePage = () => {
       return;
     }
 
-    const birthDateIso = values.birthDate
-      ? parseDateInputToUtcIso(values.birthDate)
-      : undefined;
+    const registrationDateIso = parseDateInputToUtcIso(values.registrationDate);
 
     try {
       const response = await api.post("/animals/quick", {
         items,
         breed: values.breed.trim(),
-        birthDate: birthDateIso,
-        birthEstimated: values.birthEstimated ?? false,
+        registrationDate: registrationDateIso,
         origin: values.origin,
-        status: values.status || undefined,
-        establishmentId: values.establishmentId || undefined,
+        establishmentId: values.establishmentId,
         notes: values.notes?.trim() || undefined,
       });
-      toast.success(`Registro rapido completado (${response.data.count} animales)`);
+      toast.success(`Registro animal completado (${response.data.count} animales)`);
       navigate("/animals");
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "Error al registrar animales");
@@ -132,8 +126,8 @@ const AnimalsQuickCreatePage = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Registro rapido"
-        subtitle="Carga masiva por categoria y sexo"
+        title="Registro animal"
+        subtitle="Carga por categoria y sexo"
         actions={
           <Button variant="outline" asChild>
             <Link to="/animals">Volver</Link>
@@ -221,8 +215,11 @@ const AnimalsQuickCreatePage = () => {
                 ) : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Fecha nacimiento</label>
-                <Input type="date" {...register("birthDate")} />
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Fecha de registro</label>
+                <Input type="date" {...register("registrationDate")} />
+                {errors.registrationDate ? (
+                  <p className="text-xs text-red-500">{errors.registrationDate.message}</p>
+                ) : null}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Origen</label>
@@ -237,40 +234,22 @@ const AnimalsQuickCreatePage = () => {
                   ))}
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Estado</label>
-                <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
-                  {...register("status")}
-                >
-                  {animalStatusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
               <div className="space-y-1 md:col-span-2">
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Establecimiento</label>
                 <select
                   className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                   {...register("establishmentId")}
                 >
-                  <option value="">Sin asignar</option>
+                  <option value="">Selecciona un establecimiento</option>
                   {locationOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="flex items-center gap-2 md:col-span-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-300 dark:border-slate-600"
-                  {...register("birthEstimated")}
-                />
-                <span className="text-xs text-slate-600 dark:text-slate-300">Fecha estimada</span>
+                {errors.establishmentId ? (
+                  <p className="text-xs text-red-500">{errors.establishmentId.message}</p>
+                ) : null}
               </div>
             </div>
             <div className="space-y-1">
@@ -280,9 +259,6 @@ const AnimalsQuickCreatePage = () => {
                 placeholder="Observaciones generales para el lote"
                 {...register("notes")}
               />
-            </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-              Los animales se registran sin arete. Puedes agregarlo luego desde la ficha individual.
             </div>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={isSubmitting}>
@@ -300,4 +276,3 @@ const AnimalsQuickCreatePage = () => {
 };
 
 export default AnimalsQuickCreatePage;
-

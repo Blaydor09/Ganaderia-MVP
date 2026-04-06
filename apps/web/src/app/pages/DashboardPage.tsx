@@ -295,7 +295,7 @@ const DashboardPage = () => {
             <>
               {canManageAnimals ? (
                 <Button asChild className="rounded-2xl">
-                  <Link to="/animals/new">Registrar animal</Link>
+                  <Link to="/animals/quick">Registro animal</Link>
                 </Button>
               ) : null}
               {canManageTreatments ? (

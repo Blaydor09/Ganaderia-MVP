@@ -51,11 +51,9 @@ export const animalQuickCreateSchema = z.object({
     )
     .min(1),
   breed: z.string().min(1),
-  birthDate: optionalDateTimeString,
-  birthEstimated: z.boolean().optional(),
-  status: z.enum(["ACTIVO", "VENDIDO", "MUERTO", "FAENADO", "PERDIDO"]).optional(),
+  registrationDate: optionalDateTimeString,
   origin: z.enum(["BORN", "BOUGHT"]),
-  establishmentId: z.string().uuid().optional(),
+  establishmentId: z.string().uuid(),
   notes: z.string().optional(),
 });
 

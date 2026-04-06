@@ -6,6 +6,14 @@ export const animalCategoryOptions = [
   { value: "TORILLO", label: "Torillo" },
 ] as const;
 
+export const animalQuickRegistrationCategoryOptions = [
+  { value: "VACA", label: "Vaca" },
+  { value: "TORO", label: "Toro" },
+  { value: "VAQUILLA", label: "Vaquilla" },
+  { value: "TORILLO", label: "Torillo" },
+  { value: "TERNERO", label: "Ternero" },
+] as const;
+
 const animalCategoryLabels = animalCategoryOptions.reduce<Record<string, string>>(
   (acc, option) => {
     acc[option.value] = option.label;
@@ -16,6 +24,16 @@ const animalCategoryLabels = animalCategoryOptions.reduce<Record<string, string>
 
 export const getAnimalCategoryLabel = (value?: string) =>
   (value && animalCategoryLabels[value]) || value || "-";
+
+type AnimalIdentifierSource = {
+  tag?: string | null;
+  internalCode?: string | null;
+};
+
+export const getAnimalIdentifier = (
+  animal?: AnimalIdentifierSource | null,
+  fallback = "Sin identificador"
+) => animal?.tag || animal?.internalCode || fallback;
 
 export const animalSexOptions = [
   { value: "MALE", label: "Macho" },

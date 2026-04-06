@@ -13,7 +13,6 @@ const RegisterPage = lazy(() => import("@/app/pages/RegisterPage"));
 const LandingPage = lazy(() => import("@/app/pages/LandingPage"));
 const DashboardPage = lazy(() => import("@/app/pages/DashboardPage"));
 const AnimalsPage = lazy(() => import("@/app/pages/AnimalsPage"));
-const AnimalCreatePage = lazy(() => import("@/app/pages/AnimalCreatePage"));
 const AnimalsQuickCreatePage = lazy(() => import("@/app/pages/AnimalsQuickCreatePage"));
 const AnimalDetailPage = lazy(() => import("@/app/pages/AnimalDetailPage"));
 const AnimalPrintPage = lazy(() => import("@/app/pages/AnimalPrintPage"));
@@ -146,7 +145,7 @@ const App = () => (
           <RequireAuth>
             <DashboardLayout>
               <RequireRole allowed={Access.animalsCreate}>
-                <AnimalCreatePage />
+                <Navigate to="/animals/quick" replace />
               </RequireRole>
             </DashboardLayout>
           </RequireAuth>

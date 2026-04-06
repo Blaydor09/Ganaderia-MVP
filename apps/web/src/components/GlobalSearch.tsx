@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import api from "@/lib/api";
 import { Link } from "react-router-dom";
+import { getAnimalIdentifier } from "@/lib/animals";
 import type { SearchResponse } from "@/lib/types";
 
 export const GlobalSearch = () => {
@@ -48,7 +49,7 @@ export const GlobalSearch = () => {
       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
       <Input
         ref={inputRef}
-        placeholder="Buscar arete, animal o lote"
+        placeholder="Buscar identificador, animal o lote"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         className="w-64 pl-9"
@@ -64,7 +65,7 @@ export const GlobalSearch = () => {
                 className="block hover:text-brand-600"
                 onClick={() => setQuery("")}
               >
-                {(animal.tag || "Sin arete")} - {animal.breed}
+                {getAnimalIdentifier(animal)} - {animal.breed}
               </Link>
             ))}
             {(data?.animals ?? []).length === 0 ? (

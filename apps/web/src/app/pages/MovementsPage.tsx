@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
+import { getAnimalIdentifier } from "@/lib/animals";
 import { formatDateOnlyUtc, parseDateTimeInputToIso } from "@/lib/dates";
 import { getOperationalEstablishmentOptions } from "@/lib/establishments";
 import type {
@@ -103,7 +104,7 @@ const MovementsPage = () => {
   const animalNameById = useMemo(() => {
     const map = new Map<string, string>();
     for (const item of animals?.items ?? []) {
-      map.set(item.id, item.tag || item.breed);
+      map.set(item.id, getAnimalIdentifier(item, item.breed));
     }
     return map;
   }, [animals]);
@@ -176,7 +177,7 @@ const MovementsPage = () => {
                       <option value="">Selecciona</option>
                       {(animals?.items ?? []).map((animal) => (
                         <option key={animal.id} value={animal.id}>
-                          {(animal.tag || "Sin arete")} - {animal.breed}
+                          {getAnimalIdentifier(animal)} - {animal.breed}
                         </option>
                       ))}
                     </select>
@@ -289,4 +290,3 @@ const MovementsPage = () => {
 };
 
 export default MovementsPage;
-

@@ -16,7 +16,7 @@ const labelBySegment: Record<string, string> = {
   audit: "Auditoria",
   settings: "Ajustes",
   onboarding: "Onboarding",
-  quick: "Registro rapido",
+  quick: "Registro animal",
   import: "Importar",
   new: "Nuevo",
   print: "Imprimir",

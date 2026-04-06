@@ -50,6 +50,7 @@ export type TenantPlanUsageSummary = {
 export type SearchAnimal = {
   id: string;
   tag: string | null;
+  internalCode?: string | null;
   breed: string;
 };
 
@@ -72,6 +73,7 @@ export type SearchResponse = {
 export type AnimalListItem = {
   id: string;
   tag: string | null;
+  internalCode?: string | null;
   breed: string;
 };
 
@@ -450,4 +452,3 @@ export type ReportWeightRow = {
 export type ReportWeightsResponse = {
   items: ReportWeightRow[];
 };
-

@@ -18,7 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
-import { getAnimalCategoryLabel } from "@/lib/animals";
+import { getAnimalCategoryLabel, getAnimalIdentifier } from "@/lib/animals";
 import {
   formatDateOnlyUtc,
   parseDateInputToUtcIso,
@@ -560,12 +560,12 @@ const TreatmentsPage = () => {
                         className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                         {...registerIndividual("animalId")}
                       >
-                        <option value="">Selecciona</option>
-                        {(animals?.items ?? []).map((animal) => (
-                          <option key={animal.id} value={animal.id}>
-                            {(animal.tag || "Sin arete")} - {animal.breed}
-                          </option>
-                        ))}
+                      <option value="">Selecciona</option>
+                      {(animals?.items ?? []).map((animal) => (
+                        <option key={animal.id} value={animal.id}>
+                          {getAnimalIdentifier(animal)} - {animal.breed}
+                        </option>
+                      ))}
                       </select>
                       {individualErrors.animalId ? (
                         <p className="text-xs text-red-500">{individualErrors.animalId.message}</p>

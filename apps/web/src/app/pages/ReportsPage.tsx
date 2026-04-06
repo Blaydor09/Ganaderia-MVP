@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { getAnimalIdentifier } from "@/lib/animals";
 import { formatDateOnlyUtc } from "@/lib/dates";
 import type {
   AnimalListResponse,
@@ -96,7 +97,7 @@ const ReportsPage = () => {
                 className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60"
               >
                 <p className="font-medium text-slate-800 dark:text-slate-100">
-                  {row.animal.tag || row.animal.internalCode || "Sin identificador"}
+                  {getAnimalIdentifier(row.animal)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Carne: {formatDateOnlyUtc(row.meatUntil)}
@@ -129,7 +130,7 @@ const ReportsPage = () => {
               <option value="">Todos</option>
               {(animals?.items ?? []).map((animal) => (
                 <option key={animal.id} value={animal.id}>
-                  {(animal.tag || "Sin arete")} - {animal.breed}
+                  {getAnimalIdentifier(animal)} - {animal.breed}
                 </option>
               ))}
             </select>

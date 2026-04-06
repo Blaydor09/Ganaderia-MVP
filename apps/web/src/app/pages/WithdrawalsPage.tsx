@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { getAnimalIdentifier } from "@/lib/animals";
 import { formatDateOnlyUtc } from "@/lib/dates";
 
 const WithdrawalsPage = () => {
@@ -21,7 +22,7 @@ const WithdrawalsPage = () => {
         <Table>
           <THead>
             <TR>
-              <TH>Arete</TH>
+              <TH>Identificador</TH>
               <TH>Productos</TH>
               <TH>Retiro carne</TH>
               <TH>Retiro leche</TH>
@@ -30,7 +31,7 @@ const WithdrawalsPage = () => {
           <TBody>
             {(data?.items ?? []).map((row: any) => (
               <TR key={row.animal.id}>
-                <TD>{row.animal.tag || "Sin arete"}</TD>
+                <TD>{getAnimalIdentifier(row.animal)}</TD>
                 <TD>{row.products.join(", ")}</TD>
                 <TD>{formatDateOnlyUtc(row.meatUntil)}</TD>
                 <TD>{formatDateOnlyUtc(row.milkUntil)}</TD>

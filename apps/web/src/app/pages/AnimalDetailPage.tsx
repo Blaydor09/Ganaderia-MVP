@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { getAnimalCategoryLabel } from "@/lib/animals";
+import { getAnimalCategoryLabel, getAnimalIdentifier } from "@/lib/animals";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
 import { formatDateOnlyUtc } from "@/lib/dates";
@@ -23,12 +23,12 @@ const AnimalDetailPage = () => {
     return <div>Cargando...</div>;
   }
 
-  const tagLabel = data.tag || "Sin arete";
+  const animalIdentifier = getAnimalIdentifier(data);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Ficha ${tagLabel}`}
+        title={`Ficha ${animalIdentifier}`}
         subtitle={`Categoria ${getAnimalCategoryLabel(data.category)} - Estado ${data.status}`}
         actions={
           <div className="flex gap-2">
