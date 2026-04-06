@@ -41,7 +41,11 @@ const resolveExecutable = (name) => {
 
 const resolvedExecutable = resolveExecutable(executable);
 const quoteForCmd = (value) => {
-  if (!/[\s"]/u.test(value)) {
+  if (value.length === 0) {
+    return '""';
+  }
+
+  if (!/[\s"&|<>^()%!]/u.test(value)) {
     return value;
   }
 
@@ -51,18 +55,12 @@ const quoteForCmd = (value) => {
 const child =
   process.platform === "win32" && /\.cmd$/i.test(resolvedExecutable)
     ? spawn(
-        process.env.ComSpec || "cmd.exe",
-        [
-          "/d",
-          "/s",
-          "/c",
-          [quoteForCmd(resolvedExecutable), ...args.map(quoteForCmd)].join(" "),
-        ],
+        [quoteForCmd(resolvedExecutable), ...args.map(quoteForCmd)].join(" "),
         {
           stdio: "inherit",
           cwd: process.cwd(),
           env: process.env,
-          shell: false,
+          shell: true,
         }
       )
     : spawn(resolvedExecutable, args, {
