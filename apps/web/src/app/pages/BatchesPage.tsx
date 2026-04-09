@@ -25,11 +25,8 @@ import { toast } from "sonner";
 
 const schema = z.object({
   productId: z.string().min(1, "Requerido"),
-  batchNumber: z.string().min(1, "Requerido"),
   expiresAt: z.string().min(1, "Requerido"),
   receivedAt: z.string().min(1, "Requerido"),
-  supplierId: z.string().optional(),
-  cost: z.number().min(0).optional(),
   quantityInitial: z.number().min(0),
   quantityAvailable: z.number().min(0),
 });
@@ -37,11 +34,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const editSchema = z.object({
-  batchNumber: z.string().min(1, "Requerido"),
   expiresAt: z.string().min(1, "Requerido"),
   receivedAt: z.string().min(1, "Requerido"),
-  supplierId: z.string().optional(),
-  cost: z.number().min(0).optional(),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -52,8 +46,6 @@ type BatchItem = {
   batchNumber: string;
   expiresAt: string;
   receivedAt: string;
-  supplierId?: string | null;
-  cost?: number | string | null;
   quantityInitial: number;
   quantityAvailable: number;
   product?: {
@@ -70,11 +62,6 @@ type BatchListResponse = {
   total: number;
   page: number;
   pageSize: number;
-};
-
-type SupplierItem = {
-  id: string;
-  name: string;
 };
 
 type BatchStatusFilter = "ALL" | "ACTIVE" | "EXPIRING" | "EXPIRED" | "OUT_OF_STOCK";
@@ -145,11 +132,6 @@ const BatchesPage = () => {
     queryFn: async () => (await api.get("/products?page=1&pageSize=200")).data as ProductListResponse,
   });
 
-  const { data: suppliers } = useQuery({
-    queryKey: ["suppliers", "batch-form"],
-    queryFn: async () => (await api.get("/suppliers")).data as SupplierItem[],
-  });
-
   const totalItems = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
@@ -172,13 +154,10 @@ const BatchesPage = () => {
     resolver: zodResolver(schema),
     defaultValues: {
       productId: "",
-      batchNumber: "",
       expiresAt: "",
       receivedAt: today,
       quantityInitial: 0,
       quantityAvailable: 0,
-      supplierId: "",
-      cost: undefined,
     },
   });
 
@@ -190,11 +169,8 @@ const BatchesPage = () => {
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
-      batchNumber: "",
       expiresAt: "",
       receivedAt: "",
-      supplierId: "",
-      cost: undefined,
     },
   });
 
@@ -209,14 +185,8 @@ const BatchesPage = () => {
   useEffect(() => {
     if (!editingBatch) return;
     resetEdit({
-      batchNumber: editingBatch.batchNumber ?? "",
       expiresAt: editingBatch.expiresAt ? toDateInputValue(new Date(editingBatch.expiresAt)) : "",
       receivedAt: editingBatch.receivedAt ? toDateInputValue(new Date(editingBatch.receivedAt)) : "",
-      supplierId: editingBatch.supplierId ?? "",
-      cost:
-        editingBatch.cost === null || editingBatch.cost === undefined
-          ? undefined
-          : Number(editingBatch.cost),
     });
   }, [editingBatch, resetEdit]);
 
@@ -234,22 +204,16 @@ const BatchesPage = () => {
     try {
       await api.post("/batches", {
         productId: values.productId,
-        batchNumber: values.batchNumber.trim(),
         expiresAt: parseDateInputToUtcIso(values.expiresAt),
         receivedAt: parseDateInputToUtcIso(values.receivedAt),
-        supplierId: values.supplierId || undefined,
-        cost: values.cost,
         quantityInitial: values.quantityInitial,
         quantityAvailable: values.quantityAvailable,
       });
       toast.success("Lote registrado");
       reset({
         productId: "",
-        batchNumber: "",
         expiresAt: "",
         receivedAt: today,
-        supplierId: "",
-        cost: undefined,
         quantityInitial: 0,
         quantityAvailable: 0,
       });
@@ -264,11 +228,8 @@ const BatchesPage = () => {
     if (!editingBatch) return;
     try {
       await api.patch(`/batches/${editingBatch.id}`, {
-        batchNumber: values.batchNumber.trim(),
         expiresAt: parseDateInputToUtcIso(values.expiresAt),
         receivedAt: parseDateInputToUtcIso(values.receivedAt),
-        supplierId: values.supplierId || undefined,
-        cost: values.cost,
       });
       toast.success("Lote actualizado");
       setIsEditOpen(false);
@@ -313,6 +274,9 @@ const BatchesPage = () => {
                   <DialogTitle>Agregar lote</DialogTitle>
                 </DialogHeader>
                 <form className="space-y-3" onSubmit={handleSubmit(onSubmit)}>
+                  <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
+                    El sistema asigna el codigo del lote automaticamente.
+                  </p>
                   <div className="space-y-1 text-sm">
                     <label className="text-xs text-slate-500 dark:text-slate-400">Medicamento</label>
                     <select
@@ -332,29 +296,6 @@ const BatchesPage = () => {
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">Codigo del lote</label>
-                      <Input placeholder="BATCH-001" {...register("batchNumber")} />
-                      {errors.batchNumber ? (
-                        <p className="text-xs text-red-500">{errors.batchNumber.message}</p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Proveedor (opcional)
-                      </label>
-                      <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                        {...register("supplierId")}
-                      >
-                        <option value="">Sin proveedor</option>
-                        {(suppliers ?? []).map((supplier) => (
-                          <option key={supplier.id} value={supplier.id}>
-                            {supplier.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
                     <div className="space-y-1 text-sm">
                       <label className="text-xs text-slate-500 dark:text-slate-400">
                         Fecha de ingreso
@@ -403,18 +344,8 @@ const BatchesPage = () => {
                         <p className="text-xs text-red-500">{errors.quantityAvailable.message}</p>
                       ) : null}
                     </div>
-                    <div className="space-y-1 text-sm md:col-span-2">
-                      <label className="text-xs text-slate-500 dark:text-slate-400">
-                        Costo (opcional)
-                      </label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        {...register("cost", {
-                          setValueAs: (value) => (value === "" ? undefined : Number(value)),
-                        })}
-                      />
+                    <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-900/70 dark:text-slate-300 md:col-span-2">
+                      Cantidad inicial: total que entra con el lote. Cantidad disponible: lo que queda utilizable para tratamientos o movimientos.
                     </div>
                   </div>
 
@@ -565,30 +496,10 @@ const BatchesPage = () => {
             <DialogTitle>Editar lote</DialogTitle>
           </DialogHeader>
           <form className="space-y-3" onSubmit={handleSubmitEdit(onEditSubmit)}>
+            <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
+              Lote asignado: <strong>{editingBatch?.batchNumber ?? "-"}</strong>
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1 text-sm">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Codigo del lote</label>
-                <Input placeholder="BATCH-001" {...registerEdit("batchNumber")} />
-                {editErrors.batchNumber ? (
-                  <p className="text-xs text-red-500">{editErrors.batchNumber.message}</p>
-                ) : null}
-              </div>
-              <div className="space-y-1 text-sm">
-                <label className="text-xs text-slate-500 dark:text-slate-400">
-                  Proveedor (opcional)
-                </label>
-                <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                  {...registerEdit("supplierId")}
-                >
-                  <option value="">Sin proveedor</option>
-                  {(suppliers ?? []).map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
               <div className="space-y-1 text-sm">
                 <label className="text-xs text-slate-500 dark:text-slate-400">Fecha de ingreso</label>
                 <Input type="date" {...registerEdit("receivedAt")} />
@@ -604,19 +515,6 @@ const BatchesPage = () => {
                 {editErrors.expiresAt ? (
                   <p className="text-xs text-red-500">{editErrors.expiresAt.message}</p>
                 ) : null}
-              </div>
-              <div className="space-y-1 text-sm md:col-span-2">
-                <label className="text-xs text-slate-500 dark:text-slate-400">
-                  Costo (opcional)
-                </label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  {...registerEdit("cost", {
-                    setValueAs: (value) => (value === "" ? undefined : Number(value)),
-                  })}
-                />
               </div>
             </div>
             <Button type="submit" disabled={isEditSubmitting}>

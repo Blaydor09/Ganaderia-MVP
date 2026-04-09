@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -96,28 +97,26 @@ router.post(
     if (!product) {
       return res.status(400).json({ message: "Product not found" });
     }
-    if (data.supplierId) {
-      const supplier = await prisma.supplier.findFirst({
-        where: { id: data.supplierId, tenantId },
-        select: { id: true },
+    const created = await prisma.$transaction(async (tx) => {
+      const draftBatch = await tx.batch.create({
+        data: {
+          productId: data.productId,
+          batchNumber: `TMP-${randomUUID()}`,
+          expiresAt: new Date(data.expiresAt),
+          receivedAt: new Date(data.receivedAt),
+          quantityInitial: data.quantityInitial,
+          quantityAvailable: data.quantityAvailable,
+          tenantId,
+          createdById: req.user?.id,
+        },
       });
-      if (!supplier) {
-        return res.status(400).json({ message: "Supplier not found" });
-      }
-    }
-    const created = await prisma.batch.create({
-      data: {
-        productId: data.productId,
-        batchNumber: data.batchNumber,
-        expiresAt: new Date(data.expiresAt),
-        supplierId: data.supplierId,
-        receivedAt: new Date(data.receivedAt),
-        cost: data.cost,
-        quantityInitial: data.quantityInitial,
-        quantityAvailable: data.quantityAvailable,
-        tenantId,
-        createdById: req.user?.id,
-      },
+
+      return tx.batch.update({
+        where: { id: draftBatch.id },
+        data: {
+          batchNumber: `LOTE-${String(draftBatch.batchCode).padStart(6, "0")}`,
+        },
+      });
     });
 
     await writeAudit({
@@ -146,24 +145,11 @@ router.patch(
     if (!existing) {
       return res.status(404).json({ message: "Batch not found" });
     }
-    if (data.supplierId) {
-      const supplier = await prisma.supplier.findFirst({
-        where: { id: data.supplierId, tenantId },
-        select: { id: true },
-      });
-      if (!supplier) {
-        return res.status(400).json({ message: "Supplier not found" });
-      }
-    }
-
     const updated = await prisma.batch.update({
       where: { id: req.params.id },
       data: {
-        batchNumber: data.batchNumber,
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
-        supplierId: data.supplierId,
         receivedAt: data.receivedAt ? new Date(data.receivedAt) : undefined,
-        cost: data.cost,
       },
     });
 

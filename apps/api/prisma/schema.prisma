@@ -588,6 +588,7 @@ model Product {
 
 model Batch {
   id                String                 @id @default(uuid())
+  batchCode         Int                    @unique @default(autoincrement())
   productId         String
   batchNumber       String
   expiresAt         DateTime
