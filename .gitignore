@@ -13,3 +13,4 @@ apps/**/.turbo
 apps/**/.vite
 logs/*-ready*.log
 VPS_UPDATE.md
+DEPLOYMENT.md
