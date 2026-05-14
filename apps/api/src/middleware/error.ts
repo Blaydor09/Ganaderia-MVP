@@ -6,7 +6,7 @@ import { ZodError } from "zod";
 
 export const errorHandler = (
   err: Error,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) => {
@@ -30,6 +30,9 @@ export const errorHandler = (
   if (err instanceof JsonWebTokenError || err instanceof TokenExpiredError) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
+
+  // Leave a readable trail in development when an unhandled exception bubbles up.
+  console.error(`[error] ${req.method} ${req.originalUrl}`, err);
 
   return res.status(500).json({ message: "Internal server error" });
 };

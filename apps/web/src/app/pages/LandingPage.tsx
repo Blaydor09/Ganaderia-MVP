@@ -734,7 +734,7 @@ const LandingPage = () => {
                     <input
                       id="landing-phone"
                       type="tel"
-                      placeholder="+52 55 0000 0000"
+                      placeholder="+591 XXXX XXXX"
                       className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900"
                     />
                   </div>

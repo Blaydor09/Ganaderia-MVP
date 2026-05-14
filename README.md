@@ -18,6 +18,8 @@ Sistema web para gestion e inventario bovino con trazabilidad sanitaria, control
 ```bash
 docker compose up -d
 ```
+La configuracion de desarrollo usa `localhost:5433` para evitar choques con instalaciones locales de PostgreSQL en `5432`.
+
 Espera a que PostgreSQL quede listo antes de seguir. Si quieres verificarlo:
 ```bash
 docker compose logs db --tail 20
@@ -47,6 +49,7 @@ npm run dev
 Frontend: http://localhost:5173
 API: http://localhost:4000/api/v1
 Docs API: http://localhost:4000/api/v1/docs
+PostgreSQL Docker: localhost:5433
 Landing page: http://localhost:5173/landing
 
 ### 4) Frontend plataforma (Super Admin)
