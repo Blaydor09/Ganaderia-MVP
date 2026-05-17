@@ -53,32 +53,33 @@ export const DashboardHero = ({
     : "Todos los establecimientos";
 
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-950 text-white shadow-soft dark:border-slate-700">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(74,222,128,0.18),transparent_28%),radial-gradient(circle_at_85%_18%,rgba(59,130,246,0.18),transparent_24%),linear-gradient(135deg,rgba(15,23,42,0.15),rgba(15,23,42,0.55))]" />
-      <div className="absolute -left-16 top-20 h-40 w-40 rounded-full bg-emerald-400/10 blur-3xl" />
-      <div className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-sky-500/10 blur-3xl" />
+    <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950">
+      {/* Background gradients */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(74,222,128,0.08),transparent_28%),radial-gradient(circle_at_85%_18%,rgba(59,130,246,0.08),transparent_24%),linear-gradient(135deg,rgba(248,250,252,0.5),rgba(241,245,249,0.5))] dark:bg-[radial-gradient(circle_at_top_left,rgba(74,222,128,0.18),transparent_28%),radial-gradient(circle_at_85%_18%,rgba(59,130,246,0.18),transparent_24%),linear-gradient(135deg,rgba(15,23,42,0.15),rgba(15,23,42,0.55))]" />
+      <div className="absolute -left-16 top-20 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl dark:bg-emerald-400/10" />
+      <div className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-sky-500/20 blur-3xl dark:bg-sky-500/10" />
 
       <div className="relative grid gap-6 p-5 md:p-7 xl:grid-cols-[minmax(0,1.6fr)_320px]">
         <div className="space-y-6">
           <div className="space-y-3">
-            <div className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.34em] text-emerald-100">
+            <div className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.34em] text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100">
               Centro operativo
             </div>
             <div className="space-y-2">
-              <h1 className="font-display text-3xl font-semibold tracking-tight text-white md:text-4xl">
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-slate-900 dark:text-white md:text-4xl">
                 Dashboard operativo
               </h1>
-              <p className="max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
+              <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300 md:text-base">
                 Supervisa el estado del hato, prioriza riesgos y entra a la accion desde una sola vista.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-sm text-slate-200">
+          <div className="flex flex-wrap gap-2 text-sm text-slate-700 dark:text-slate-200">
             {[buildChipLabel("Periodo", activeRangeLabel), buildChipLabel("Finca", activeFincaLabel), buildChipLabel("Ubicacion", activeEstablishmentLabel)].map((chip) => (
               <span
                 key={chip}
-                className="rounded-full border border-white/10 bg-white/8 px-3 py-1.5 backdrop-blur-sm"
+                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 backdrop-blur-sm dark:border-white/10 dark:bg-white/10"
               >
                 {chip}
               </span>
@@ -88,7 +89,7 @@ export const DashboardHero = ({
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
 
           <div className="grid gap-3 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end">
-            <div className="rounded-2xl border border-white/10 bg-white/6 p-1 backdrop-blur-sm">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-1 backdrop-blur-sm dark:border-white/10 dark:bg-white/5">
               <div className="flex flex-wrap gap-1">
                 {dashboardRangeOptions.map((option) => (
                   <button
@@ -98,8 +99,8 @@ export const DashboardHero = ({
                     className={cn(
                       "rounded-2xl px-4 py-2 text-sm font-medium transition",
                       range === option.value
-                        ? "bg-white text-slate-950 shadow-soft"
-                        : "text-slate-300 hover:bg-white/10 hover:text-white"
+                        ? "bg-white text-slate-900 shadow-sm dark:text-slate-950"
+                        : "text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
                     )}
                   >
                     {option.label}
@@ -110,26 +111,26 @@ export const DashboardHero = ({
 
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
               <select
-                className="h-11 rounded-2xl border border-white/12 bg-white/8 px-4 text-sm text-white outline-none backdrop-blur-sm transition focus:border-emerald-300/60"
+                className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none backdrop-blur-sm transition focus:border-brand-500 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-emerald-300/60"
                 value={fincaId ?? ""}
                 onChange={(event) => onChangeFinca(event.target.value || undefined)}
               >
-                <option value="">Todas las fincas</option>
+                <option value="" className="text-slate-900 dark:text-slate-100">Todas las fincas</option>
                 {fincas.map((finca) => (
-                  <option key={finca.id} value={finca.id} className="text-slate-900">
+                  <option key={finca.id} value={finca.id} className="text-slate-900 dark:text-slate-100">
                     {finca.name}
                   </option>
                 ))}
               </select>
 
               <select
-                className="h-11 rounded-2xl border border-white/12 bg-white/8 px-4 text-sm text-white outline-none backdrop-blur-sm transition focus:border-emerald-300/60"
+                className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none backdrop-blur-sm transition focus:border-brand-500 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:border-emerald-300/60"
                 value={establishmentId ?? ""}
                 onChange={(event) => onChangeEstablishment(event.target.value || undefined)}
               >
-                <option value="">Todos los establecimientos</option>
+                <option value="" className="text-slate-900 dark:text-slate-100">Todos los establecimientos</option>
                 {establishmentsByFinca.map((node) => (
-                  <option key={node.id} value={node.id} className="text-slate-900">
+                  <option key={node.id} value={node.id} className="text-slate-900 dark:text-slate-100">
                     {node.name} ({node.type})
                   </option>
                 ))}
@@ -137,7 +138,7 @@ export const DashboardHero = ({
 
               <Button
                 variant="secondary"
-                className="h-11 rounded-2xl bg-white text-slate-900 hover:bg-slate-100"
+                className="h-11 rounded-2xl border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-transparent dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                 onClick={onReset}
               >
                 Limpiar vista
@@ -146,46 +147,46 @@ export const DashboardHero = ({
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-white/10 bg-white/8 p-5 backdrop-blur-md">
+        <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50/50 p-5 backdrop-blur-md dark:border-white/10 dark:bg-white/10">
           <div className="space-y-4">
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Estado actual</p>
-              <h2 className="font-display text-2xl font-semibold text-white">
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Estado actual</p>
+              <h2 className="font-display text-2xl font-semibold text-slate-900 dark:text-white">
                 {alertCount > 0 ? "Atencion operativa" : "Operacion estable"}
               </h2>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 {alertCount > 0
                   ? "Hay focos de inventario o retiro que conviene atender hoy."
                   : "No hay alertas activas para los filtros seleccionados."}
               </p>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Alertas activas</p>
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Alertas activas</p>
               <div className="mt-2 flex items-end justify-between gap-3">
-                <p className="font-display text-4xl font-semibold text-white">{alertCount}</p>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
+                <p className="font-display text-4xl font-semibold text-slate-900 dark:text-white">{alertCount}</p>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 dark:bg-white/10 dark:text-slate-200">
                   {alertCount > 0 ? "Requiere seguimiento" : "Sin pendientes"}
                 </span>
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-              <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Animales</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{animalsActive}</p>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Animales</p>
+                <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{animalsActive}</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Tratamientos</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{treatmentsInRange}</p>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Tratamientos</p>
+                <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{treatmentsInRange}</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Movimientos</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{movementsInRange}</p>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Movimientos</p>
+                <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">{movementsInRange}</p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 text-sm text-slate-300">
+            <div className="rounded-2xl border border-slate-200 bg-slate-100/50 px-4 py-3 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-950/35 dark:text-slate-300">
               {generatedAt ? `Datos generados: ${generatedAt}` : "Cargando agregados del dashboard..."}
               {isFetching ? " (actualizando...)" : ""}
             </div>

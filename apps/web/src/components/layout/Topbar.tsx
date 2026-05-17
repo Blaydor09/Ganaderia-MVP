@@ -53,8 +53,8 @@ export const Topbar = () => {
           {showGlobalSearch ? (
             <>
               <GlobalSearch />
-              <span className="hidden text-xs text-slate-500 md:block dark:text-slate-400">
-                Acceso rapido: <kbd>/</kbd> o <kbd>Ctrl+K</kbd>
+              <span className="hidden text-xs text-slate-600 md:block dark:text-slate-400">
+                Acceso rapido: <kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-sans font-medium text-slate-900 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100">/</kbd> o <kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-sans font-medium text-slate-900 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100">Ctrl+K</kbd>
               </span>
             </>
           ) : (
