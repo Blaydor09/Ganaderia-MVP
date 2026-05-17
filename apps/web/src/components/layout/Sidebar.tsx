@@ -21,15 +21,15 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: Access.dashboard },
   { to: "/animals", label: "Animales", icon: PawPrint, roles: Access.animals },
-  { to: "/events", label: "Eventos", icon: ClipboardList, roles: Access.events },
-  { to: "/treatments", label: "Tratamientos", icon: Stethoscope, roles: Access.treatments },
+  { to: "/establishments", label: "Establecimientos", icon: MapPinned, roles: Access.establishments },
   { to: "/products", label: "Medicamentos", icon: Pill, roles: Access.products },
+  { to: "/treatments", label: "Tratamientos", icon: Stethoscope, roles: Access.treatments },
   { to: "/batches", label: "Lotes", icon: ClipboardList, roles: Access.batches },
   { to: "/inventory", label: "Inventario", icon: Boxes, roles: Access.inventory },
   { to: "/movements", label: "Movimientos", icon: Truck, roles: Access.movements },
-  { to: "/establishments", label: "Establecimientos", icon: MapPinned, roles: Access.establishments },
   { to: "/reports", label: "Reportes", icon: BarChart3, roles: Access.reports },
   { to: "/alerts", label: "Alertas", icon: AlertTriangle, roles: Access.alerts },
+  { to: "/events", label: "Eventos", icon: ClipboardList, roles: Access.events },
   { to: "/users", label: "Usuarios", icon: Users, roles: Access.users },
   { to: "/settings", label: "Ajustes", icon: Settings, roles: Access.settings },
 ];
