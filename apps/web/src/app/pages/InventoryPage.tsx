@@ -292,7 +292,45 @@ const InventoryPage = () => {
           <p className="text-sm font-medium">Resumen por medicamento</p>
         </CardHeader>
         <CardContent>
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800">
+          {/* Mobile View */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {(summary?.items ?? []).map((row) => {
+              const isLow = row.total <= row.product.minStock;
+              return (
+                <div
+                  key={row.product.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <p className="font-medium">{row.product.name}</p>
+                    <Badge variant={isLow ? "warning" : "success"}>
+                      {isLow ? "En minimo" : "Normal"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Disponible</span>
+                    <span className="font-medium">
+                      {row.total} {row.product.unit}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Stock minimo</span>
+                    <span className="font-medium">
+                      {row.product.minStock} {row.product.unit}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+            {(summary?.items ?? []).length === 0 ? (
+              <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                No hay productos en inventario.
+              </div>
+            ) : null}
+          </div>
+
+          {/* Desktop View */}
+          <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
             <Table>
               <THead>
                 <TR>
@@ -374,56 +412,108 @@ const InventoryPage = () => {
               description="Ajusta filtros o registra nuevos lotes."
             />
           ) : (
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Medicamento</TH>
-                    <TH>Lote</TH>
-                    <TH>Estado</TH>
-                    <TH>Vencimiento</TH>
-                    <TH>Disponible</TH>
-                    <TH>Acciones</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {lotRows.map((batch) => {
-                    const statusInfo = getBatchStatus(batch);
-                    return (
-                      <TR key={batch.id}>
-                        <TD>{batch.product?.name ?? "Medicamento"}</TD>
-                        <TD>{batch.batchNumber}</TD>
-                        <TD>
-                          <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
-                        </TD>
-                        <TD>{formatDateOnlyUtc(batch.expiresAt)}</TD>
-                        <TD>{batch.quantityAvailable}</TD>
-                        <TD>
-                          {canAdjust ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setAdjustingBatch(batch);
-                                setIsAdjustOpen(true);
-                              }}
-                            >
-                              Ajustar
-                            </Button>
-                          ) : (
-                            "-"
-                          )}
-                        </TD>
-                      </TR>
-                    );
-                  })}
-                </TBody>
-              </Table>
-            </div>
+            <>
+              {/* Mobile View */}
+              <div className="flex flex-col gap-3 md:hidden">
+                {lotRows.map((batch) => {
+                  const statusInfo = getBatchStatus(batch);
+                  return (
+                    <div
+                      key={batch.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">{batch.product?.name ?? "Medicamento"}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Lote: {batch.batchNumber}
+                          </p>
+                        </div>
+                        <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                      </div>
+                      <div className="mb-4 grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Vencimiento</p>
+                          <p className="font-medium">{formatDateOnlyUtc(batch.expiresAt)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Disponible</p>
+                          <p className="font-medium">{batch.quantityAvailable}</p>
+                        </div>
+                      </div>
+                      {canAdjust && (
+                        <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => {
+                              setAdjustingBatch(batch);
+                              setIsAdjustOpen(true);
+                            }}
+                          >
+                            Ajustar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Medicamento</TH>
+                      <TH>Lote</TH>
+                      <TH>Estado</TH>
+                      <TH>Vencimiento</TH>
+                      <TH>Disponible</TH>
+                      <TH>Acciones</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {lotRows.map((batch) => {
+                      const statusInfo = getBatchStatus(batch);
+                      return (
+                        <TR key={batch.id}>
+                          <TD>{batch.product?.name ?? "Medicamento"}</TD>
+                          <TD>{batch.batchNumber}</TD>
+                          <TD>
+                            <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                          </TD>
+                          <TD>{formatDateOnlyUtc(batch.expiresAt)}</TD>
+                          <TD>{batch.quantityAvailable}</TD>
+                          <TD>
+                            {canAdjust ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setAdjustingBatch(batch);
+                                  setIsAdjustOpen(true);
+                                }}
+                              >
+                                Ajustar
+                              </Button>
+                            ) : (
+                              "-"
+                            )}
+                          </TD>
+                        </TR>
+                      );
+                    })}
+                  </TBody>
+                </Table>
+              </div>
+            </>
           )}
 
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               size="sm"
@@ -467,7 +557,60 @@ const InventoryPage = () => {
               {isTxFetching ? "Actualizando..." : `${transactions?.total ?? 0} movimientos`}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800">
+          {/* Mobile View */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {txRows.map((tx) => (
+              <div
+                key={tx.id}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50"
+              >
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{tx.product?.name ?? "-"}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {formatDateTime(tx.occurredAt)}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={
+                      tx.type === "IN"
+                        ? "success"
+                        : tx.type === "OUT"
+                          ? "warning"
+                          : "default"
+                    }
+                  >
+                    {tx.type === "IN" ? "Entrada" : tx.type === "OUT" ? "Salida" : "Ajuste"}
+                  </Badge>
+                </div>
+                <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Lote</p>
+                    <p className="font-medium">{tx.batch?.batchNumber ?? "-"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Cantidad</p>
+                    <p className="font-medium">
+                      {tx.quantity} {tx.unit}
+                    </p>
+                  </div>
+                </div>
+                {tx.reason && (
+                  <div className="rounded bg-slate-50 p-2 text-xs text-slate-600 dark:bg-slate-900/50 dark:text-slate-400">
+                    <span className="font-medium">Motivo:</span> {tx.reason}
+                  </div>
+                )}
+              </div>
+            ))}
+            {txRows.length === 0 ? (
+              <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                Sin movimientos para la busqueda actual.
+              </div>
+            ) : null}
+          </div>
+
+          {/* Desktop View */}
+          <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
             <Table>
               <THead>
                 <TR>
@@ -515,7 +658,7 @@ const InventoryPage = () => {
             </Table>
           </div>
 
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               size="sm"

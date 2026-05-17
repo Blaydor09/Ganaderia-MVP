@@ -64,7 +64,7 @@ const RequireRole = ({
 const DashboardLayout = ({ children }: { children: ReactNode }) => (
   <ThemeShell className="relative flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
     <Sidebar />
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col min-w-0">
       <Topbar />
       <main className="flex-1 px-4 py-5 pb-20 md:px-6 lg:pb-6">{children}</main>
     </div>
