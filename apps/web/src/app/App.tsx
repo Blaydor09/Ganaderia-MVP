@@ -1,4 +1,4 @@
-import { Suspense, lazy, type ReactNode } from "react";
+import { Suspense, lazy, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
@@ -61,16 +61,19 @@ const RequireRole = ({
   return children;
 };
 
-const DashboardLayout = ({ children }: { children: ReactNode }) => (
-  <ThemeShell className="relative flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-    <Sidebar />
-    <div className="flex flex-1 flex-col min-w-0">
-      <Topbar />
-      <main className="flex-1 px-4 py-5 pb-20 md:px-6 lg:pb-6">{children}</main>
-    </div>
-    <MobileNav />
-  </ThemeShell>
-);
+const DashboardLayout = ({ children }: { children: ReactNode }) => {
+  const [isSidebarLocked, setIsSidebarLocked] = useState(true);
+  return (
+    <ThemeShell className="relative flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <Sidebar isLocked={isSidebarLocked} onUnlock={() => setIsSidebarLocked(false)} />
+      <div className="flex flex-1 flex-col min-w-0 transition-all duration-500">
+        <Topbar isSidebarLocked={isSidebarLocked} onLock={() => setIsSidebarLocked(true)} />
+        <main className="flex-1 px-4 py-5 pb-20 md:px-6 lg:pb-6">{children}</main>
+      </div>
+      <MobileNav />
+    </ThemeShell>
+  );
+};
 
 const HomeRoute = () => {
   if (!isAuthenticated()) {
