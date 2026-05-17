@@ -303,11 +303,11 @@ const EstablishmentsPage = () => {
           canManage ? (
             <Dialog open={open} onOpenChange={handleDialogChange}>
               <DialogTrigger asChild>
-                <Button>Nueva finca/Estancia</Button>
+                <Button>Nueva Finca/Estancia</Button>
               </DialogTrigger>
               <DialogContent className="max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Nueva finca/Estancia</DialogTitle>
+                  <DialogTitle>Nueva Finca/Estancia</DialogTitle>
                 </DialogHeader>
                 <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
                   <div className="space-y-1 text-sm">
