@@ -234,10 +234,10 @@ const EstablishmentsPage = () => {
         hasNameChange && newPotreroNames.length
           ? "Finca actualizada y potreros agregados"
           : hasNameChange
-          ? "Finca actualizada"
-          : newPotreroNames.length === 1
-          ? "Potrero agregado"
-          : "Potreros agregados"
+            ? "Finca actualizada"
+            : newPotreroNames.length === 1
+              ? "Potrero agregado"
+              : "Potreros agregados"
       );
       handleEditDialogChange(false);
       await invalidateEstablishmentQueries();
@@ -303,11 +303,11 @@ const EstablishmentsPage = () => {
           canManage ? (
             <Dialog open={open} onOpenChange={handleDialogChange}>
               <DialogTrigger asChild>
-                <Button>Nueva finca</Button>
+                <Button>Nueva finca/Estancia</Button>
               </DialogTrigger>
               <DialogContent className="max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Nueva finca</DialogTitle>
+                  <DialogTitle>Nueva finca/Estancia</DialogTitle>
                 </DialogHeader>
                 <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
                   <div className="space-y-1 text-sm">
@@ -414,7 +414,7 @@ const EstablishmentsPage = () => {
                         >
                           {corral.suggestedPotreros.map((potrero) => (
                             <option key={potrero.id} value={potrero.id}>
-                              {potrero.name} · Animales: {potrero.animalCount}
+                              {potrero.name} ï¿½ Animales: {potrero.animalCount}
                             </option>
                           ))}
                         </select>
