@@ -13,3 +13,15 @@
 [2m9:12:28 p. m.[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/lib/dashboard.ts[22m
 [2m9:12:28 p. m.[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/dashboard/DashboardMetricCard.tsx[22m
 [2m9:12:28 p. m.[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/globals.css, /src/app/App.tsx[22m
+[2m9:14:32 p. m.[22m [36m[1m[vite][22m[39m [32m.env changed, restarting server...[39m
+[2m9:14:32 p. m.[22m [36m[1m[vite][22m[39m server restarted.
+[2m9:27:38 p. m.[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mtailwind.config.ts[22m
+[2m9:27:57 p. m.[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles/globals.css[22m
+[2m9:27:57 p. m.[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/dashboard/ChartCard.tsx, /src/styles/globals.css[22m
+[2m9:28:03 p. m.[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/dashboard/HerdCompositionCard.tsx, /src/styles/globals.css[22m
+[2m9:28:03 p. m.[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/dashboard/DashboardSkeleton.tsx, /src/styles/globals.css[22m
+[2m9:29:37 p. m.[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/app/pages/DashboardPage.tsx, /src/styles/globals.css[22m
+[2m10:21:11 p. m.[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m10:21:11 p. m.[22m [36m[1m[vite][22m[39m server restarted.
+[2m10:21:56 p. m.[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[2m10:21:56 p. m.[22m [36m[1m[vite][22m[39m server restarted.
