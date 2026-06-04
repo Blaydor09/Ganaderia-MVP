@@ -74,7 +74,7 @@ const DashboardPage = () => {
   const canViewEvents = hasAnyRole(Access.events);
   const canManageAnimals = hasAnyRole(Access.animalsCreate);
   const canManageTreatments = hasAnyRole(Access.treatmentsCreate);
-  const canManageBatches = hasAnyRole(Access.batchesCreate);
+
 
   const { data: establishments } = useQuery({
     queryKey: ["establishments", "dashboard-filters"],
@@ -188,7 +188,7 @@ const DashboardPage = () => {
   };
 
   const showQuickActions =
-    canManageAnimals || canManageTreatments || canManageBatches;
+    canManageAnimals || canManageTreatments;
   const showAlertStrip = canViewInventory || canViewWithdrawals;
 
   /* ── KPI tiles definition ── */
@@ -290,11 +290,7 @@ const DashboardPage = () => {
               <Link to="/treatments">+ Tratamiento</Link>
             </Button>
           ) : null}
-          {canManageBatches ? (
-            <Button variant="outline" asChild size="sm" className="h-8 rounded-lg text-xs">
-              <Link to="/batches">+ Lote</Link>
-            </Button>
-          ) : null}
+
         </div>
       ) : null}
 

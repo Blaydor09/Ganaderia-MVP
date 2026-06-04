@@ -239,9 +239,7 @@ const App = () => (
         element={
           <RequireAuth>
             <DashboardLayout>
-              <RequireRole allowed={Access.batches}>
-                <BatchesPage />
-              </RequireRole>
+              <BatchesPage />
             </DashboardLayout>
           </RequireAuth>
         }
