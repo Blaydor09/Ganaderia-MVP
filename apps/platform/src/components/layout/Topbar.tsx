@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { Menu } from "lucide-react";
 import api from "@/lib/api";
 import { clearTokens, getRefreshToken } from "@/lib/auth";
 import type { PlatformMe } from "@/lib/types";
 
-export const Topbar = () => {
+export const Topbar = ({ onOpenMobile }: { onOpenMobile?: () => void }) => {
   const navigate = useNavigate();
   const { data: me } = useQuery({
     queryKey: ["platform", "me"],
@@ -26,9 +27,19 @@ export const Topbar = () => {
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0a1f41]/80 px-4 py-3 backdrop-blur xl:px-6">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-infra-200/70">Super Admin</p>
-          <p className="font-display text-lg text-white">{me?.name ?? "Platform user"}</p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpenMobile}
+            className="flex lg:hidden h-10 w-10 items-center justify-center rounded-xl border border-white/20 text-white transition hover:bg-white/10"
+            title="Abrir menú"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-infra-200/70">Super Admin</p>
+            <p className="font-display text-lg text-white">{me?.name ?? "Platform user"}</p>
+          </div>
         </div>
         <button
           type="button"

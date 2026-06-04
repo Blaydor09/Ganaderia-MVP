@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -17,15 +18,18 @@ const RequireAuth = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-const PlatformLayout = ({ children }: { children: JSX.Element }) => (
-  <div className="flex min-h-screen">
-    <Sidebar />
-    <div className="flex min-h-screen flex-1 flex-col">
-      <Topbar />
-      <main className="flex-1 px-4 py-5 xl:px-6">{children}</main>
+const PlatformLayout = ({ children }: { children: JSX.Element }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  return (
+    <div className="flex min-h-screen">
+      <Sidebar isOpenMobile={isMobileMenuOpen} onCloseMobile={() => setIsMobileMenuOpen(false)} />
+      <div className="flex min-h-screen flex-1 flex-col">
+        <Topbar onOpenMobile={() => setIsMobileMenuOpen(true)} />
+        <main className="flex-1 px-4 py-5 xl:px-6">{children}</main>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const App = () => (
   <Routes>
