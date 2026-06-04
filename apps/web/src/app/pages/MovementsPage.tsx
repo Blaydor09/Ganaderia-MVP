@@ -263,7 +263,7 @@ const MovementsPage = () => {
               <TH>Animal</TH>
               <TH>Tipo</TH>
               <TH>Fecha</TH>
-              <TH>Transportista</TH>
+              <TH className="hidden sm:table-cell">Transportista</TH>
             </TR>
           </THead>
           <TBody>
@@ -272,7 +272,7 @@ const MovementsPage = () => {
                 <TD>{animalNameById.get(move.animalId) ?? move.animalId}</TD>
                 <TD>{move.movementType}</TD>
                 <TD>{formatDateOnlyUtc(move.occurredAt)}</TD>
-                <TD>{move.transporter ?? "-"}</TD>
+                <TD className="hidden sm:table-cell">{move.transporter ?? "-"}</TD>
               </TR>
             ))}
             {(data?.items ?? []).length === 0 ? (

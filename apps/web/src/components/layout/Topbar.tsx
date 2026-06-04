@@ -20,7 +20,15 @@ const getInitials = (name?: string) => {
   return parts.join("") || "IG";
 };
 
-export const Topbar = ({ isSidebarLocked = true, onLock }: { isSidebarLocked?: boolean; onLock?: () => void }) => {
+export const Topbar = ({
+  isSidebarLocked = true,
+  onLock,
+  onOpenMobile,
+}: {
+  isSidebarLocked?: boolean;
+  onLock?: () => void;
+  onOpenMobile?: () => void;
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const showGlobalSearch = ![
@@ -50,6 +58,16 @@ export const Topbar = ({ isSidebarLocked = true, onLock }: { isSidebarLocked?: b
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/70 px-4 py-3 backdrop-blur md:px-6 dark:border-slate-800 dark:bg-slate-950/65">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-[16rem] items-center gap-3">
+          {/* Mobile menu trigger */}
+          <button
+            onClick={onOpenMobile}
+            className="flex lg:hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            title="Abrir menú"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          {/* Desktop menu trigger */}
           {!isSidebarLocked && (
             <button
               onClick={onLock}

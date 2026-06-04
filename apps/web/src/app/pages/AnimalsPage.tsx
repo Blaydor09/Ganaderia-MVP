@@ -19,6 +19,7 @@ import { downloadCsv } from "@/lib/csv";
 import { getAnimalCategoryLabel, getAnimalIdentifier, getAnimalStatusLabel } from "@/lib/animals";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
+import { cn } from "@/lib/utils";
 
 const statusVariantByValue: Record<string, "default" | "success" | "warning" | "danger"> = {
   ACTIVO: "success",
@@ -77,7 +78,13 @@ const AnimalsPage = () => {
         accessorKey: "category",
         cell: (info) => <Badge>{getAnimalCategoryLabel(info.getValue() as string)}</Badge>,
       },
-      { header: "Raza", accessorKey: "breed" },
+      {
+        header: "Raza",
+        accessorKey: "breed",
+        meta: {
+          className: "hidden md:table-cell",
+        },
+      },
       {
         header: "Estado",
         accessorKey: "status",
@@ -89,6 +96,9 @@ const AnimalsPage = () => {
       },
       {
         header: "Ubicacion",
+        meta: {
+          className: "hidden md:table-cell",
+        },
         cell: (info) => {
           const establishment = info.row.original.establishment;
           if (!establishment) {
@@ -156,21 +166,24 @@ const AnimalsPage = () => {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
         <Input
           placeholder="Buscar por identificador"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="w-64"
+          className="w-full sm:w-64"
         />
-        <Button variant="outline">Filtros</Button>
-        <Button
-          variant={isCompact ? "secondary" : "outline"}
-          aria-pressed={isCompact}
-          onClick={() => setIsCompact((prev) => !prev)}
-        >
-          Modo compacto
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="flex-1 sm:flex-initial">Filtros</Button>
+          <Button
+            variant={isCompact ? "secondary" : "outline"}
+            aria-pressed={isCompact}
+            className="flex-1 sm:flex-initial"
+            onClick={() => setIsCompact((prev) => !prev)}
+          >
+            Modo compacto
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80">
@@ -179,7 +192,10 @@ const AnimalsPage = () => {
             {table.getHeaderGroups().map((headerGroup) => (
               <TR key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TH key={header.id} className={cellPaddingClass}>
+                  <TH
+                    key={header.id}
+                    className={cn(cellPaddingClass, (header.column.columnDef.meta as any)?.className)}
+                  >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </TH>
                 ))}
@@ -197,7 +213,10 @@ const AnimalsPage = () => {
               table.getRowModel().rows.map((row) => (
                 <TR key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <TD key={cell.id} className={cellPaddingClass}>
+                    <TD
+                      key={cell.id}
+                      className={cn(cellPaddingClass, (cell.column.columnDef.meta as any)?.className)}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TD>
                   ))}

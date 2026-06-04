@@ -142,51 +142,63 @@ const AnimalsQuickCreatePage = () => {
             <h3 className="font-display text-lg font-semibold">Distribucion por categoria</h3>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-2">
-              <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-400">
+            <div className="grid gap-4 sm:gap-2">
+              <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-semibold text-slate-400">
                 <span className="col-span-5">Categoria</span>
                 <span className="col-span-3">Sexo</span>
                 <span className="col-span-4 text-right">Cantidad</span>
               </div>
               {lines.map((line, index) => (
-                <div key={line.category} className="grid grid-cols-12 items-center gap-2">
+                <div key={line.category} className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 border-b border-slate-100 pb-3 sm:border-none sm:pb-0 dark:border-slate-800">
                   <input type="hidden" {...register(`lines.${index}.category`)} />
-                  <span className="col-span-5 text-sm text-slate-700 dark:text-slate-200">
+                  <span className="col-span-5 text-sm font-medium text-slate-700 sm:font-normal dark:text-slate-200">
                     {getAnimalCategoryLabel(line.category)}
                   </span>
-                  {line.category === "TERNERO" ? (
-                    <select
-                      className="col-span-3 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
-                      {...register(`lines.${index}.sex`)}
-                    >
-                      {animalSexOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <>
-                      <input
-                        type="hidden"
-                        value={defaultSexByCategory[line.category] ?? "FEMALE"}
+                  
+                  <div className="w-full col-span-3">
+                    <span className="text-[10px] uppercase tracking-wide text-slate-400 sm:hidden block mb-1">
+                      Sexo
+                    </span>
+                    {line.category === "TERNERO" ? (
+                      <select
+                        className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus-visible:ring-brand-500"
                         {...register(`lines.${index}.sex`)}
-                      />
-                      <div className="col-span-3 flex h-10 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
-                        {(defaultSexByCategory[line.category] ?? "FEMALE") === "MALE"
-                          ? "Macho"
-                          : "Hembra"}
-                      </div>
-                    </>
-                  )}
-                  <Input
-                    type="number"
-                    min={0}
-                    className="col-span-4 text-right"
-                    {...register(`lines.${index}.count`, {
-                      setValueAs: (value) => (value === "" ? 0 : Number(value)),
-                    })}
-                  />
+                      >
+                        {animalSexOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <>
+                        <input
+                          type="hidden"
+                          value={defaultSexByCategory[line.category] ?? "FEMALE"}
+                          {...register(`lines.${index}.sex`)}
+                        />
+                        <div className="w-full flex h-10 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
+                          {(defaultSexByCategory[line.category] ?? "FEMALE") === "MALE"
+                            ? "Macho"
+                            : "Hembra"}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="w-full col-span-4">
+                    <span className="text-[10px] uppercase tracking-wide text-slate-400 sm:hidden block mb-1">
+                      Cantidad
+                    </span>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="w-full sm:text-right"
+                      {...register(`lines.${index}.count`, {
+                        setValueAs: (value) => (value === "" ? 0 : Number(value)),
+                      })}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

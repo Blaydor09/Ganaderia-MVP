@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, PawPrint, Stethoscope, Boxes } from "lucide-react";
+import { LayoutDashboard, PawPrint, Stethoscope, Boxes, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/auth";
 import { Access } from "@/lib/access";
@@ -11,7 +11,7 @@ const items = [
   { to: "/inventory", label: "Stock", icon: Boxes, roles: Access.inventory },
 ];
 
-export const MobileNav = () => {
+export const MobileNav = ({ onOpenMobile }: { onOpenMobile?: () => void }) => {
   const visibleItems = items.filter((item) => hasAnyRole(item.roles));
 
   return (
@@ -37,6 +37,15 @@ export const MobileNav = () => {
             </NavLink>
           );
         })}
+
+        <button
+          type="button"
+          onClick={onOpenMobile}
+          className="flex min-w-16 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        >
+          <Menu className="h-4 w-4" />
+          Menú
+        </button>
       </div>
     </nav>
   );

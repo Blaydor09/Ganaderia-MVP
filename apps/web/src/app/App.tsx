@@ -63,14 +63,24 @@ const RequireRole = ({
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const [isSidebarLocked, setIsSidebarLocked] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   return (
     <ThemeShell className="relative flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <Sidebar isLocked={isSidebarLocked} onUnlock={() => setIsSidebarLocked(false)} />
+      <Sidebar
+        isLocked={isSidebarLocked}
+        onUnlock={() => setIsSidebarLocked(false)}
+        isOpenMobile={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
+      />
       <div className="flex flex-1 flex-col min-w-0 transition-all duration-500">
-        <Topbar isSidebarLocked={isSidebarLocked} onLock={() => setIsSidebarLocked(true)} />
+        <Topbar
+          isSidebarLocked={isSidebarLocked}
+          onLock={() => setIsSidebarLocked(true)}
+          onOpenMobile={() => setIsMobileMenuOpen(true)}
+        />
         <main className="flex-1 px-4 py-5 pb-20 md:px-6 lg:pb-6">{children}</main>
       </div>
-      <MobileNav />
+      <MobileNav onOpenMobile={() => setIsMobileMenuOpen(true)} />
     </ThemeShell>
   );
 };
