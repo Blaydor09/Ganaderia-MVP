@@ -5,7 +5,7 @@ import events from "./events";
 import movements from "./movements";
 import establishments from "./establishments";
 import products from "./products";
-import batches from "./batches";
+// import batches from "./batches"; // Módulo Lotes deshabilitado
 import suppliers from "./suppliers";
 import inventory from "./inventory";
 import treatments from "./treatments";
@@ -29,7 +29,7 @@ router.use("/movements", movements);
 router.use("/establishments", establishments);
 router.use("/products", products);
 router.use("/suppliers", suppliers);
-router.use("/batches", batches);
+// router.use("/batches", batches); // Módulo Lotes deshabilitado
 router.use("/inventory", inventory);
 router.use("/treatments", treatments);
 router.use("/administrations", administrations);
