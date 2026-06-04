@@ -18,6 +18,11 @@ export default {
           800: "#283f35",
           900: "#22342d",
         },
+        dash: {
+          positive: "#10b981",
+          negative: "#ef4444",
+          neutral: "#64748b",
+        },
       },
       fontFamily: {
         display: ["'Space Grotesk'", "system-ui", "sans-serif"],
@@ -27,6 +32,7 @@ export default {
         soft: "0 10px 30px rgba(15, 23, 42, 0.08)",
         panel: "0 18px 45px rgba(15, 23, 42, 0.14)",
         inset: "inset 0 1px 0 rgba(255,255,255,0.4)",
+        "kpi-hover": "0 8px 24px rgba(15, 23, 42, 0.12)",
       },
       borderRadius: {
         "4xl": "2rem",
@@ -36,9 +42,14 @@ export default {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "dash-stagger": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 320ms ease-out",
+        "dash-stagger": "dash-stagger 380ms ease-out both",
       },
     },
   },

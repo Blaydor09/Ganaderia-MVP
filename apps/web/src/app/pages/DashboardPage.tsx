@@ -16,25 +16,24 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DashboardAlertStrip } from "@/components/dashboard/DashboardAlertStrip";
+import { DashboardCommandBar } from "@/components/dashboard/DashboardCommandBar";
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState";
-import { DashboardFocusPanel } from "@/components/dashboard/DashboardFocusPanel";
-import { DashboardHero } from "@/components/dashboard/DashboardHero";
-import { DashboardMetricCard } from "@/components/dashboard/DashboardMetricCard";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { ChartCard } from "@/components/dashboard/ChartCard";
 import { HerdCompositionCard } from "@/components/dashboard/HerdCompositionCard";
+import { InventoryGaugeTable } from "@/components/dashboard/InventoryGaugeTable";
+import { KpiTile } from "@/components/dashboard/KpiTile";
+import { MovementsCompactTable } from "@/components/dashboard/MovementsCompactTable";
 import { Access } from "@/lib/access";
 import { animalCategoryOptions, animalSexOptions } from "@/lib/animals";
 import { hasAnyRole } from "@/lib/auth";
 import {
-  getMovementTypeLabel,
   normalizeDashboardRange,
   useDashboardOverview,
 } from "@/lib/dashboard";
 import { formatDateOnlyUtc } from "@/lib/dates";
-import { cn } from "@/lib/utils";
 import type {
   DashboardRange,
   EstablishmentNode,
@@ -53,6 +52,12 @@ const formatChartDate = (date: string) =>
 
 const sumLifecycle = (rows: LifecycleSeriesPoint[]) =>
   rows.reduce((sum, row) => sum + row.births + row.deaths + row.sales, 0);
+
+/* ── Stagger animation helper ── */
+const stagger = (index: number) => ({
+  className: "dash-section-enter",
+  style: { animationDelay: `${index * 60}ms` } as React.CSSProperties,
+});
 
 const DashboardPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -114,12 +119,6 @@ const DashboardPage = () => {
     }));
   }, [overview]);
 
-  const categoryTotal = useMemo(
-    () => categoryChartData.reduce((sum, row) => sum + row.value, 0),
-    [categoryChartData]
-  );
-  const sexTotal = useMemo(() => sexChartData.reduce((sum, row) => sum + row.value, 0), [sexChartData]);
-
   const lifecycleTotals = useMemo(
     () =>
       overview?.lifecycleSeries.reduce(
@@ -152,12 +151,6 @@ const DashboardPage = () => {
       overview.movementsRecent.length > 0
     );
   }, [overview]);
-
-  const heroAlertCount = useMemo(() => {
-    if (!overview) return 0;
-    return (canViewInventory ? overview.kpis.inventoryAlerts.value : 0) +
-      (canViewWithdrawals ? overview.kpis.withdrawalsActive.value : 0);
-  }, [overview, canViewInventory, canViewWithdrawals]);
 
   const updateFilters = (next: {
     range?: DashboardRange;
@@ -194,42 +187,39 @@ const DashboardPage = () => {
     return query ? `${path}?${query}` : path;
   };
 
-  const showActions =
-    canManageAnimals || canManageTreatments || canManageBatches || canViewWithdrawals;
-  const showFocusPanel = canViewInventory || canViewWithdrawals;
+  const showQuickActions =
+    canManageAnimals || canManageTreatments || canManageBatches;
+  const showAlertStrip = canViewInventory || canViewWithdrawals;
 
-  const metricCards = [
+  /* ── KPI tiles definition ── */
+  const kpiTiles = [
     canViewAnimals
       ? {
           label: "Animales activos",
           value: overview?.kpis.animalsActive.value ?? 0,
-          helper: "Base vigente del hato disponible para seguimiento diario.",
-          detail: "Inventario animal actual",
-          icon: <PawPrint className="h-5 w-5" />,
+          icon: <PawPrint className="h-4 w-4" />,
           to: withCurrentFilters("/animals"),
           tone: "emerald" as const,
+          detail: "Inventario animal actual",
         }
       : null,
     canViewTreatments
       ? {
           label: `Tratamientos ${range}`,
           value: overview?.kpis.treatmentsInRange.value ?? 0,
-          helper: "Actividad sanitaria aplicada dentro del periodo filtrado.",
-          detail: `${treatmentsTotal} aplicaciones acumuladas`,
           deltaPct: overview?.kpis.treatmentsInRange.deltaPct,
-          icon: <Activity className="h-5 w-5" />,
+          icon: <Activity className="h-4 w-4" />,
           to: withCurrentFilters("/treatments"),
           tone: "sky" as const,
+          detail: `${treatmentsTotal} aplicaciones`,
         }
       : null,
     canViewMovements
       ? {
           label: `Movimientos ${range}`,
           value: overview?.kpis.movementsInRange.value ?? 0,
-          helper: "Traslados internos, externos y eventos de salida del periodo.",
-          detail: "Pulso de trazabilidad",
           deltaPct: overview?.kpis.movementsInRange.deltaPct,
-          icon: <Truck className="h-5 w-5" />,
+          icon: <Truck className="h-4 w-4" />,
           to: withCurrentFilters("/movements"),
           tone: "slate" as const,
         }
@@ -238,21 +228,18 @@ const DashboardPage = () => {
       ? {
           label: "Alertas activas",
           value: overview?.kpis.inventoryAlerts.value ?? 0,
-          helper: "Cruza vencimientos y productos por debajo del stock minimo.",
-          detail: overview
-            ? `Vencen ${overview.kpis.inventoryAlerts.expiring} | Minimo ${overview.kpis.inventoryAlerts.lowStock}`
-            : "Sin datos cargados",
-          icon: <Boxes className="h-5 w-5" />,
+          icon: <Boxes className="h-4 w-4" />,
           to: withCurrentFilters("/inventory"),
           tone: "amber" as const,
+          detail: overview
+            ? `Vencen ${overview.kpis.inventoryAlerts.expiring} · Mínimo ${overview.kpis.inventoryAlerts.lowStock}`
+            : undefined,
         }
       : canViewWithdrawals
         ? {
             label: "Retiros activos",
             value: overview?.kpis.withdrawalsActive.value ?? 0,
-            helper: "Animales con restriccion vigente por tratamiento o retiro.",
-            detail: "Revisar cumplimiento de retiro",
-            icon: <ClipboardList className="h-5 w-5" />,
+            icon: <ClipboardList className="h-4 w-4" />,
             to: withCurrentFilters("/reports"),
             tone: "rose" as const,
           }
@@ -260,61 +247,73 @@ const DashboardPage = () => {
   ].filter(Boolean) as Array<{
     label: string;
     value: number;
-    helper: string;
-    detail: string;
     deltaPct?: number;
     icon: JSX.Element;
     to: string;
     tone: "emerald" | "sky" | "amber" | "rose" | "slate";
+    detail?: string;
   }>;
 
   return (
-    <div className="space-y-6">
-      <DashboardHero
-        range={range}
-        fincaId={fincaId}
-        establishmentId={establishmentId}
-        fincas={fincas}
-        establishmentsByFinca={filteredEstablishments}
-        onChangeRange={(nextRange) => updateFilters({ range: nextRange })}
-        onChangeFinca={(nextFincaId) =>
-          updateFilters({ fincaId: nextFincaId, establishmentId: undefined })
-        }
-        onChangeEstablishment={(nextEstablishmentId) =>
-          updateFilters({ establishmentId: nextEstablishmentId })
-        }
-        onReset={resetFilters}
-        generatedAt={overview ? formatDateOnlyUtc(overview.generatedAt) : undefined}
-        isFetching={overviewQuery.isFetching}
-        alertCount={heroAlertCount}
-        animalsActive={overview?.kpis.animalsActive.value ?? 0}
-        treatmentsInRange={overview?.kpis.treatmentsInRange.value ?? 0}
-        movementsInRange={overview?.kpis.movementsInRange.value ?? 0}
-        actions={
-          showActions ? (
-            <>
-              {canManageAnimals ? (
-                <Button asChild className="rounded-2xl">
-                  <Link to="/animals/quick">Registro animal</Link>
-                </Button>
-              ) : null}
-              {canManageTreatments ? (
-                <Button variant="secondary" asChild className="rounded-2xl bg-white text-slate-900 hover:bg-slate-100">
-                  <Link to="/treatments">Registrar tratamiento</Link>
-                </Button>
-              ) : null}
-              {canManageBatches ? (
-                <Button variant="ghost" asChild className="rounded-2xl border border-white/12 text-white hover:bg-white/10 hover:text-white">
-                  <Link to="/batches">Agregar lote</Link>
-                </Button>
-              ) : null}
-            </>
-          ) : undefined
-        }
-      />
+    <div className="space-y-4">
+      {/* ── Command Bar: compact filters ── */}
+      <div {...stagger(0)}>
+        <DashboardCommandBar
+          range={range}
+          fincaId={fincaId}
+          establishmentId={establishmentId}
+          fincas={fincas}
+          establishments={filteredEstablishments}
+          onChangeRange={(nextRange) => updateFilters({ range: nextRange })}
+          onChangeFinca={(nextFincaId) =>
+            updateFilters({ fincaId: nextFincaId, establishmentId: undefined })
+          }
+          onChangeEstablishment={(nextEstablishmentId) =>
+            updateFilters({ establishmentId: nextEstablishmentId })
+          }
+          onReset={resetFilters}
+          generatedAt={overview ? formatDateOnlyUtc(overview.generatedAt) : undefined}
+          isFetching={overviewQuery.isFetching}
+        />
+      </div>
 
+      {/* ── Quick Actions (compact) ── */}
+      {showQuickActions ? (
+        <div {...stagger(1)} className="dash-section-enter flex flex-wrap items-center gap-2">
+          {canManageAnimals ? (
+            <Button asChild size="sm" className="h-8 rounded-lg text-xs">
+              <Link to="/animals/quick">+ Animal</Link>
+            </Button>
+          ) : null}
+          {canManageTreatments ? (
+            <Button variant="outline" asChild size="sm" className="h-8 rounded-lg text-xs">
+              <Link to="/treatments">+ Tratamiento</Link>
+            </Button>
+          ) : null}
+          {canManageBatches ? (
+            <Button variant="outline" asChild size="sm" className="h-8 rounded-lg text-xs">
+              <Link to="/batches">+ Lote</Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* ── Alert Strip (conditional) ── */}
+      {showAlertStrip && overview ? (
+        <div {...stagger(2)}>
+          <DashboardAlertStrip
+            inventoryAlerts={canViewInventory ? overview.kpis.inventoryAlerts : undefined}
+            withdrawalsActive={canViewWithdrawals ? overview.kpis.withdrawalsActive.value : undefined}
+            inventoryLink={canViewInventory ? withCurrentFilters("/inventory") : undefined}
+            withdrawalsLink={canViewWithdrawals ? withCurrentFilters("/reports") : undefined}
+          />
+        </div>
+      ) : null}
+
+      {/* ── Loading state ── */}
       {overviewQuery.isLoading ? <DashboardSkeleton /> : null}
 
+      {/* ── Error state ── */}
       {overviewQuery.isError ? (
         <EmptyState
           title="No se pudo cargar el dashboard"
@@ -327,124 +326,150 @@ const DashboardPage = () => {
         />
       ) : null}
 
+      {/* ── Main content ── */}
       {!overviewQuery.isLoading && !overviewQuery.isError && overview ? (
-        <div className="space-y-6">
+        <>
           {!hasData ? <DashboardEmptyState onRetry={() => overviewQuery.refetch()} /> : null}
 
           {hasData ? (
             <>
-              <div className={cn("grid gap-6", showFocusPanel ? "2xl:grid-cols-[minmax(0,1.65fr)_360px]" : "") }>
-                <div className="space-y-6">
-                  <div className={cn("grid gap-4", metricCards.length >= 4 ? "md:grid-cols-2 2xl:grid-cols-4" : "md:grid-cols-2 xl:grid-cols-3") }>
-                    {metricCards.map((card) => (
-                      <DashboardMetricCard key={card.label} {...card} />
-                    ))}
-                  </div>
+              {/* ── KPI Tiles Row ── */}
+              <div
+                {...stagger(3)}
+                className="dash-section-enter grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+              >
+                {kpiTiles.map((tile) => (
+                  <KpiTile key={tile.label} {...tile} />
+                ))}
+              </div>
 
-                  {canViewEvents ? (
-                    <ChartCard
-                      eyebrow="Pulso del periodo"
-                      title={`Ciclo de vida del hato (${range})`}
-                      description="Sigue nacimientos, muertes y ventas para entender el balance operativo del inventario en el periodo seleccionado."
-                      footer={
-                        <div className="grid gap-3 sm:grid-cols-3">
-                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
-                            <p className="text-xs uppercase tracking-[0.24em] opacity-80">Nacimientos</p>
-                            <p className="mt-1 font-display text-2xl font-semibold">{lifecycleTotals.births}</p>
-                          </div>
-                          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200">
-                            <p className="text-xs uppercase tracking-[0.24em] opacity-80">Muertes</p>
-                            <p className="mt-1 font-display text-2xl font-semibold">{lifecycleTotals.deaths}</p>
-                          </div>
-                          <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-sm text-sky-800 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200">
-                            <p className="text-xs uppercase tracking-[0.24em] opacity-80">Ventas</p>
-                            <p className="mt-1 font-display text-2xl font-semibold">{lifecycleTotals.sales}</p>
-                          </div>
+              {/* ── Charts Row 1: Lifecycle + Herd Composition ── */}
+              <div
+                {...stagger(4)}
+                className="dash-section-enter grid gap-4 xl:grid-cols-2"
+              >
+                {canViewEvents ? (
+                  <ChartCard
+                    title={`Ciclo de vida (${range})`}
+                    badge={
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        {lifecycleTotals.births}N · {lifecycleTotals.deaths}M · {lifecycleTotals.sales}V
+                      </span>
+                    }
+                    footer={
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="flex items-center gap-2 rounded-lg bg-emerald-50/80 px-3 py-2 text-xs dark:bg-emerald-500/8">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          <span className="text-emerald-700 dark:text-emerald-300">Nacimientos</span>
+                          <span className="ml-auto font-display font-semibold text-emerald-800 dark:text-emerald-200">{lifecycleTotals.births}</span>
                         </div>
-                      }
-                    >
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={overview.lifecycleSeries}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis
-                              dataKey="date"
-                              tickFormatter={formatChartDate}
-                              stroke="#94a3b8"
-                              tickLine={false}
-                              axisLine={false}
-                            />
-                            <YAxis stroke="#94a3b8" />
-                            <Tooltip
-                              labelFormatter={(label: string) =>
-                                formatDateOnlyUtc(`${label}T00:00:00.000Z`)
-                              }
-                            />
-                            <Legend />
-                            <Bar dataKey="births" name="Nacimientos" fill="#4d7d66" radius={[6, 6, 0, 0]} />
-                            <Bar dataKey="deaths" name="Muertes" fill="#b91c1c" radius={[6, 6, 0, 0]} />
-                            <Bar dataKey="sales" name="Ventas" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                        <div className="flex items-center gap-2 rounded-lg bg-rose-50/80 px-3 py-2 text-xs dark:bg-rose-500/8">
+                          <span className="h-2 w-2 rounded-full bg-rose-500" />
+                          <span className="text-rose-700 dark:text-rose-300">Muertes</span>
+                          <span className="ml-auto font-display font-semibold text-rose-800 dark:text-rose-200">{lifecycleTotals.deaths}</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-sky-50/80 px-3 py-2 text-xs dark:bg-sky-500/8">
+                          <span className="h-2 w-2 rounded-full bg-sky-500" />
+                          <span className="text-sky-700 dark:text-sky-300">Ventas</span>
+                          <span className="ml-auto font-display font-semibold text-sky-800 dark:text-sky-200">{lifecycleTotals.sales}</span>
+                        </div>
                       </div>
-                    </ChartCard>
-                  ) : null}
-                </div>
+                    }
+                  >
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={overview.lifecycleSeries}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
+                          <XAxis
+                            dataKey="date"
+                            tickFormatter={formatChartDate}
+                            stroke="#94a3b8"
+                            tickLine={false}
+                            axisLine={false}
+                            fontSize={11}
+                          />
+                          <YAxis stroke="#94a3b8" fontSize={11} width={32} />
+                          <Tooltip
+                            labelFormatter={(label: string) =>
+                              formatDateOnlyUtc(`${label}T00:00:00.000Z`)
+                            }
+                            contentStyle={{
+                              borderRadius: "10px",
+                              border: "1px solid rgba(148,163,184,0.2)",
+                              fontSize: "12px",
+                              boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+                            }}
+                          />
+                          <Legend
+                            iconType="circle"
+                            iconSize={8}
+                            wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
+                          />
+                          <Bar dataKey="births" name="Nacimientos" fill="#4d7d66" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="deaths" name="Muertes" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="sales" name="Ventas" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </ChartCard>
+                ) : null}
 
-                {showFocusPanel ? (
-                  <DashboardFocusPanel
-                    inventoryAlerts={canViewInventory ? overview.kpis.inventoryAlerts : undefined}
-                    withdrawalsActive={canViewWithdrawals ? overview.kpis.withdrawalsActive.value : undefined}
-                    inventoryLink={canViewInventory ? withCurrentFilters("/inventory") : undefined}
-                    withdrawalsLink={canViewWithdrawals ? withCurrentFilters("/reports") : undefined}
-                  />
+                {canViewAnimals ? (
+                  <HerdCompositionCard categoryData={categoryChartData} sexData={sexChartData} />
                 ) : null}
               </div>
 
-              {canViewAnimals ? (
-                <HerdCompositionCard categoryData={categoryChartData} sexData={sexChartData} />
-              ) : null}
-
+              {/* ── Charts Row 2: Treatments + Inventory Gauge ── */}
               {(canViewTreatments || canViewInventory) ? (
-                <div className="grid gap-6 xl:grid-cols-3">
+                <div
+                  {...stagger(5)}
+                  className="dash-section-enter grid gap-4 xl:grid-cols-2"
+                >
                   {canViewTreatments ? (
                     <ChartCard
-                      className={canViewInventory ? "xl:col-span-2" : "xl:col-span-3"}
-                      eyebrow="Salud"
                       title={`Aplicaciones por dia (${range})`}
-                      description="Detecta picos de actividad sanitaria y relaciona rapidamente el ritmo de tratamientos con el periodo analizado."
-                      footer={
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300">
-                          Total aplicado en el periodo: <span className="font-semibold text-slate-900 dark:text-slate-50">{treatmentsTotal}</span>
-                        </div>
+                      badge={
+                        <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                          {treatmentsTotal} total
+                        </span>
                       }
                     >
-                      <div className="h-72">
+                      <div className="h-52">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={overview.treatmentsSeries}>
                             <defs>
                               <linearGradient id="treatments-gradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#4d7d66" stopOpacity={0.35} />
+                                <stop offset="5%" stopColor="#4d7d66" stopOpacity={0.3} />
                                 <stop offset="95%" stopColor="#4d7d66" stopOpacity={0} />
                               </linearGradient>
                             </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
                             <XAxis
                               dataKey="date"
                               tickFormatter={formatChartDate}
                               stroke="#94a3b8"
                               tickLine={false}
                               axisLine={false}
+                              fontSize={11}
                             />
-                            <YAxis stroke="#94a3b8" />
+                            <YAxis stroke="#94a3b8" fontSize={11} width={32} />
                             <Tooltip
                               labelFormatter={(label: string) =>
                                 formatDateOnlyUtc(`${label}T00:00:00.000Z`)
                               }
+                              contentStyle={{
+                                borderRadius: "10px",
+                                border: "1px solid rgba(148,163,184,0.2)",
+                                fontSize: "12px",
+                                boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+                              }}
                             />
                             <Area
                               type="monotone"
                               dataKey="count"
+                              name="Aplicaciones"
                               stroke="#4d7d66"
+                              strokeWidth={2}
                               fillOpacity={1}
                               fill="url(#treatments-gradient)"
                             />
@@ -456,110 +481,51 @@ const DashboardPage = () => {
 
                   {canViewInventory ? (
                     <ChartCard
-                      className={canViewTreatments ? "" : "xl:col-span-3"}
-                      eyebrow="Inventario critico"
-                      title="Stock total vs minimo"
-                      description="Compara rapidamente el stock disponible frente al minimo configurado para identificar brechas operativas."
+                      title="Stock vs mínimo"
+                      badge={
+                        overview.inventoryTop.some((r) => r.minStock > 0 && r.stock < r.minStock) ? (
+                          <span className="rounded-md bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-500/15 dark:text-red-400">
+                            Bajo mínimo
+                          </span>
+                        ) : null
+                      }
                     >
-                      <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={overview.inventoryTop}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis
-                              dataKey="productName"
-                              stroke="#94a3b8"
-                              tickLine={false}
-                              axisLine={false}
-                              interval={0}
-                              angle={-15}
-                              textAnchor="end"
-                              height={60}
-                            />
-                            <YAxis stroke="#94a3b8" />
-                            <Tooltip
-                              formatter={(value: number | string, name: string, item) => {
-                                const payload = item?.payload as { unit?: string } | undefined;
-                                const label = name === "stock" ? "Stock" : "Minimo";
-                                return [`${value}${payload?.unit ? ` ${payload.unit}` : ""}`, label];
-                              }}
-                            />
-                            <Legend />
-                            <Bar dataKey="stock" name="Stock" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                            <Bar dataKey="minStock" name="Minimo" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
+                      <InventoryGaugeTable data={overview.inventoryTop} />
                     </ChartCard>
                   ) : null}
                 </div>
               ) : null}
 
+              {/* ── Movements Table ── */}
               {canViewMovements ? (
-                <ChartCard
-                  eyebrow="Trazabilidad"
-                  title="Movimientos recientes"
-                  description="Revisa el flujo operativo mas reciente con contexto de origen, destino y fecha del movimiento."
-                  headerAction={
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to={withCurrentFilters("/movements")}>Ver todos</Link>
-                    </Button>
-                  }
-                >
-                  <div className="space-y-4">
-                    {overview.movementsRecent.length > 0 ? (
-                      overview.movementsRecent.map((movement, index) => (
-                        <div
-                          key={movement.id}
-                          className="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)] md:items-stretch"
-                        >
-                          <div className="hidden md:flex md:w-6 md:flex-col md:items-center">
-                            <span className="mt-2 h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                            {index < overview.movementsRecent.length - 1 ? (
-                              <span className="mt-2 h-full w-px bg-slate-200 dark:bg-slate-800" />
-                            ) : null}
-                          </div>
-
-                          <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-950/60">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div>
-                                <p className="font-medium text-slate-900 dark:text-slate-50">
-                                  {getMovementTypeLabel(movement.movementType)}
-                                </p>
-                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                  {movement.animalTag || movement.animalId}
-                                </p>
-                              </div>
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                {formatDateOnlyUtc(movement.occurredAt)}
-                              </span>
-                            </div>
-                            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                              {movement.originName || "Sin origen"}
-                              {" -> "}
-                              {movement.destinationName || "Sin destino"}
-                            </p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Sin movimientos recientes para este filtro.
-                      </p>
-                    )}
-                  </div>
-                </ChartCard>
+                <div {...stagger(6)} className="dash-section-enter">
+                  <ChartCard
+                    title="Movimientos recientes"
+                    headerAction={
+                      <Link
+                        to={withCurrentFilters("/movements")}
+                        className="text-xs font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+                      >
+                        Ver todos →
+                      </Link>
+                    }
+                  >
+                    <MovementsCompactTable
+                      data={overview.movementsRecent}
+                      allLink={withCurrentFilters("/movements")}
+                    />
+                  </ChartCard>
+                </div>
               ) : null}
             </>
           ) : null}
-        </div>
+        </>
       ) : null}
 
       {overviewQuery.isLoading || overviewQuery.isError ? null : !overview ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-            No se recibieron datos del dashboard.
-          </CardContent>
-        </Card>
+        <div className="dash-card py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+          No se recibieron datos del dashboard.
+        </div>
       ) : null}
     </div>
   );
