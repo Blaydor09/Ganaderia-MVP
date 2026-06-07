@@ -15,7 +15,7 @@ router.get(
       return res.json({ animals: [], products: [], batches: [] });
     }
 
-    const [animals, products, batches] = await Promise.all([
+    const [animals, products] = await Promise.all([
       prisma.animal.findMany({
         where: {
           deletedAt: null,
@@ -31,17 +31,9 @@ router.get(
         where: { name: { contains: q, mode: "insensitive" }, deletedAt: null, tenantId },
         take: 5,
       }),
-      prisma.batch.findMany({
-        where: {
-          batchNumber: { contains: q, mode: "insensitive" },
-          deletedAt: null,
-          tenantId,
-        },
-        take: 5,
-      }),
     ]);
 
-    res.json({ animals, products, batches });
+    res.json({ animals, products, batches: [] });
   })
 );
 

@@ -89,17 +89,16 @@ router.get(
     const now = new Date();
     const limit = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
-    const batches = await prisma.batch.findMany({
+    const products = await prisma.product.findMany({
       where: {
         expiresAt: { lte: limit },
         deletedAt: null,
         tenantId,
       },
-      include: { product: true },
       orderBy: { expiresAt: "asc" },
     });
 
-    res.json({ items: batches, total: batches.length });
+    res.json({ items: products, total: products.length });
   })
 );
 

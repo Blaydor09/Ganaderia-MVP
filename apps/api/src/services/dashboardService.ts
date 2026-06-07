@@ -241,36 +241,42 @@ export const getDashboardOverview = async (
   const uniqueActiveTreatments = new Set(withdrawalRows.map((row) => row.treatmentId));
   const withdrawalsActive = uniqueActiveTreatments.size;
 
+  const soon30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const products = await prisma.product.findMany({
     where: { tenantId: input.tenantId, deletedAt: null },
-    select: { id: true, name: true, minStock: true, unit: true },
+    select: { id: true, name: true, minStock: true, unit: true, stockAvailable: true },
     orderBy: { name: "asc" },
   });
 
-  const [batchTotals, expiringCount] = await Promise.all([
-    prisma.batch.groupBy({
-      by: ["productId"],
-      where: { tenantId: input.tenantId, deletedAt: null },
-      _sum: { quantityAvailable: true },
-    }),
-    prisma.batch.count({
-      where: {
-        tenantId: input.tenantId,
-        deletedAt: null,
-        expiresAt: {
-          lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-        },
+  const expiringCount = await prisma.batch.count({
+    where: {
+      tenantId: input.tenantId,
+      deletedAt: null,
+      expiresAt: {
+        lte: soon30,
       },
-    }),
-  ]);
+    },
+  });
 
-  const totalByProduct = new Map<string, number>();
-  for (const row of batchTotals) {
-    totalByProduct.set(row.productId, row._sum.quantityAvailable ?? 0);
-  }
+  const batchStocks = await prisma.batch.groupBy({
+    by: ["productId"],
+    where: {
+      tenantId: input.tenantId,
+      deletedAt: null,
+    },
+    _sum: {
+      quantityAvailable: true,
+    },
+  });
+
+  const batchStockMap = new Map<string, number>(
+    batchStocks.map((b) => [b.productId, b._sum.quantityAvailable ?? 0])
+  );
 
   const stockRows = products.map((product) => {
-    const stock = totalByProduct.get(product.id) ?? 0;
+    const stock = batchStockMap.has(product.id)
+      ? batchStockMap.get(product.id)!
+      : product.stockAvailable;
     return {
       productId: product.id,
       productName: product.name,
