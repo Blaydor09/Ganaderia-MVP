@@ -26,7 +26,7 @@ import {
 import { getTreatmentAnimalCount } from "@/lib/treatments";
 import type {
   AnimalListResponse,
-  BatchListResponse,
+  ProductListResponse,
   Treatment,
   TreatmentListResponse,
 } from "@/lib/types";
@@ -48,7 +48,7 @@ const individualTreatmentSchema = z.object({
 type IndividualTreatmentFormValues = z.infer<typeof individualTreatmentSchema>;
 
 const groupMedicationSchema = z.object({
-  batchId: z.string().min(1, "Requerido"),
+  productId: z.string().min(1, "Requerido"),
   dose: z.number().positive("Requerido"),
 });
 
@@ -112,7 +112,7 @@ type AdministrationAuditListResponse = {
 };
 
 const emptyMedication = () => ({
-  batchId: "",
+  productId: "",
   dose: undefined as unknown as number,
 });
 
@@ -225,7 +225,7 @@ const TreatmentsPage = () => {
       queryClient.invalidateQueries({ queryKey: ["treatments"] }),
       queryClient.invalidateQueries({ queryKey: ["inventory"] }),
       queryClient.invalidateQueries({ queryKey: ["inventory", "alerts"] }),
-      queryClient.invalidateQueries({ queryKey: ["batches"] }),
+      queryClient.invalidateQueries({ queryKey: ["products"] }),
       queryClient.invalidateQueries({ queryKey: ["reports", "withdrawals"] }),
       queryClient.invalidateQueries({ queryKey: ["withdrawals"] }),
       queryClient.invalidateQueries({ queryKey: ["dashboard", "overview"] }),
@@ -265,9 +265,9 @@ const TreatmentsPage = () => {
     queryFn: async () => (await api.get("/animals?page=1&pageSize=200")).data as AnimalListResponse,
   });
 
-  const { data: batches } = useQuery({
-    queryKey: ["batches", "administration-form"],
-    queryFn: async () => (await api.get("/batches?page=1&pageSize=200")).data as BatchListResponse,
+  const { data: products } = useQuery({
+    queryKey: ["products", "administration-form"],
+    queryFn: async () => (await api.get("/products?page=1&pageSize=200")).data as ProductListResponse,
   });
 
   const administrationsByTreatmentId = useMemo(() => {
@@ -371,30 +371,23 @@ const TreatmentsPage = () => {
         )
       : availableAnimalsCount;
 
-  const selectableBatches = useMemo(() => {
+  const selectableProducts = useMemo(() => {
     const now = new Date();
-    return (batches?.items ?? [])
-      .filter((batch) => {
-        if (!batch.product) return false;
-        if (batch.quantityAvailable <= 0) return false;
-        const expiresAt = new Date(batch.expiresAt);
-        if (Number.isNaN(expiresAt.getTime())) return false;
-        return expiresAt > now;
+    return (products?.items ?? [])
+      .filter((product) => {
+        if (product.stockAvailable <= 0) return false;
+        if (product.expiresAt) {
+          const expiresAt = new Date(product.expiresAt);
+          if (!Number.isNaN(expiresAt.getTime()) && expiresAt <= now) return false;
+        }
+        return true;
       })
-      .sort((a, b) => {
-        const productNameA = a.product?.name ?? "";
-        const productNameB = b.product?.name ?? "";
-        const productDiff = productNameA.localeCompare(productNameB, "es");
-        if (productDiff !== 0) return productDiff;
-        const expiresDiff = new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime();
-        if (expiresDiff !== 0) return expiresDiff;
-        return a.batchNumber.localeCompare(b.batchNumber, "es");
-      });
-  }, [batches?.items]);
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }, [products?.items]);
 
-  const selectableBatchById = useMemo(
-    () => new Map(selectableBatches.map((batch) => [batch.id, batch])),
-    [selectableBatches]
+  const selectableProductById = useMemo(
+    () => new Map(selectableProducts.map((product) => [product.id, product])),
+    [selectableProducts]
   );
 
   const onCreateIndividualTreatment = async (values: IndividualTreatmentFormValues) => {
@@ -423,21 +416,21 @@ const TreatmentsPage = () => {
     }
 
     const firstInsufficientIndex = values.medications.findIndex((medication) => {
-      const batch = selectableBatchById.get(medication.batchId);
-      if (!batch) return true;
+      const product = selectableProductById.get(medication.productId);
+      if (!product) return true;
       const required = medication.dose * selectedAnimalsCount;
-      return required > batch.quantityAvailable;
+      return required > product.stockAvailable;
     });
 
     if (firstInsufficientIndex >= 0) {
-      toast.error(`Stock insuficiente en Lote #${firstInsufficientIndex + 1}`);
+      toast.error(`Stock insuficiente en Medicamento #${firstInsufficientIndex + 1}`);
       return;
     }
 
     const medicationsPayload = values.medications.map((medication, index) => {
-      const batch = selectableBatchById.get(medication.batchId);
-      const doseUnit = batch?.product?.unit?.trim();
-      const route = batch?.product?.recommendedRoute?.trim();
+      const product = selectableProductById.get(medication.productId);
+      const doseUnit = product?.unit?.trim();
+      const route = product?.recommendedRoute?.trim();
 
       return {
         index,
@@ -449,13 +442,13 @@ const TreatmentsPage = () => {
 
     const missingUnit = medicationsPayload.find((item) => !item.doseUnit);
     if (missingUnit) {
-      toast.error(`El lote #${missingUnit.index + 1} no tiene unidad configurada`);
+      toast.error(`El medicamento #${missingUnit.index + 1} no tiene unidad configurada`);
       return;
     }
 
     const missingRoute = medicationsPayload.find((item) => !item.route);
     if (missingRoute) {
-      toast.error(`El lote #${missingRoute.index + 1} no tiene via recomendada`);
+      toast.error(`El medicamento #${missingRoute.index + 1} no tiene via recomendada`);
       return;
     }
 
@@ -473,7 +466,7 @@ const TreatmentsPage = () => {
               : undefined,
         },
         medications: medicationsPayload.map(({ medication, doseUnit, route }) => ({
-          batchId: medication.batchId,
+          productId: medication.productId,
           dose: medication.dose,
           doseUnit: doseUnit!,
           route: route!,
@@ -703,34 +696,34 @@ const TreatmentsPage = () => {
 
                     <div className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">Lotes</p>
+                        <p className="text-sm font-medium">Medicamentos</p>
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={selectableBatches.length === 0}
+                          disabled={selectableProducts.length === 0}
                           onClick={() => appendMedication(emptyMedication())}
                         >
-                          Agregar lote
+                          Agregar medicamento
                         </Button>
                       </div>
-                      {selectableBatches.length === 0 ? (
+                      {selectableProducts.length === 0 ? (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300">
-                          No hay lotes vigentes con stock disponible.
+                          No hay medicamentos con stock disponible.
                         </div>
                       ) : null}
                       {medicationFields.map((field, index) => {
                         const currentMedication = watchedMedications?.[index];
-                        const selectedBatch = currentMedication?.batchId
-                          ? selectableBatchById.get(currentMedication.batchId)
+                        const selectedProduct = currentMedication?.productId
+                          ? selectableProductById.get(currentMedication.productId)
                           : undefined;
                         const dosePerAnimal =
                           typeof currentMedication?.dose === "number" && Number.isFinite(currentMedication.dose)
                             ? currentMedication.dose
                             : 0;
                         const requiredDose = dosePerAnimal * selectedAnimalsCount;
-                        const batchAvailable = selectedBatch?.quantityAvailable ?? 0;
-                        const hasStockIssue = Boolean(selectedBatch) && requiredDose > batchAvailable;
+                        const stockAvailable = selectedProduct?.stockAvailable ?? 0;
+                        const hasStockIssue = Boolean(selectedProduct) && requiredDose > stockAvailable;
 
                         return (
                           <div
@@ -738,7 +731,7 @@ const TreatmentsPage = () => {
                             className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800"
                           >
                             <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">Lote #{index + 1}</p>
+                              <p className="text-sm font-medium">Medicamento #{index + 1}</p>
                               {medicationFields.length > 1 ? (
                                 <Button
                                   type="button"
@@ -752,23 +745,23 @@ const TreatmentsPage = () => {
                             </div>
                             <div className="grid gap-3 md:grid-cols-2">
                               <div className="space-y-1 text-sm md:col-span-2">
-                                <label className="text-xs text-slate-500 dark:text-slate-400">Lote</label>
+                                <label className="text-xs text-slate-500 dark:text-slate-400">Medicamento</label>
                                 <select
                                   className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                                  {...registerGroup(`medications.${index}.batchId`)}
+                                  {...registerGroup(`medications.${index}.productId`)}
                                 >
                                   <option value="">Selecciona</option>
-                                  {selectableBatches.map((batch) => (
-                                    <option key={batch.id} value={batch.id}>
-                                      {batch.product?.name || "Medicamento"} - {batch.batchNumber} |{" "}
-                                      {formatQuantity(batch.quantityAvailable)} {batch.product?.unit || ""} | vence{" "}
-                                      {formatDateOnlyUtc(batch.expiresAt)}
+                                  {selectableProducts.map((product) => (
+                                    <option key={product.id} value={product.id}>
+                                      {product.name} |{" "}
+                                      {formatQuantity(product.stockAvailable)} {product.unit || ""} |{" "}
+                                      {product.expiresAt ? `vence ${formatDateOnlyUtc(product.expiresAt)}` : "sin vencimiento"}
                                     </option>
                                   ))}
                                 </select>
-                                {groupErrors.medications?.[index]?.batchId ? (
+                                {groupErrors.medications?.[index]?.productId ? (
                                   <p className="text-xs text-red-500">
-                                    {groupErrors.medications[index]?.batchId?.message}
+                                    {groupErrors.medications[index]?.productId?.message}
                                   </p>
                                 ) : null}
                               </div>
@@ -801,16 +794,16 @@ const TreatmentsPage = () => {
                                 </p>
                                 <p>
                                   Dosis total requerida: <strong>{formatQuantity(requiredDose)}</strong>{" "}
-                                  {selectedBatch?.product?.unit || ""}
+                                  {selectedProduct?.unit || ""}
                                 </p>
                                 <p>
-                                  Stock disponible en lote: <strong>{formatQuantity(batchAvailable)}</strong>{" "}
-                                  {selectedBatch?.product?.unit || ""}
+                                  Stock disponible: <strong>{formatQuantity(stockAvailable)}</strong>{" "}
+                                  {selectedProduct?.unit || ""}
                                 </p>
                                 {hasStockIssue ? (
                                   <p className="mt-1 font-medium">
-                                    Faltan {formatQuantity(requiredDose - batchAvailable)}{" "}
-                                    {selectedBatch?.product?.unit || ""}
+                                    Faltan {formatQuantity(requiredDose - stockAvailable)}{" "}
+                                    {selectedProduct?.unit || ""}
                                   </p>
                                 ) : null}
                               </div>
@@ -823,15 +816,15 @@ const TreatmentsPage = () => {
                     <Button
                       type="submit"
                       disabled={
-                        isSubmittingGroup || availableAnimalsCount === 0 || selectableBatches.length === 0
+                        isSubmittingGroup || availableAnimalsCount === 0 || selectableProducts.length === 0
                       }
                     >
                       {isSubmittingGroup
                         ? "Guardando..."
                         : availableAnimalsCount === 0
                           ? "Sin animales para tratar"
-                          : selectableBatches.length === 0
-                            ? "Sin lotes disponibles"
+                          : selectableProducts.length === 0
+                            ? "Sin medicamentos disponibles"
                           : "Crear grupal"}
                     </Button>
                   </form>

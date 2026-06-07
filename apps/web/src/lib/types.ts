@@ -246,6 +246,17 @@ export type ProductItem = {
   recommendedRoute?: string | null;
   notes?: string | null;
   minStock: number;
+  stockAvailable: number;
+  expiresAt?: string | null;
+};
+
+export type ProductForSelect = {
+  id: string;
+  name: string;
+  unit: string;
+  stockAvailable: number;
+  recommendedRoute?: string | null;
+  expiresAt?: string | null;
 };
 
 export type ProductListResponse = {
@@ -400,9 +411,9 @@ export type InventoryLowStockRow = {
 };
 
 export type InventoryAlertsResponse = {
-  expiring: InventoryBatch[];
-  expiring7: InventoryBatch[];
-  expiring15: InventoryBatch[];
+  expiring: ProductItem[];
+  expiring7: ProductItem[];
+  expiring15: ProductItem[];
   lowStock: InventoryLowStockRow[];
 };
 

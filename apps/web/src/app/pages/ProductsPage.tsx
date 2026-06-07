@@ -22,6 +22,13 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Pill, Trash2, Pencil } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatDateOnlyUtc } from "@/lib/dates";
+
+const quantityFormatter = new Intl.NumberFormat("es-NI", {
+  maximumFractionDigits: 2,
+});
+const formatQuantity = (value: number) => quantityFormatter.format(value);
 
 const productTypeValues = [
   "VITAMINAS",
@@ -50,6 +57,8 @@ const baseFormSchema = z
     minStock: z.number().int().min(0, "No puede ser negativo"),
     recommendedRoute: recommendedRouteSchema,
     notes: z.string().optional(),
+    stockAvailable: z.number().min(0, "No puede ser negativo").optional(),
+    expiresAt: z.string().optional(),
   })
   .superRefine((values, ctx) => {
     if (values.type === "VACUNAS") {
@@ -84,6 +93,8 @@ const defaultValues: FormValues = {
   minStock: 0,
   recommendedRoute: "subcutanea",
   notes: "",
+  stockAvailable: 0,
+  expiresAt: "",
 };
 
 const ProductsPage = () => {
@@ -163,6 +174,8 @@ const ProductsPage = () => {
         (editingProduct.recommendedRoute as FormValues["recommendedRoute"]) ??
         "subcutanea",
       notes: editingProduct.notes ?? "",
+      stockAvailable: Number(editingProduct.stockAvailable ?? 0),
+      expiresAt: editingProduct.expiresAt ? editingProduct.expiresAt.split("T")[0] : "",
     });
   }, [editingProduct, resetEdit]);
 
@@ -186,6 +199,8 @@ const ProductsPage = () => {
         minStock: values.minStock,
         recommendedRoute: values.recommendedRoute,
         notes: values.notes?.trim() || undefined,
+        stockAvailable: values.stockAvailable ?? 0,
+        expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : undefined,
       });
       toast.success("Medicamento creado");
       reset(defaultValues);
@@ -208,6 +223,8 @@ const ProductsPage = () => {
         minStock: values.minStock,
         recommendedRoute: values.recommendedRoute,
         notes: values.notes?.trim() || undefined,
+        stockAvailable: values.stockAvailable ?? 0,
+        expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
       });
       toast.success("Medicamento actualizado");
       setIsEditOpen(false);
@@ -318,6 +335,34 @@ const ProductsPage = () => {
                         <p className="text-xs text-red-500">{errors.minStock.message}</p>
                       ) : null}
                     </div>
+                    <div className="space-y-1 text-sm">
+                      <label className="text-xs text-slate-500 dark:text-slate-400">
+                        Stock disponible
+                      </label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        {...register("stockAvailable", {
+                          setValueAs: (value) => (value === "" ? 0 : Number(value)),
+                        })}
+                      />
+                      {errors.stockAvailable ? (
+                        <p className="text-xs text-red-500">{errors.stockAvailable.message}</p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1 text-sm">
+                      <label className="text-xs text-slate-500 dark:text-slate-400">
+                        Fecha de vencimiento (opcional)
+                      </label>
+                      <Input
+                        type="date"
+                        {...register("expiresAt")}
+                      />
+                      {errors.expiresAt ? (
+                        <p className="text-xs text-red-500">{errors.expiresAt.message}</p>
+                      ) : null}
+                    </div>
                     <div className="space-y-1 text-sm md:col-span-2">
                       <label className="text-xs text-slate-500 dark:text-slate-400">
                         Via sugerida de aplicacion
@@ -420,12 +465,18 @@ const ProductsPage = () => {
                   <Pill className="mr-1 h-3.5 w-3.5" />
                   {getProductTypeLabel(product.type ?? undefined)}
                 </Badge>
-                <Badge className="border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                  Unidad: {product.unit}
+                <Badge className={cn("border bg-white", 
+                  product.stockAvailable <= product.minStock 
+                    ? "border-red-200 text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                    : "border-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                )}>
+                  Stock: {formatQuantity(product.stockAvailable)} / Min: {product.minStock} {product.unit}
                 </Badge>
-                <Badge className="border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                  Minimo: {product.minStock} {product.unit}
-                </Badge>
+                {product.expiresAt ? (
+                  <Badge className="border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                    Vence: {formatDateOnlyUtc(product.expiresAt)}
+                  </Badge>
+                ) : null}
                 <Badge className="border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   Via: {getRouteLabel(product.recommendedRoute)}
                 </Badge>
@@ -554,6 +605,34 @@ const ProductsPage = () => {
                 />
                 {editErrors.minStock ? (
                   <p className="text-xs text-red-500">{editErrors.minStock.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1 text-sm">
+                <label className="text-xs text-slate-500 dark:text-slate-400">
+                  Stock disponible
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  {...registerEdit("stockAvailable", {
+                    setValueAs: (value) => (value === "" ? 0 : Number(value)),
+                  })}
+                />
+                {editErrors.stockAvailable ? (
+                  <p className="text-xs text-red-500">{editErrors.stockAvailable.message}</p>
+                ) : null}
+              </div>
+              <div className="space-y-1 text-sm">
+                <label className="text-xs text-slate-500 dark:text-slate-400">
+                  Fecha de vencimiento (opcional)
+                </label>
+                <Input
+                  type="date"
+                  {...registerEdit("expiresAt")}
+                />
+                {editErrors.expiresAt ? (
+                  <p className="text-xs text-red-500">{editErrors.expiresAt.message}</p>
                 ) : null}
               </div>
               <div className="space-y-1 text-sm md:col-span-2">

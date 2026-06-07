@@ -24,8 +24,8 @@ import { hasAnyRole } from "@/lib/auth";
 import { formatDateOnlyUtc } from "@/lib/dates";
 import type {
   InventoryAlertsResponse,
-  InventoryBatch,
-  InventoryBatchListResponse,
+  ProductItem,
+  ProductListResponse,
   InventorySummaryResponse,
   InventoryTransactionListResponse,
 } from "@/lib/types";
@@ -66,11 +66,14 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return responseMessage ?? fallback;
 };
 
-const getBatchStatus = (batch: InventoryBatch): { label: string; variant: "success" | "warning" | "danger" } => {
-  if (batch.quantityAvailable <= 0) {
+const getProductStatus = (product: ProductItem): { label: string; variant: "success" | "warning" | "danger" } => {
+  if (product.stockAvailable <= 0) {
     return { label: "Agotado", variant: "warning" };
   }
-  const expiresAt = new Date(batch.expiresAt);
+  if (!product.expiresAt) {
+    return { label: "Vigente", variant: "success" };
+  }
+  const expiresAt = new Date(product.expiresAt);
   if (Number.isNaN(expiresAt.getTime())) {
     return { label: "Sin fecha valida", variant: "warning" };
   }
@@ -101,32 +104,32 @@ const InventoryPage = () => {
   const queryClient = useQueryClient();
   const canAdjust = hasAnyRole(Access.inventoryAdjust);
 
-  const [adjustingBatch, setAdjustingBatch] = useState<InventoryBatch | null>(null);
+  const [adjustingProduct, setAdjustingProduct] = useState<ProductItem | null>(null);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
 
-  const lotPageSize = 20;
-  const [lotPage, setLotPage] = useState(1);
-  const [lotSearch, setLotSearch] = useState("");
-  const [lotStatus, setLotStatus] = useState<BatchStatusFilter>("ALL");
+  const prodPageSize = 20;
+  const [prodPage, setProdPage] = useState(1);
+  const [prodSearch, setProdSearch] = useState("");
+  const [prodStatus, setProdStatus] = useState<BatchStatusFilter>("ALL");
 
   const txPageSize = 12;
   const [txPage, setTxPage] = useState(1);
   const [txSearch, setTxSearch] = useState("");
 
-  const lotQueryString = useMemo(() => {
+  const prodQueryString = useMemo(() => {
     const params = new URLSearchParams({
-      page: String(lotPage),
-      pageSize: String(lotPageSize),
+      page: String(prodPage),
+      pageSize: String(prodPageSize),
     });
-    const normalizedSearch = lotSearch.trim();
+    const normalizedSearch = prodSearch.trim();
     if (normalizedSearch.length > 0) {
       params.set("search", normalizedSearch);
     }
-    if (lotStatus !== "ALL") {
-      params.set("status", lotStatus);
+    if (prodStatus !== "ALL") {
+      params.set("status", prodStatus);
     }
     return params.toString();
-  }, [lotPage, lotPageSize, lotSearch, lotStatus]);
+  }, [prodPage, prodPageSize, prodSearch, prodStatus]);
 
   const txQueryString = useMemo(() => {
     const params = new URLSearchParams({
@@ -145,9 +148,9 @@ const InventoryPage = () => {
     queryFn: async () => (await api.get("/inventory/summary")).data as InventorySummaryResponse,
   });
 
-  const { data: lots, isFetching: isLotsFetching } = useQuery({
-    queryKey: ["inventory", lotPage, lotPageSize, lotSearch, lotStatus],
-    queryFn: async () => (await api.get(`/inventory?${lotQueryString}`)).data as InventoryBatchListResponse,
+  const { data: products, isFetching: isProductsFetching } = useQuery({
+    queryKey: ["inventory", prodPage, prodPageSize, prodSearch, prodStatus],
+    queryFn: async () => (await api.get(`/inventory?${prodQueryString}`)).data as ProductListResponse,
   });
 
   const { data: alerts } = useQuery({
@@ -161,14 +164,14 @@ const InventoryPage = () => {
       (await api.get(`/inventory/transactions?${txQueryString}`)).data as InventoryTransactionListResponse,
   });
 
-  const totalLotPages = Math.max(1, Math.ceil((lots?.total ?? 0) / lotPageSize));
+  const totalProdPages = Math.max(1, Math.ceil((products?.total ?? 0) / prodPageSize));
   const totalTxPages = Math.max(1, Math.ceil((transactions?.total ?? 0) / txPageSize));
 
   useEffect(() => {
-    if (lotPage > totalLotPages) {
-      setLotPage(totalLotPages);
+    if (prodPage > totalProdPages) {
+      setProdPage(totalProdPages);
     }
-  }, [lotPage, totalLotPages]);
+  }, [prodPage, totalProdPages]);
 
   useEffect(() => {
     if (txPage > totalTxPages) {
@@ -191,25 +194,25 @@ const InventoryPage = () => {
   });
 
   useEffect(() => {
-    if (!adjustingBatch) return;
+    if (!adjustingProduct) return;
     reset({
-      quantityAvailable: adjustingBatch.quantityAvailable ?? 0,
+      quantityAvailable: adjustingProduct.stockAvailable ?? 0,
       reasonType: "conteo_fisico",
       reasonNotes: "",
     });
-  }, [adjustingBatch, reset]);
+  }, [adjustingProduct, reset]);
 
   const onAdjustSubmit = async (values: AdjustFormValues) => {
-    if (!adjustingBatch) return;
+    if (!adjustingProduct) return;
 
-    const currentAvailable = Number(adjustingBatch.quantityAvailable ?? 0);
+    const currentAvailable = Number(adjustingProduct.stockAvailable ?? 0);
     const nextAvailable = Number(values.quantityAvailable);
     const delta = nextAvailable - currentAvailable;
 
     if (delta === 0) {
       toast.message("No hay cambios de stock");
       setIsAdjustOpen(false);
-      setAdjustingBatch(null);
+      setAdjustingProduct(null);
       return;
     }
 
@@ -219,20 +222,19 @@ const InventoryPage = () => {
 
     try {
       await api.post("/inventory/transactions", {
-        batchId: adjustingBatch.id,
+        productId: adjustingProduct.id,
         type: delta > 0 ? "IN" : "OUT",
         quantity: Math.abs(delta),
-        unit: adjustingBatch.product?.unit ?? "dosis",
+        unit: adjustingProduct.unit ?? "dosis",
         occurredAt: new Date().toISOString(),
         reason,
       });
       toast.success("Ajuste aplicado");
       setIsAdjustOpen(false);
-      setAdjustingBatch(null);
+      setAdjustingProduct(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["inventory"] }),
-        queryClient.invalidateQueries({ queryKey: ["inventory", "alerts"] }),
-        queryClient.invalidateQueries({ queryKey: ["batches"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
       ]);
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Error al ajustar stock"));
@@ -241,7 +243,7 @@ const InventoryPage = () => {
 
   const expiring = alerts?.expiring ?? [];
   const lowStock = alerts?.lowStock ?? [];
-  const lotRows = lots?.items ?? [];
+  const prodRows = products?.items ?? [];
   const txRows = transactions?.items ?? [];
 
   return (
@@ -254,7 +256,7 @@ const InventoryPage = () => {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Lotes por vencer</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Medicamentos por vencer</p>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p className="text-2xl font-semibold">{expiring.length}</p>
@@ -375,23 +377,23 @@ const InventoryPage = () => {
 
       <Card>
         <CardHeader>
-          <p className="text-sm font-medium">Lotes operativos</p>
+          <p className="text-sm font-medium">Medicamentos en bodega</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-[1fr_260px_auto] md:items-center">
             <Input
-              value={lotSearch}
+              value={prodSearch}
               onChange={(event) => {
-                setLotSearch(event.target.value);
-                setLotPage(1);
+                setProdSearch(event.target.value);
+                setProdPage(1);
               }}
-              placeholder="Buscar por medicamento o lote"
+              placeholder="Buscar por medicamento..."
             />
             <select
-              value={lotStatus}
+              value={prodStatus}
               onChange={(event) => {
-                setLotStatus(event.target.value as BatchStatusFilter);
-                setLotPage(1);
+                setProdStatus(event.target.value as BatchStatusFilter);
+                setProdPage(1);
               }}
               className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             >
@@ -402,31 +404,31 @@ const InventoryPage = () => {
               ))}
             </select>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isLotsFetching ? "Actualizando..." : `${lots?.total ?? 0} registros`}
+              {isProductsFetching ? "Actualizando..." : `${products?.total ?? 0} registros`}
             </p>
           </div>
 
-          {lotRows.length === 0 ? (
+          {prodRows.length === 0 ? (
             <EmptyState
-              title="Sin lotes en la vista actual"
-              description="Ajusta filtros o registra nuevos lotes."
+              title="Sin medicamentos en la vista actual"
+              description="Ajusta filtros o registra nuevos medicamentos."
             />
           ) : (
             <>
               {/* Mobile View */}
               <div className="flex flex-col gap-3 md:hidden">
-                {lotRows.map((batch) => {
-                  const statusInfo = getBatchStatus(batch);
+                {prodRows.map((product) => {
+                  const statusInfo = getProductStatus(product);
                   return (
                     <div
-                      key={batch.id}
+                      key={product.id}
                       className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50"
                     >
                       <div className="mb-3 flex items-start justify-between gap-2">
                         <div>
-                          <p className="font-medium">{batch.product?.name ?? "Medicamento"}</p>
+                          <p className="font-medium">{product.name}</p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Lote: {batch.batchNumber}
+                            Unidad: {product.unit}
                           </p>
                         </div>
                         <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
@@ -434,11 +436,15 @@ const InventoryPage = () => {
                       <div className="mb-4 grid grid-cols-2 gap-2 text-sm">
                         <div>
                           <p className="text-xs text-slate-500 dark:text-slate-400">Vencimiento</p>
-                          <p className="font-medium">{formatDateOnlyUtc(batch.expiresAt)}</p>
+                          <p className="font-medium">
+                            {product.expiresAt ? formatDateOnlyUtc(product.expiresAt) : "Sin fecha"}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-slate-500 dark:text-slate-400">Disponible</p>
-                          <p className="font-medium">{batch.quantityAvailable}</p>
+                          <p className="font-medium">
+                            {product.stockAvailable} {product.unit}
+                          </p>
                         </div>
                       </div>
                       {canAdjust && (
@@ -449,7 +455,7 @@ const InventoryPage = () => {
                             variant="outline"
                             className="w-full"
                             onClick={() => {
-                              setAdjustingBatch(batch);
+                              setAdjustingProduct(product);
                               setIsAdjustOpen(true);
                             }}
                           >
@@ -468,7 +474,6 @@ const InventoryPage = () => {
                   <THead>
                     <TR>
                       <TH>Medicamento</TH>
-                      <TH>Lote</TH>
                       <TH>Estado</TH>
                       <TH>Vencimiento</TH>
                       <TH>Disponible</TH>
@@ -476,17 +481,18 @@ const InventoryPage = () => {
                     </TR>
                   </THead>
                   <TBody>
-                    {lotRows.map((batch) => {
-                      const statusInfo = getBatchStatus(batch);
+                    {prodRows.map((product) => {
+                      const statusInfo = getProductStatus(product);
                       return (
-                        <TR key={batch.id}>
-                          <TD>{batch.product?.name ?? "Medicamento"}</TD>
-                          <TD>{batch.batchNumber}</TD>
+                        <TR key={product.id}>
+                          <TD>{product.name}</TD>
                           <TD>
                             <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                           </TD>
-                          <TD>{formatDateOnlyUtc(batch.expiresAt)}</TD>
-                          <TD>{batch.quantityAvailable}</TD>
+                          <TD>{product.expiresAt ? formatDateOnlyUtc(product.expiresAt) : "Sin fecha"}</TD>
+                          <TD>
+                            {product.stockAvailable} {product.unit}
+                          </TD>
                           <TD>
                             {canAdjust ? (
                               <Button
@@ -494,7 +500,7 @@ const InventoryPage = () => {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
-                                  setAdjustingBatch(batch);
+                                  setAdjustingProduct(product);
                                   setIsAdjustOpen(true);
                                 }}
                               >
@@ -518,20 +524,20 @@ const InventoryPage = () => {
               type="button"
               size="sm"
               variant="outline"
-              disabled={lotPage <= 1}
-              onClick={() => setLotPage((current) => Math.max(1, current - 1))}
+              disabled={prodPage <= 1}
+              onClick={() => setProdPage((current) => Math.max(1, current - 1))}
             >
               Anterior
             </Button>
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              Pagina {lotPage} de {totalLotPages}
+              Pagina {prodPage} de {totalProdPages}
             </span>
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={lotPage >= totalLotPages}
-              onClick={() => setLotPage((current) => Math.min(totalLotPages, current + 1))}
+              disabled={prodPage >= totalProdPages}
+              onClick={() => setProdPage((current) => Math.min(totalProdPages, current + 1))}
             >
               Siguiente
             </Button>
@@ -689,18 +695,18 @@ const InventoryPage = () => {
         onOpenChange={(open) => {
           setIsAdjustOpen(open);
           if (!open) {
-            setAdjustingBatch(null);
+            setAdjustingProduct(null);
           }
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajustar existencias del lote</DialogTitle>
+            <DialogTitle>Ajustar existencias de {adjustingProduct?.name}</DialogTitle>
           </DialogHeader>
           <form className="space-y-3" onSubmit={handleSubmit(onAdjustSubmit)}>
             <div className="space-y-1 text-sm">
               <label className="text-xs text-slate-500 dark:text-slate-400">
-                Cantidad disponible
+                Cantidad disponible ({adjustingProduct?.unit})
               </label>
               <Input
                 type="number"

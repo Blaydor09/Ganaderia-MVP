@@ -19,7 +19,7 @@ const AnimalPrintPage = lazy(() => import("@/app/pages/AnimalPrintPage"));
 const AnimalsImportPage = lazy(() => import("@/app/pages/AnimalsImportPage"));
 const EventsPage = lazy(() => import("@/app/pages/EventsPage"));
 const ProductsPage = lazy(() => import("@/app/pages/ProductsPage"));
-const BatchesPage = lazy(() => import("@/app/pages/BatchesPage"));
+// const BatchesPage = lazy(() => import("@/app/pages/BatchesPage"));
 const InventoryPage = lazy(() => import("@/app/pages/InventoryPage"));
 const TreatmentsPage = lazy(() => import("@/app/pages/TreatmentsPage"));
 const WithdrawalsPage = lazy(() => import("@/app/pages/WithdrawalsPage"));
@@ -234,6 +234,7 @@ const App = () => (
           </RequireAuth>
         }
       />
+      {/* Lotes module disabled
       <Route
         path="/batches"
         element={
@@ -244,6 +245,7 @@ const App = () => (
           </RequireAuth>
         }
       />
+      */}
       <Route
         path="/inventory"
         element={
