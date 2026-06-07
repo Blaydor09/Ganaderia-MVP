@@ -3,7 +3,7 @@ import { prisma } from "../config/prisma";
 import { ApiError } from "../utils/errors";
 import { writeAudit } from "../utils/audit";
 import { computeWithdrawal } from "./withdrawalService";
-import { hasSufficientStock, isBatchExpired } from "./rules";
+import { hasSufficientStock } from "./rules";
 
 export type TreatmentAnimalFilters = {
   category?: "TERNERO" | "VAQUILLA" | "VACA" | "TORO" | "TORILLO";
@@ -13,7 +13,7 @@ export type TreatmentAnimalFilters = {
 export type TreatmentGroupScope = "ALL_FILTERED" | "LIMIT";
 
 export type GroupMedicationInput = {
-  batchId: string;
+  productId: string;
   dose: number;
   doseUnit: string;
   route: string;
@@ -149,40 +149,34 @@ export const createGroupTreatment = async (input: GroupTreatmentCreateInput) => 
     });
 
     const animalsCount = resolved.selected.length;
-    const batchIds = Array.from(new Set(input.medications.map((item) => item.batchId)));
-    const batches = await tx.batch.findMany({
-      where: { id: { in: batchIds }, tenantId: input.tenantId },
+    const productIds = Array.from(new Set(input.medications.map((item) => item.productId)));
+    const products = await tx.product.findMany({
+      where: { id: { in: productIds }, tenantId: input.tenantId, deletedAt: null },
     });
 
-    if (batches.length !== batchIds.length) {
-      throw new ApiError(404, "Batch not found");
+    if (products.length !== productIds.length) {
+      throw new ApiError(404, "Product not found");
     }
 
-    const batchById = new Map(batches.map((batch) => [batch.id, batch]));
-    const requiredByBatch = new Map<string, number>();
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const requiredByProduct = new Map<string, number>();
 
     for (const medication of input.medications) {
-      const batch = batchById.get(medication.batchId);
-      if (!batch) {
-        throw new ApiError(404, "Batch not found");
-      }
-      if (batch.deletedAt) {
-        throw new ApiError(400, "Batch inactive");
-      }
-      if (isBatchExpired(batch.expiresAt, now)) {
-        throw new ApiError(400, "Batch expired");
+      const product = productById.get(medication.productId);
+      if (!product) {
+        throw new ApiError(404, "Product not found");
       }
 
       const quantityRequired = medication.dose * animalsCount;
-      requiredByBatch.set(
-        medication.batchId,
-        (requiredByBatch.get(medication.batchId) ?? 0) + quantityRequired
+      requiredByProduct.set(
+        medication.productId,
+        (requiredByProduct.get(medication.productId) ?? 0) + quantityRequired
       );
     }
 
-    for (const [batchId, quantityRequired] of requiredByBatch.entries()) {
-      const batch = batchById.get(batchId);
-      if (!batch || !hasSufficientStock(batch.quantityAvailable, quantityRequired)) {
+    for (const [productId, quantityRequired] of requiredByProduct.entries()) {
+      const product = productById.get(productId);
+      if (!product || !hasSufficientStock(product.stockAvailable, quantityRequired)) {
         throw new ApiError(400, "Insufficient stock");
       }
     }
@@ -210,22 +204,21 @@ export const createGroupTreatment = async (input: GroupTreatmentCreateInput) => 
     });
 
     for (const medication of input.medications) {
-      const batch = batchById.get(medication.batchId);
-      if (!batch) {
-        throw new ApiError(404, "Batch not found");
+      const product = productById.get(medication.productId);
+      if (!product) {
+        throw new ApiError(404, "Product not found");
       }
 
       const quantityRequired = medication.dose * animalsCount;
-      const decrementResult = await tx.batch.updateMany({
+      const decrementResult = await tx.product.updateMany({
         where: {
-          id: batch.id,
+          id: product.id,
           tenantId: input.tenantId,
           deletedAt: null,
-          expiresAt: { gt: now },
-          quantityAvailable: { gte: quantityRequired },
+          stockAvailable: { gte: quantityRequired },
         },
         data: {
-          quantityAvailable: { decrement: quantityRequired },
+          stockAvailable: { decrement: quantityRequired },
         },
       });
 
@@ -235,11 +228,11 @@ export const createGroupTreatment = async (input: GroupTreatmentCreateInput) => 
 
       const withdrawal = computeWithdrawal(input.startedAt, 0, 0);
 
-      const administration = await tx.administration.create({
+      await tx.administration.create({
         data: {
           treatmentId: treatment.id,
-          batchId: batch.id,
-          productId: batch.productId,
+          batchId: null,
+          productId: product.id,
           administeredAt: input.startedAt,
           dose: medication.dose,
           doseUnit: medication.doseUnit,
@@ -248,22 +241,6 @@ export const createGroupTreatment = async (input: GroupTreatmentCreateInput) => 
           notes: medication.notes,
           meatWithdrawalUntil: withdrawal.meatUntil,
           milkWithdrawalUntil: withdrawal.milkUntil,
-          tenantId: input.tenantId,
-          createdById: input.createdById,
-        },
-      });
-
-      await tx.inventoryTransaction.create({
-        data: {
-          batchId: batch.id,
-          productId: batch.productId,
-          type: "OUT",
-          quantity: quantityRequired,
-          unit: medication.doseUnit,
-          occurredAt: input.startedAt,
-          reason: "group_administration",
-          refType: "ADMINISTRATION",
-          refId: administration.id,
           tenantId: input.tenantId,
           createdById: input.createdById,
         },
@@ -280,7 +257,6 @@ export const createGroupTreatment = async (input: GroupTreatmentCreateInput) => 
         },
         administrations: {
           include: {
-            batch: true,
             product: true,
           },
           orderBy: { administeredAt: "asc" },

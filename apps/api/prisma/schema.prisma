@@ -569,6 +569,8 @@ model Product {
   recommendedRoute      String?
   notes                 String?
   minStock              Int                    @default(0)
+  stockAvailable        Float                  @default(0)
+  expiresAt             DateTime?
   tenantId              String
   createdById           String?
   batches               Batch[]
@@ -618,7 +620,7 @@ model Batch {
 
 model InventoryTransaction {
   id          String          @id @default(uuid())
-  batchId     String
+  batchId     String?
   productId   String
   type        InventoryTxType
   quantity    Float
@@ -631,7 +633,7 @@ model InventoryTransaction {
   createdById String?
   createdAt   DateTime        @default(now())
 
-  batch     Batch   @relation(fields: [batchId], references: [id])
+  batch     Batch?  @relation(fields: [batchId], references: [id])
   product   Product @relation(fields: [productId], references: [id])
   createdBy User?   @relation("InventoryTransactionCreatedBy", fields: [createdById], references: [id])
   tenant    Tenant  @relation(fields: [tenantId], references: [id])
@@ -689,7 +691,7 @@ model TreatmentAnimal {
 model Administration {
   id                  String   @id @default(uuid())
   treatmentId         String
-  batchId             String
+  batchId             String?
   productId           String
   administeredAt      DateTime
   dose                Float
@@ -705,7 +707,7 @@ model Administration {
   updatedAt           DateTime @updatedAt
 
   treatment Treatment @relation(fields: [treatmentId], references: [id])
-  batch     Batch     @relation(fields: [batchId], references: [id])
+  batch     Batch?    @relation(fields: [batchId], references: [id])
   product   Product   @relation(fields: [productId], references: [id])
   createdBy User?     @relation("AdministrationCreatedBy", fields: [createdById], references: [id])
   tenant    Tenant    @relation(fields: [tenantId], references: [id])

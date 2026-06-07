@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const inventoryTxSchema = z.object({
-  batchId: z.string().uuid(),
+  productId: z.string().uuid(),
   type: z.enum(["IN", "OUT"]),
   quantity: z.number().positive(),
   unit: z.string().min(1),

@@ -3,7 +3,7 @@ import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
-import { productCreateSchema, productUpdateSchema } from "../validators/productSchemas";
+import { productCreateSchema, productUpdateSchema, productRestockSchema } from "../validators/productSchemas";
 import { getPagination } from "../utils/pagination";
 import { writeAudit } from "../utils/audit";
 import { assertTenantLimit, getCurrentUsageValue } from "../services/usageService";
@@ -75,6 +75,8 @@ router.post(
         name: normalizedName,
         notes: data.notes?.trim() || undefined,
         unit: data.unit?.trim() || undefined,
+        stockAvailable: data.stockAvailable ?? 0,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : (data.expiresAt === null ? null : undefined),
         tenantId,
         createdById: req.user?.id,
       },
@@ -130,6 +132,8 @@ router.patch(
         name: normalizedName,
         unit: data.unit?.trim() || undefined,
         notes: data.notes?.trim() || undefined,
+        stockAvailable: data.stockAvailable,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : (data.expiresAt === null ? null : undefined),
       },
     });
 
@@ -160,20 +164,6 @@ router.delete(
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const activeBatchesCount = await prisma.batch.count({
-      where: {
-        tenantId,
-        productId: existing.id,
-        deletedAt: null,
-      },
-    });
-
-    if (activeBatchesCount > 0) {
-      return res.status(409).json({
-        message:
-          "Product has active batches and cannot be deleted. Close or remove batches first.",
-      });
-    }
 
     const deleted = await prisma.product.update({
       where: { id: req.params.id },
@@ -191,6 +181,46 @@ router.delete(
       ip: req.ip,
     });
     res.json(deleted);
+  })
+);
+
+router.post(
+  "/:id/restock",
+  authenticate,
+  requireRoles("ADMIN", "VETERINARIO", "OPERADOR"),
+  asyncHandler(async (req, res) => {
+    const data = productRestockSchema.parse(req.body);
+    const tenantId = req.user!.tenantId;
+    const existing = await prisma.product.findFirst({
+      where: { id: req.params.id, tenantId, deletedAt: null },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const updateData: Record<string, unknown> = {
+      stockAvailable: { increment: data.quantity },
+    };
+    if (data.expiresAt) {
+      updateData.expiresAt = new Date(data.expiresAt);
+    }
+
+    const updated = await prisma.product.update({
+      where: { id: req.params.id },
+      data: updateData,
+    });
+
+    await writeAudit({
+      userId: req.user?.id,
+      tenantId,
+      action: "RESTOCK",
+      entity: "product",
+      entityId: updated.id,
+      before: existing,
+      after: updated,
+      ip: req.ip,
+    });
+    res.json(updated);
   })
 );
 

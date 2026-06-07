@@ -34,7 +34,7 @@ router.get(
         skip,
         take: pageSize,
         orderBy: { administeredAt: "desc" },
-        include: { product: true, batch: true, treatment: true },
+        include: { product: true, treatment: true },
       }),
       prisma.administration.count({ where }),
     ]);
@@ -52,7 +52,7 @@ router.post(
     const tenantId = req.user!.tenantId;
     const created = await createAdministration({
       treatmentId: data.treatmentId,
-      batchId: data.batchId,
+      productId: data.productId,
       administeredAt: new Date(data.administeredAt),
       dose: data.dose,
       doseUnit: data.doseUnit,
@@ -76,7 +76,7 @@ router.patch(
     const tenantId = req.user!.tenantId;
     const existing = await prisma.administration.findFirst({
       where: { id: req.params.id, tenantId },
-      include: { batch: true },
+      include: { product: true },
     });
 
     if (!existing) {
@@ -84,7 +84,7 @@ router.patch(
     }
 
     const doseDiff = data.dose !== undefined ? data.dose - existing.dose : 0;
-    if (doseDiff > 0 && existing.batch.quantityAvailable < doseDiff) {
+    if (doseDiff > 0 && (existing.product?.stockAvailable ?? 0) < doseDiff) {
       throw new ApiError(400, "Insufficient stock for edit");
     }
 
@@ -103,26 +103,12 @@ router.patch(
 
     const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (doseDiff !== 0) {
-        await tx.batch.update({
-          where: { id: existing.batchId },
+        await tx.product.update({
+          where: { id: existing.productId },
           data:
             doseDiff > 0
-              ? { quantityAvailable: { decrement: doseDiff } }
-              : { quantityAvailable: { increment: Math.abs(doseDiff) } },
-        });
-
-        await tx.inventoryTransaction.create({
-          data: {
-            batchId: existing.batchId,
-            productId: existing.productId,
-            type: "ADJUST",
-            quantity: Math.abs(doseDiff),
-            unit: data.doseUnit ?? existing.doseUnit,
-            occurredAt: new Date(),
-            reason: "administration_edit",
-            tenantId,
-            createdById: req.user?.id,
-          },
+              ? { stockAvailable: { decrement: doseDiff } }
+              : { stockAvailable: { increment: Math.abs(doseDiff) } },
         });
       }
 

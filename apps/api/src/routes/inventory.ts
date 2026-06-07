@@ -17,24 +17,13 @@ router.get(
     const tenantId = req.user!.tenantId;
     const products = await prisma.product.findMany({
       where: { deletedAt: null, tenantId },
-      select: { id: true, name: true, minStock: true, unit: true },
+      select: { id: true, name: true, minStock: true, unit: true, stockAvailable: true },
       orderBy: { name: "asc" },
     });
 
-    const totals = await prisma.batch.groupBy({
-      by: ["productId"],
-      where: { deletedAt: null, tenantId },
-      _sum: { quantityAvailable: true },
-    });
-
-    const totalMap = new Map<string, number>();
-    for (const row of totals) {
-      totalMap.set(row.productId, row._sum.quantityAvailable ?? 0);
-    }
-
     const items = products.map((product) => ({
       product,
-      total: totalMap.get(product.id) ?? 0,
+      total: product.stockAvailable,
     }));
 
     res.json({ items });
@@ -47,52 +36,45 @@ router.get(
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip } = getPagination(req.query as Record<string, string>);
     const tenantId = req.user!.tenantId;
-    const where: Prisma.BatchWhereInput = { deletedAt: null, tenantId };
+    const where: Prisma.ProductWhereInput = { deletedAt: null, tenantId };
     const now = new Date();
     const soon30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     if (req.query.search) {
       const search = String(req.query.search).trim();
       if (search.length > 0) {
-        where.OR = [
-          { batchNumber: { contains: search, mode: "insensitive" } },
-          {
-            product: {
-              is: {
-                name: { contains: search, mode: "insensitive" },
-              },
-            },
-          },
-        ];
+        where.name = { contains: search, mode: "insensitive" };
       }
     }
     if (req.query.status) {
       const status = String(req.query.status).toUpperCase();
       if (status === "ACTIVE") {
-        where.expiresAt = { gt: soon30 };
-        where.quantityAvailable = { gt: 0 };
+        where.stockAvailable = { gt: 0 };
+        where.OR = [
+          { expiresAt: null },
+          { expiresAt: { gt: soon30 } }
+        ];
       }
       if (status === "EXPIRING") {
+        where.stockAvailable = { gt: 0 };
         where.expiresAt = { gt: now, lte: soon30 };
-        where.quantityAvailable = { gt: 0 };
       }
       if (status === "EXPIRED") {
         where.expiresAt = { lte: now };
       }
       if (status === "OUT_OF_STOCK") {
-        where.quantityAvailable = { lte: 0 };
+        where.stockAvailable = { lte: 0 };
       }
     }
 
     const [items, total] = await Promise.all([
-      prisma.batch.findMany({
+      prisma.product.findMany({
         where,
         skip,
         take: pageSize,
-        include: { product: true },
         orderBy: [{ expiresAt: "asc" }, { createdAt: "desc" }],
       }),
-      prisma.batch.count({ where }),
+      prisma.product.count({ where }),
     ]);
 
     res.json({
@@ -165,7 +147,7 @@ router.post(
     const data = inventoryTxSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
     const tx = await createInventoryTransaction({
-      batchId: data.batchId,
+      productId: data.productId,
       type: data.type,
       quantity: data.quantity,
       unit: data.unit,

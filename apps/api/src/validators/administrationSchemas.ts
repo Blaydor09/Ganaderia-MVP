@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const administrationCreateSchema = z.object({
   treatmentId: z.string().uuid(),
-  batchId: z.string().uuid(),
+  productId: z.string().uuid(),
   administeredAt: z.string().datetime(),
   dose: z.number().positive(),
   doseUnit: z.string().min(1),

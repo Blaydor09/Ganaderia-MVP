@@ -43,12 +43,6 @@ router.get(
           },
           administrations: {
             include: {
-              batch: {
-                select: {
-                  id: true,
-                  batchNumber: true,
-                },
-              },
               product: {
                 select: {
                   id: true,
@@ -184,7 +178,7 @@ router.post(
       scope: data.scope,
       limit: data.limit,
       medications: data.medications.map((medication) => ({
-        batchId: medication.batchId,
+        productId: medication.productId,
         dose: medication.dose,
         doseUnit: medication.doseUnit.trim(),
         route: medication.route.trim(),

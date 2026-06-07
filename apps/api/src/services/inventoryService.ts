@@ -4,7 +4,7 @@ import { ApiError } from "../utils/errors";
 import { writeAudit } from "../utils/audit";
 
 export type CreateInventoryTxInput = {
-  batchId: string;
+  productId: string;
   type: "IN" | "OUT";
   quantity: number;
   unit: string;
@@ -16,34 +16,29 @@ export type CreateInventoryTxInput = {
 };
 
 export const createInventoryTransaction = async (input: CreateInventoryTxInput) => {
-  const batch = await prisma.batch.findFirst({
-    where: { id: input.batchId, tenantId: input.tenantId },
-    include: { product: true },
+  const product = await prisma.product.findFirst({
+    where: { id: input.productId, tenantId: input.tenantId, deletedAt: null },
   });
 
-  if (!batch) {
-    throw new ApiError(404, "Batch not found");
+  if (!product) {
+    throw new ApiError(404, "Product not found");
   }
 
-  if (batch.deletedAt) {
-    throw new ApiError(400, "Batch inactive");
-  }
-
-  if (input.type === "OUT" && batch.quantityAvailable < input.quantity) {
+  if (input.type === "OUT" && product.stockAvailable < input.quantity) {
     throw new ApiError(400, "Insufficient stock");
   }
 
   const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const quantityDelta = input.type === "IN" ? input.quantity : -input.quantity;
-    const batchUpdated = await tx.batch.update({
-      where: { id: batch.id },
-      data: { quantityAvailable: { increment: quantityDelta } },
+    const productUpdated = await tx.product.update({
+      where: { id: product.id },
+      data: { stockAvailable: { increment: quantityDelta } },
     });
 
     const txItem = await tx.inventoryTransaction.create({
       data: {
-        batchId: batch.id,
-        productId: batch.productId,
+        batchId: null,
+        productId: product.id,
         type: input.type,
         quantity: input.quantity,
         unit: input.unit,
@@ -54,7 +49,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
       },
     });
 
-    return { batchUpdated, txItem };
+    return { productUpdated, txItem };
   });
 
   await writeAudit({
@@ -76,46 +71,32 @@ export const getInventoryAlerts = async (tenantId: string) => {
   const soon15 = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
   const soon30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  const expiringAll = await prisma.batch.findMany({
+  const expiringAll = await prisma.product.findMany({
     where: {
       expiresAt: { lte: soon30 },
       tenantId,
       deletedAt: null,
     },
-    include: { product: true },
     orderBy: { expiresAt: "asc" },
   });
 
   const expiring7 = expiringAll.filter(
-    (batch: { expiresAt: Date }) => batch.expiresAt <= soon7
+    (product) => product.expiresAt && product.expiresAt <= soon7
   );
   const expiring15 = expiringAll.filter(
-    (batch: { expiresAt: Date }) => batch.expiresAt <= soon15
+    (product) => product.expiresAt && product.expiresAt <= soon15
   );
 
   const lowStock = await prisma.product.findMany({
     where: { deletedAt: null, tenantId },
-    include: { batches: { where: { deletedAt: null, tenantId } } },
   });
 
   const lowStockList = lowStock
-    .map(
-      (product: {
-        batches: { quantityAvailable: number }[];
-        minStock: number;
-      }) => {
-        const total = product.batches.reduce(
-          (sum: number, batch: { quantityAvailable: number }) =>
-            sum + batch.quantityAvailable,
-          0
-        );
-        return { product, total };
-      }
-    )
-    .filter(
-      (row: { total: number; product: { minStock: number } }) =>
-        row.total <= row.product.minStock
-    );
+    .map((product) => ({
+      product,
+      total: product.stockAvailable,
+    }))
+    .filter((row) => row.total <= row.product.minStock);
 
   return { expiring: expiringAll, expiring7, expiring15, lowStock: lowStockList };
 };

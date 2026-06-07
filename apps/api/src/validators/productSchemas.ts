@@ -12,6 +12,8 @@ const baseProductSchema = z.object({
   recommendedRoute: recommendedRouteSchema.optional(),
   notes: z.string().optional(),
   minStock: z.number().int().min(0).optional(),
+  stockAvailable: z.number().min(0).optional(),
+  expiresAt: z.string().datetime().nullable().optional(),
 });
 
 const ensureVaccineTypes = (values: { type?: string; vaccineTypes?: string[] }, ctx: z.RefinementCtx) => {
@@ -26,3 +28,9 @@ const ensureVaccineTypes = (values: { type?: string; vaccineTypes?: string[] }, 
 
 export const productCreateSchema = baseProductSchema.superRefine(ensureVaccineTypes);
 export const productUpdateSchema = baseProductSchema.partial().superRefine(ensureVaccineTypes);
+
+export const productRestockSchema = z.object({
+  quantity: z.number().positive(),
+  expiresAt: z.string().datetime().optional(),
+});
+

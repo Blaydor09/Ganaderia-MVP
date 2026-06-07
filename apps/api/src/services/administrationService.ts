@@ -2,12 +2,12 @@ import { prisma } from "../config/prisma";
 import { Prisma } from "@prisma/client";
 import { ApiError } from "../utils/errors";
 import { computeWithdrawal } from "./withdrawalService";
-import { hasSufficientStock, isBatchExpired } from "./rules";
+import { hasSufficientStock } from "./rules";
 import { writeAudit } from "../utils/audit";
 
 export type CreateAdministrationInput = {
   treatmentId: string;
-  batchId: string;
+  productId: string;
   administeredAt: Date;
   dose: number;
   doseUnit: string;
@@ -20,24 +20,12 @@ export type CreateAdministrationInput = {
 };
 
 export const createAdministration = async (input: CreateAdministrationInput) => {
-  const batch = await prisma.batch.findFirst({
-    where: { id: input.batchId, tenantId: input.tenantId },
+  const product = await prisma.product.findFirst({
+    where: { id: input.productId, tenantId: input.tenantId, deletedAt: null },
   });
 
-  if (!batch) {
-    throw new ApiError(404, "Batch not found");
-  }
-
-  if (batch.deletedAt) {
-    throw new ApiError(400, "Batch inactive");
-  }
-
-  if (isBatchExpired(batch.expiresAt)) {
-    throw new ApiError(400, "Batch expired");
-  }
-
-  if (!hasSufficientStock(batch.quantityAvailable, input.dose)) {
-    throw new ApiError(400, "Insufficient stock");
+  if (!product) {
+    throw new ApiError(404, "Product not found");
   }
 
   const treatment = await prisma.treatment.findFirst({
@@ -59,7 +47,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
   }
 
   const requiredQuantity = input.dose * affectedAnimalsCount;
-  if (!hasSufficientStock(batch.quantityAvailable, requiredQuantity)) {
+  if (!hasSufficientStock(product.stockAvailable, requiredQuantity)) {
     throw new ApiError(400, "Insufficient stock");
   }
 
@@ -73,8 +61,8 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
     const administration = await tx.administration.create({
       data: {
         treatmentId: input.treatmentId,
-        batchId: batch.id,
-        productId: batch.productId,
+        batchId: null,
+        productId: product.id,
         administeredAt: input.administeredAt,
         dose: input.dose,
         doseUnit: input.doseUnit,
@@ -88,25 +76,9 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
       },
     });
 
-    await tx.batch.update({
-      where: { id: batch.id },
-      data: { quantityAvailable: { decrement: requiredQuantity } },
-    });
-
-    await tx.inventoryTransaction.create({
-      data: {
-        batchId: batch.id,
-        productId: batch.productId,
-        type: "OUT",
-        quantity: requiredQuantity,
-        unit: input.doseUnit,
-        occurredAt: input.administeredAt,
-        reason: "administration",
-        refType: "ADMINISTRATION",
-        refId: administration.id,
-        tenantId: input.tenantId,
-        createdById: input.createdById,
-      },
+    await tx.product.update({
+      where: { id: product.id },
+      data: { stockAvailable: { decrement: requiredQuantity } },
     });
 
     return administration;

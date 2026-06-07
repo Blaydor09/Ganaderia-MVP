@@ -19,7 +19,7 @@ const treatmentFiltersSchema = z
 const treatmentGroupScopeSchema = z.enum(["ALL_FILTERED", "LIMIT"]);
 
 const treatmentGroupMedicationSchema = z.object({
-  batchId: z.string().uuid(),
+  productId: z.string().uuid(),
   dose: z.number().positive(),
   doseUnit: z.string().min(1),
   route: z.string().min(1),
