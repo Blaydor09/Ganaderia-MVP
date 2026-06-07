@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -214,6 +215,9 @@ const getTreatmentAppliedDoseSummary = (
 
 const TreatmentsPage = () => {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlAnimalId = searchParams.get("animalId");
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createMode, setCreateMode] = useState<"INDIVIDUAL" | "GROUP">("INDIVIDUAL");
 
@@ -308,6 +312,19 @@ const TreatmentsPage = () => {
       medications: [emptyMedication()],
     },
   });
+
+  useEffect(() => {
+    if (urlAnimalId) {
+      setCreateDialogOpen(true);
+      setCreateMode("INDIVIDUAL");
+      resetIndividual({
+        animalId: urlAnimalId,
+        description: "",
+        startedAt: new Date().toISOString().slice(0, 10),
+      });
+      setSearchParams({}, { replace: true });
+    }
+  }, [urlAnimalId, resetIndividual, setSearchParams]);
 
   const {
     fields: medicationFields,
