@@ -62,7 +62,7 @@ export const Sidebar = ({
       <aside
         className={cn(
           // Base mobile layout as a slide-over drawer
-          "fixed bottom-0 top-0 left-0 z-50 flex w-72 flex-col bg-white/90 backdrop-blur-sm transition-transform duration-300 ease-in-out lg:pointer-events-auto lg:static lg:z-auto lg:h-screen lg:translate-x-0 dark:bg-slate-950/90",
+          "fixed bottom-0 top-0 left-0 z-50 flex w-72 flex-col bg-white/90 backdrop-blur-sm transition-transform duration-300 ease-in-out lg:pointer-events-auto lg:sticky lg:top-0 lg:z-30 lg:h-screen lg:translate-x-0 dark:bg-slate-950/90",
           isOpenMobile ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           // Desktop behavior based on locked state
           isLocked
