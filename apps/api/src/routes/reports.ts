@@ -4,6 +4,13 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
 import { buildTreatmentLocationWhere } from "../services/treatmentService";
+import {
+  getDemographicsReport,
+  getReproductionReport,
+  getHealthReport,
+  getAuditReport,
+  exportToCsv,
+} from "../services/reports.service";
 
 const router = Router();
 
@@ -150,3 +157,88 @@ router.get(
 );
 
 export default router;
+
+// --- New Endpoints ---
+
+router.get(
+  "/demographics",
+  authenticate,
+  requireRoles("ADMIN", "AUDITOR"),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
+    const data = await getDemographicsReport(tenantId, req.query);
+
+    if (req.query.export === "csv") {
+      const csv = exportToCsv(data.byCategory, ["category", "count"]); // simplified export for demo
+      res.header("Content-Type", "text/csv");
+      res.attachment("demographics.csv");
+      return res.send(csv);
+    }
+
+    res.json(data);
+  })
+);
+
+router.get(
+  "/reproduction",
+  authenticate,
+  requireRoles("ADMIN", "AUDITOR"),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
+    const data = await getReproductionReport(tenantId, req.query);
+
+    if (req.query.export === "csv") {
+      const csv = exportToCsv(data, ["type", "count"]);
+      res.header("Content-Type", "text/csv");
+      res.attachment("reproduction.csv");
+      return res.send(csv);
+    }
+
+    res.json(data);
+  })
+);
+
+router.get(
+  "/health",
+  authenticate,
+  requireRoles("ADMIN", "AUDITOR"),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
+    const data = await getHealthReport(tenantId, req.query);
+
+    if (req.query.export === "csv") {
+      const csv = exportToCsv(data.treatmentsByStatus, ["status", "count"]);
+      res.header("Content-Type", "text/csv");
+      res.attachment("health.csv");
+      return res.send(csv);
+    }
+
+    res.json(data);
+  })
+);
+
+router.get(
+  "/audit",
+  authenticate,
+  requireRoles("ADMIN", "AUDITOR"),
+  asyncHandler(async (req, res) => {
+    const tenantId = req.user!.tenantId;
+    const data = await getAuditReport(tenantId, req.query);
+
+    if (req.query.export === "csv") {
+      const flatData = data.map((d) => ({
+        id: d.id,
+        user: d.user?.name || d.actorUserId,
+        action: d.action,
+        entity: d.entity,
+        date: d.occurredAt.toISOString(),
+      }));
+      const csv = exportToCsv(flatData, ["id", "user", "action", "entity", "date"]);
+      res.header("Content-Type", "text/csv");
+      res.attachment("audit.csv");
+      return res.send(csv);
+    }
+
+    res.json({ items: data, total: data.length });
+  })
+);
