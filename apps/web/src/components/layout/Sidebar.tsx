@@ -62,12 +62,12 @@ export const Sidebar = ({
       <aside
         className={cn(
           // Base mobile layout as a slide-over drawer
-          "fixed bottom-0 top-0 left-0 z-50 flex w-72 flex-col bg-white/90 backdrop-blur-sm transition-transform duration-300 ease-in-out lg:pointer-events-auto lg:sticky lg:top-0 lg:z-30 lg:h-screen lg:translate-x-0 dark:bg-slate-950/90",
+          "fixed bottom-0 top-0 left-0 z-50 flex w-72 flex-col bg-white/90 backdrop-blur-sm transition-transform duration-300 ease-in-out lg:pointer-events-auto lg:sticky lg:top-0 lg:z-30 lg:h-screen lg:translate-x-0 dark:bg-slate-950/90 lg:transition-all lg:duration-700 lg:ease-in-out lg:overflow-hidden",
           isOpenMobile ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           // Desktop behavior based on locked state
           isLocked
-            ? "lg:w-72 lg:border-r lg:opacity-100"
-            : "lg:w-0 lg:border-r-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none"
+            ? "lg:w-72 lg:border-r lg:border-slate-200 dark:lg:border-slate-800 lg:opacity-100"
+            : "lg:w-0 lg:border-r-0 lg:opacity-0 lg:pointer-events-none"
         )}
       >
         <div className="flex h-full w-72 flex-col overflow-hidden px-4 py-5">
