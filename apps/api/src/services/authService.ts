@@ -1,7 +1,7 @@
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
-import { hashPassword, verifyPassword } from "../utils/password";
+import { assertStrongPassword, hashPassword, verifyPassword } from "../utils/password";
 import { parseDurationToMs } from "../utils/duration";
 import {
   JwtScope,
@@ -12,6 +12,9 @@ import {
 import { ensureBaseRoles } from "../utils/roles";
 import { writeAudit } from "../utils/audit";
 import { normalizeEmail } from "../utils/email";
+import { randomUUID } from "crypto";
+
+const MAX_ACTIVE_SESSIONS = 5;
 
 const parseRefreshTokenPayload = (refreshToken: string) => {
   try {
@@ -29,9 +32,91 @@ export type ScopedSessionInput = {
   impersonationSessionId?: string;
   userAgent?: string;
   ip?: string;
+  familyId?: string;
 };
 
 type SessionStore = Pick<typeof prisma, "refreshToken">;
+
+type RefreshTokenMatch = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  scope: JwtScope;
+  tenantId: string | null;
+  impersonationSessionId: string | null;
+  revokedAt: Date | null;
+  familyId: string;
+};
+
+const findMatchingRefreshToken = async (input: {
+  userId: string;
+  scope: JwtScope;
+  tenantId?: string;
+  refreshToken: string;
+}) => {
+  const tokens = await prisma.refreshToken.findMany({
+    where: {
+      userId: input.userId,
+      scope: input.scope,
+      tenantId: input.tenantId,
+      expiresAt: { gt: new Date() },
+    },
+    select: {
+      id: true,
+      userId: true,
+      tokenHash: true,
+      scope: true,
+      tenantId: true,
+      impersonationSessionId: true,
+      revokedAt: true,
+      familyId: true,
+    },
+  });
+
+  for (const token of tokens) {
+    if (await verifyPassword(input.refreshToken, token.tokenHash)) {
+      return token as RefreshTokenMatch;
+    }
+  }
+
+  return null;
+};
+
+const revokeTokenFamily = async (input: {
+  userId: string;
+  familyId: string;
+}) => {
+  await prisma.refreshToken.updateMany({
+    where: {
+      userId: input.userId,
+      familyId: input.familyId,
+      revokedAt: null,
+    },
+    data: { revokedAt: new Date() },
+  });
+};
+
+const auditRefreshTokenReuse = async (input: {
+  userId: string;
+  scope: JwtScope;
+  tenantId?: string;
+  ip?: string;
+  userAgent?: string;
+}) => {
+  await writeAudit({
+    userId: input.userId,
+    actorType: input.scope === "platform" ? "platform" : "tenant",
+    tenantId: input.tenantId,
+    action: "REFRESH_TOKEN_REUSE_DETECTED",
+    entity: "auth.session",
+    entityId: input.userId,
+    resource: "auth.session",
+    resourceId: input.userId,
+    ip: input.ip,
+    userAgent: input.userAgent,
+    metadata: { scope: input.scope },
+  });
+};
 
 export const createScopedSession = async (input: ScopedSessionInput, store: SessionStore = prisma) => {
   if (input.scope === "tenant" && !input.tenantId) {
@@ -54,6 +139,7 @@ export const createScopedSession = async (input: ScopedSessionInput, store: Sess
     data: {
       userId: input.user.id,
       tokenHash,
+      familyId: input.familyId ?? randomUUID(),
       scope: input.scope,
       tenantId: input.tenantId,
       impersonationSessionId: input.impersonationSessionId,
@@ -63,7 +149,69 @@ export const createScopedSession = async (input: ScopedSessionInput, store: Sess
     },
   });
 
+  const staleSessions = await store.refreshToken.findMany({
+    where: {
+      userId: input.user.id,
+      scope: input.scope,
+      tenantId: input.tenantId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+    skip: MAX_ACTIVE_SESSIONS,
+    select: { id: true },
+  });
+  if (staleSessions.length) {
+    await store.refreshToken.updateMany({
+      where: { id: { in: staleSessions.map((session) => session.id) }, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
   return { accessToken, refreshToken };
+};
+
+export const listSessions = (input: { userId: string; scope: JwtScope; tenantId?: string }) =>
+  prisma.refreshToken.findMany({
+    where: {
+      userId: input.userId,
+      scope: input.scope,
+      tenantId: input.tenantId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    select: {
+      id: true,
+      familyId: true,
+      userAgent: true,
+      ip: true,
+      createdAt: true,
+      expiresAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+export const revokeSession = async (input: {
+  sessionId: string;
+  userId: string;
+  scope: JwtScope;
+  tenantId?: string;
+}) => {
+  const session = await prisma.refreshToken.findFirst({
+    where: {
+      id: input.sessionId,
+      userId: input.userId,
+      scope: input.scope,
+      tenantId: input.tenantId,
+    },
+    select: { familyId: true },
+  });
+  if (!session) throw new ApiError(404, "Session not found");
+
+  await prisma.refreshToken.updateMany({
+    where: { userId: input.userId, familyId: session.familyId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
 };
 
 const getTenantRoles = async (userId: string, tenantId: string) => {
@@ -183,25 +331,26 @@ export const refresh = async (refreshToken: string, userAgent?: string, ip?: str
     throw new ApiError(401, "Invalid refresh token");
   }
 
-  const tokens = await prisma.refreshToken.findMany({
-    where: {
+  const tokenMatch = await findMatchingRefreshToken({
+    userId: payload.sub,
+    scope: "tenant",
+    tenantId: payload.tenantId,
+    refreshToken,
+  });
+
+  if (!tokenMatch) {
+    throw new ApiError(401, "Invalid refresh token");
+  }
+
+  if (tokenMatch.revokedAt) {
+    await revokeTokenFamily({ userId: payload.sub, familyId: tokenMatch.familyId });
+    await auditRefreshTokenReuse({
       userId: payload.sub,
       scope: "tenant",
       tenantId: payload.tenantId,
-      revokedAt: null,
-      expiresAt: { gt: new Date() },
-    },
-  });
-
-  const tokenMatch = await Promise.all(
-    tokens.map(async (token: { id: string; tokenHash: string }) => ({
-      token,
-      valid: await verifyPassword(refreshToken, token.tokenHash),
-    }))
-  );
-
-  const match = tokenMatch.find((item) => item.valid);
-  if (!match) {
+      ip,
+      userAgent,
+    });
     throw new ApiError(401, "Invalid refresh token");
   }
 
@@ -221,10 +370,14 @@ export const refresh = async (refreshToken: string, userAgent?: string, ip?: str
   }
 
   const rotatedSession = await prisma.$transaction(async (tx) => {
-    await tx.refreshToken.update({
-      where: { id: match.token.id },
+    const revoked = await tx.refreshToken.updateMany({
+      where: { id: tokenMatch.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+
+    if (revoked.count !== 1) {
+      return null;
+    }
 
     return createScopedSession(
       {
@@ -239,48 +392,110 @@ export const refresh = async (refreshToken: string, userAgent?: string, ip?: str
         impersonationSessionId: payload.impersonationSessionId,
         userAgent,
         ip,
+        familyId: tokenMatch.familyId,
       },
       tx
     );
   });
+
+  if (!rotatedSession) {
+    await revokeTokenFamily({ userId: payload.sub, familyId: tokenMatch.familyId });
+    await auditRefreshTokenReuse({
+      userId: payload.sub,
+      scope: "tenant",
+      tenantId: payload.tenantId,
+      ip,
+      userAgent,
+    });
+    throw new ApiError(401, "Invalid refresh token");
+  }
 
   return rotatedSession;
 };
 
 export const logout = async (refreshToken: string) => {
   const payload = parseRefreshTokenPayload(refreshToken);
-  if (payload.scope !== "tenant") {
+  if (payload.scope !== "tenant" || !payload.tenantId) {
     throw new ApiError(401, "Invalid refresh token");
   }
 
   const tokens = await prisma.refreshToken.findMany({
-    where: { userId: payload.sub, scope: "tenant", revokedAt: null },
+    where: {
+      userId: payload.sub,
+      scope: "tenant",
+      tenantId: payload.tenantId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
   });
 
-  const tokenMatch = await Promise.all(
-    tokens.map(async (token: { id: string; tokenHash: string }) => ({
-      token,
-      valid: await verifyPassword(refreshToken, token.tokenHash),
-    }))
-  );
+  for (const token of tokens) {
+    if (await verifyPassword(refreshToken, token.tokenHash)) {
+      await prisma.refreshToken.update({
+        where: { id: token.id },
+        data: { revokedAt: new Date() },
+      });
 
-  const match = tokenMatch.find((item) => item.valid);
-  if (!match) {
-    throw new ApiError(401, "Invalid refresh token");
+      await writeAudit({
+        userId: payload.sub,
+        actorType: "tenant",
+        tenantId: payload.tenantId,
+        action: "LOGOUT",
+        entity: "auth.session",
+        entityId: payload.sub,
+      });
+
+      return { success: true };
+    }
   }
 
-  await prisma.refreshToken.update({
-    where: { id: match.token.id },
-    data: { revokedAt: new Date() },
+  throw new ApiError(401, "Invalid refresh token");
+};
+
+export const changePassword = async (input: {
+  userId: string;
+  currentPassword: string;
+  newPassword: string;
+  scope: JwtScope;
+  tenantId?: string;
+  ip?: string;
+  userAgent?: string;
+}) => {
+  const user = await prisma.user.findUnique({ where: { id: input.userId } });
+  if (!user || !user.isActive) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  const valid = await verifyPassword(input.currentPassword, user.passwordHash);
+  if (!valid) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  assertStrongPassword(input.newPassword);
+  const passwordHash = await hashPassword(input.newPassword);
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: input.userId },
+      data: { passwordHash },
+    });
+
+    await tx.refreshToken.updateMany({
+      where: { userId: input.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   });
 
   await writeAudit({
-    userId: payload.sub,
-    actorType: "tenant",
-    tenantId: payload.tenantId,
-    action: "LOGOUT",
-    entity: "auth.session",
-    entityId: payload.sub,
+    userId: input.userId,
+    actorType: input.scope === "platform" ? "platform" : "tenant",
+    tenantId: input.tenantId,
+    action: "CHANGE_PASSWORD",
+    entity: "user",
+    entityId: input.userId,
+    resource: "auth.password",
+    resourceId: input.userId,
+    ip: input.ip,
+    userAgent: input.userAgent,
   });
 
   return { success: true };
@@ -292,24 +507,6 @@ const ensureDefaultPlan = async () => {
     throw new ApiError(500, "Missing FREE plan");
   }
   return freePlan;
-};
-
-const ensureTenantSubscription = async (tenantId: string, createdById?: string) => {
-  const existing = await prisma.tenantSubscription.findFirst({
-    where: { tenantId, status: { in: ["ACTIVE", "TRIALING"] } },
-    orderBy: { startsAt: "desc" },
-  });
-  if (existing) return existing;
-
-  const freePlan = await ensureDefaultPlan();
-  return prisma.tenantSubscription.create({
-    data: {
-      tenantId,
-      planId: freePlan.id,
-      status: "ACTIVE",
-      createdById,
-    },
-  });
 };
 
 export const registerAccount = async (input: {
@@ -344,33 +541,38 @@ export const registerAccount = async (input: {
     throw new ApiError(500, "Missing ADMIN role");
   }
 
+  assertStrongPassword(input.password);
   const passwordHash = await hashPassword(input.password);
-  const user = await prisma.user.create({
-    data: {
-      name: input.name.trim(),
-      email: normalizedEmail,
-      passwordHash,
-    },
+  const freePlan = await ensureDefaultPlan();
+  const { user, tenant } = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        name: input.name.trim(),
+        email: normalizedEmail,
+        passwordHash,
+      },
+    });
+    const tenant = await tx.tenant.create({
+      data: {
+        name: input.tenantName.trim(),
+        createdById: user.id,
+        ownerId: user.id,
+        status: "ACTIVE",
+      },
+    });
+    await tx.userRole.create({
+      data: { userId: user.id, roleId: adminRole.id, tenantId: tenant.id },
+    });
+    await tx.tenantSubscription.create({
+      data: {
+        tenantId: tenant.id,
+        planId: freePlan.id,
+        status: "ACTIVE",
+        createdById: user.id,
+      },
+    });
+    return { user, tenant };
   });
-
-  const tenant = await prisma.tenant.create({
-    data: {
-      name: input.tenantName.trim(),
-      createdById: user.id,
-      ownerId: user.id,
-      status: "ACTIVE",
-    },
-  });
-
-  await prisma.userRole.create({
-    data: {
-      userId: user.id,
-      roleId: adminRole.id,
-      tenantId: tenant.id,
-    },
-  });
-
-  await ensureTenantSubscription(tenant.id, user.id);
 
   const roles = [adminRole.name];
   const tokens = await createScopedSession({

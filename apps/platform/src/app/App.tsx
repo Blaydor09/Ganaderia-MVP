@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { isAuthenticated } from "@/lib/auth";
+import { initializeAuth, useAuthState } from "@/lib/auth";
+import { restoreSession } from "@/lib/api";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import LoginPage from "./pages/LoginPage";
@@ -12,7 +13,8 @@ import AuditPage from "./pages/AuditPage";
 import SupportPage from "./pages/SupportPage";
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
-  if (!isAuthenticated()) {
+  const auth = useAuthState();
+  if (auth.status !== "authenticated") {
     return <Navigate to="/login" replace />;
   }
   return children;
@@ -31,8 +33,19 @@ const PlatformLayout = ({ children }: { children: JSX.Element }) => {
   );
 };
 
-const App = () => (
-  <Routes>
+const App = () => {
+  const auth = useAuthState();
+
+  useEffect(() => {
+    void initializeAuth(restoreSession);
+  }, []);
+
+  if (auth.status === "loading") {
+    return <div className="grid min-h-screen place-items-center text-sm text-slate-500">Cargando...</div>;
+  }
+
+  return (
+    <Routes>
     <Route path="/login" element={<LoginPage />} />
     <Route
       path="/dashboard"
@@ -94,9 +107,13 @@ const App = () => (
         </RequireAuth>
       }
     />
-    <Route path="/" element={<Navigate to={isAuthenticated() ? "/dashboard" : "/login"} replace />} />
+    <Route
+      path="/"
+      element={<Navigate to={auth.status === "authenticated" ? "/dashboard" : "/login"} replace />}
+    />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes>
-);
+    </Routes>
+  );
+};
 
 export default App;

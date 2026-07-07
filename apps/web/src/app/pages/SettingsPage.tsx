@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
-import { getTenantId, setTokens } from "@/lib/auth";
+import { getTenantId, setAccessToken } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ const SettingsPage = () => {
 
     try {
       const response = await api.post("/tenants", { name });
-      setTokens(response.data.accessToken, response.data.refreshToken);
+      setAccessToken(response.data.accessToken);
       toast.success("Cuenta creada");
       setTenantName("");
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
@@ -50,7 +50,7 @@ const SettingsPage = () => {
   const handleSwitchTenant = async (tenantId: string) => {
     try {
       const response = await api.post("/auth/switch-tenant", { tenantId });
-      setTokens(response.data.accessToken, response.data.refreshToken);
+      setAccessToken(response.data.accessToken);
       toast.success("Cuenta activa actualizada");
       queryClient.invalidateQueries();
       navigate("/", { replace: true });

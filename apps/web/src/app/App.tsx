@@ -1,10 +1,11 @@
-import { Suspense, lazy, useState, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { ThemeShell } from "@/components/layout/ThemeProvider";
-import { hasAnyRole, isAuthenticated } from "@/lib/auth";
+import { hasAnyRole, initializeAuth, useAuthState } from "@/lib/auth";
+import { restoreSession } from "@/lib/api";
 import type { Role } from "@/lib/auth";
 import { Access } from "@/lib/access";
 
@@ -36,14 +37,16 @@ const AccessDeniedPage = lazy(() => import("@/app/pages/AccessDeniedPage"));
 const OnboardingPage = lazy(() => import("@/app/pages/OnboardingPage"));
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
-  if (!isAuthenticated()) {
+  const auth = useAuthState();
+  if (auth.status !== "authenticated") {
     return <Navigate to="/" replace />;
   }
   return children;
 };
 
 const RedirectIfAuth = ({ children }: { children: JSX.Element }) => {
-  if (isAuthenticated()) {
+  const auth = useAuthState();
+  if (auth.status === "authenticated") {
     return <Navigate to="/" replace />;
   }
   return children;
@@ -87,7 +90,8 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 };
 
 const HomeRoute = () => {
-  if (!isAuthenticated()) {
+  const auth = useAuthState();
+  if (auth.status !== "authenticated") {
     return <LandingPage />;
   }
   return (
@@ -105,8 +109,19 @@ const AppFallback = () => (
   </div>
 );
 
-const App = () => (
-  <Suspense fallback={<AppFallback />}>
+const App = () => {
+  const auth = useAuthState();
+
+  useEffect(() => {
+    void initializeAuth(restoreSession);
+  }, []);
+
+  if (auth.status === "loading") {
+    return <AppFallback />;
+  }
+
+  return (
+    <Suspense fallback={<AppFallback />}>
     <Routes>
       <Route
         path="/landing"
@@ -381,7 +396,8 @@ const App = () => (
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-  </Suspense>
-);
+    </Suspense>
+  );
+};
 
 export default App;

@@ -1,8 +1,19 @@
 import { z } from "zod";
 
+const managedPasswordSchema = z.string().min(12).max(128);
+
 export const platformLoginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(1),
+  mfaCode: z.string().regex(/^\d{6}$/).optional(),
+});
+
+export const platformMfaSetupSchema = z.object({
+  enrollmentToken: z.string().min(20),
+});
+
+export const platformMfaConfirmSchema = platformMfaSetupSchema.extend({
+  code: z.string().regex(/^\d{6}$/),
 });
 
 export const platformTenantCreateSchema = z.object({
@@ -15,7 +26,7 @@ export const platformTenantCreateSchema = z.object({
     .optional(),
   ownerName: z.string().min(2),
   ownerEmail: z.string().email(),
-  ownerPassword: z.string().min(8),
+  ownerPassword: managedPasswordSchema,
   planCode: z.enum(["FREE", "PRO", "ENTERPRISE"]).default("FREE"),
 });
 
@@ -82,11 +93,9 @@ export const platformImpersonationStopSchema = z.object({
 export const platformResetAccessSchema = z.object({
   tenantId: z.string().uuid(),
   userId: z.string().uuid(),
-  temporaryPassword: z.string().min(8),
+  temporaryPassword: managedPasswordSchema,
 });
 
 export const platformUserRolesSchema = z.object({
-  roles: z
-    .array(z.enum(["platform_super_admin", "platform_support"]))
-    .min(1),
+  roles: z.array(z.enum(["platform_super_admin", "platform_support"])).min(1),
 });

@@ -126,7 +126,7 @@ router.patch(
     }
 
     const updated = await prisma.product.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: {
         ...data,
         name: normalizedName,
@@ -166,7 +166,7 @@ router.delete(
 
 
     const deleted = await prisma.product.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: { deletedAt: new Date() },
     });
 
@@ -206,7 +206,7 @@ router.post(
     }
 
     const updated = await prisma.product.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: updateData,
     });
 

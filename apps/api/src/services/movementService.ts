@@ -162,7 +162,7 @@ export const createMovement = async (input: CreateMovementInput) => {
   if (nextEstablishmentId !== undefined || nextStatus) {
     operations.push(
       prisma.animal.update({
-        where: { id: animal.id },
+        where: { id: animal.id, tenantId: input.tenantId },
         data: {
           establishmentId:
             nextEstablishmentId !== undefined ? nextEstablishmentId : undefined,
@@ -186,4 +186,3 @@ export const createMovement = async (input: CreateMovementInput) => {
 
   return movement;
 };
-

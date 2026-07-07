@@ -154,6 +154,8 @@ model User {
   email                        String                 @unique
   passwordHash                 String
   isActive                     Boolean                @default(true)
+  mfaSecretEncrypted           String?
+  mfaEnabledAt                 DateTime?
   roles                        UserRole[]
   platformRoles                PlatformUserRole[]
   createdTenants               Tenant[]               @relation("TenantCreatedBy")
@@ -161,6 +163,7 @@ model User {
   createdSubscriptions         TenantSubscription[]   @relation("SubscriptionCreatedBy")
   auditLogs                    AuditLog[]
   refreshTokens                RefreshToken[]
+  passwordResetTokens          PasswordResetToken[]
   impersonationsStarted        ImpersonationSession[] @relation("ImpersonationPlatformUser")
   impersonationsTargeted       ImpersonationSession[] @relation("ImpersonationTargetUser")
   impersonationsRevoked        ImpersonationSession[] @relation("ImpersonationRevokedBy")
@@ -273,6 +276,7 @@ model RefreshToken {
   id                     String     @id @default(uuid())
   userId                 String
   tokenHash              String
+  familyId               String
   scope                  TokenScope @default(tenant)
   tenantId               String?
   impersonationSessionId String?
@@ -286,8 +290,22 @@ model RefreshToken {
   impersonationSession ImpersonationSession? @relation(fields: [impersonationSessionId], references: [id])
 
   @@index([userId])
+  @@index([familyId])
   @@index([scope])
   @@index([tenantId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model Plan {

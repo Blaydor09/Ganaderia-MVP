@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import api from "@/lib/api";
-import { setTokens } from "@/lib/auth";
+import { setAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -71,7 +71,7 @@ const RegisterPage = () => {
         registrationCode: values.registrationCode?.trim() || undefined,
       };
       const response = await api.post("/auth/register", payload);
-      setTokens(response.data.accessToken, response.data.refreshToken);
+      setAccessToken(response.data.accessToken);
       toast.success("Cuenta creada");
       navigate("/onboarding");
     } catch (error: any) {

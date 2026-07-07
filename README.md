@@ -104,12 +104,12 @@ Abrir: http://localhost:5173/landing
 - Deploy (systemd + nginx): `docs/deploy.md`
 
 ## Entornos dev/prod
-- La API carga `.env` y luego sobreescribe con `.env.<ambiente>` usando `APP_ENV` o `NODE_ENV` (por defecto `development`).
+- `APP_ENV` es obligatorio. `npm run dev` lo fija en `development`; los procesos desplegados deben definirlo explícitamente.
 - Desarrollo: copia `apps/api/.env.example` -> `apps/api/.env` y `apps/web/.env.example` -> `apps/web/.env`.
 - En desarrollo, usa `CORS_ORIGIN="http://localhost:5173,http://localhost:5174"` para permitir web + platform.
-- Produccion: copia `apps/api/.env.production.example` -> `apps/api/.env.production` y `apps/web/.env.production.example` -> `apps/web/.env.production`, con `NODE_ENV=production`.
+- Produccion: copia los ejemplos productivos y define simultáneamente `APP_ENV=production` y `NODE_ENV=production`.
 - `CORS_ORIGIN` es obligatorio en prod (lista separada por coma, sin `*`).
-- `ENABLE_DOCS` esta activo en dev y recomendado en `false` para prod.
+- La API rechaza el arranque productivo si `ENABLE_DOCS` no está en `false` o la configuración de seguridad está incompleta.
 - En prod, `VITE_API_URL` puede quedar en `"/api/v1"` si usas nginx como proxy.
 
 ## Notas

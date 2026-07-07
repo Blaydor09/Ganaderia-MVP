@@ -1,6 +1,16 @@
 node_modules
 .env
 .DS_Store
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.swp
+*.swo
+*.pid
 apps/**/node_modules
 apps/**/dist
 apps/**/.env
@@ -11,6 +21,7 @@ apps/**/.env.*
 apps/**/coverage
 apps/**/.turbo
 apps/**/.vite
-logs/*-ready*.log
+logs/
 VPS_UPDATE.md
 DEPLOYMENT.md
+CORRECCIONES_PROYECTO.md

@@ -1,32 +1,63 @@
-const ACCESS_KEY = "ig_platform_access_token";
-const REFRESH_KEY = "ig_platform_refresh_token";
+import { useSyncExternalStore } from "react";
 
 export type PlatformRole = "platform_super_admin" | "platform_support";
+type AuthStatus = "loading" | "authenticated" | "anonymous";
+type AuthSnapshot = { status: AuthStatus; accessToken: string | null };
 
-export const getAccessToken = () =>
-  typeof window === "undefined" ? null : sessionStorage.getItem(ACCESS_KEY);
-export const getRefreshToken = () =>
-  typeof window === "undefined" ? null : sessionStorage.getItem(REFRESH_KEY);
+let snapshot: AuthSnapshot = { status: "loading", accessToken: null };
+let bootstrapPromise: Promise<string | null> | null = null;
+const listeners = new Set<() => void>();
 
-export const setTokens = (accessToken: string, refreshToken?: string | null) => {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(ACCESS_KEY, accessToken);
-  if (typeof refreshToken === "string" && refreshToken.length > 0) {
-    sessionStorage.setItem(REFRESH_KEY, refreshToken);
-    return;
-  }
-  if (refreshToken === null) {
-    sessionStorage.removeItem(REFRESH_KEY);
-  }
+const emit = () => listeners.forEach((listener) => listener());
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+
+const setSnapshot = (next: AuthSnapshot) => {
+  if (snapshot.status === next.status && snapshot.accessToken === next.accessToken) return;
+  snapshot = next;
+  emit();
+};
+
+export const getAccessToken = () => snapshot.accessToken;
+
+export const setAccessToken = (accessToken: string) => {
+  bootstrapPromise = Promise.resolve(accessToken);
+  setSnapshot({ status: "authenticated", accessToken });
 };
 
 export const clearTokens = () => {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(ACCESS_KEY);
-  sessionStorage.removeItem(REFRESH_KEY);
+  bootstrapPromise = null;
+  setSnapshot({ status: "anonymous", accessToken: null });
 };
 
-export const isAuthenticated = () => Boolean(getAccessToken());
+export const initializeAuth = (restoreSession: () => Promise<string | null>) => {
+  if (snapshot.status !== "loading") {
+    return bootstrapPromise ?? Promise.resolve(snapshot.accessToken);
+  }
+
+  if (!bootstrapPromise) {
+    bootstrapPromise = restoreSession()
+      .then((accessToken) => {
+        setSnapshot(
+          accessToken
+            ? { status: "authenticated", accessToken }
+            : { status: "anonymous", accessToken: null }
+        );
+        return accessToken;
+      })
+      .catch(() => {
+        setSnapshot({ status: "anonymous", accessToken: null });
+        return null;
+      });
+  }
+
+  return bootstrapPromise;
+};
+
+export const useAuthState = () =>
+  useSyncExternalStore(subscribe, () => snapshot, () => snapshot);
 
 const decodeBase64 = (value: string) => {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");

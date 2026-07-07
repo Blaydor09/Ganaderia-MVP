@@ -2,27 +2,27 @@ import { CookieOptions, Request, Response } from "express";
 import { env } from "../config/env";
 import { parseDurationToMs } from "./duration";
 
-const TENANT_REFRESH_COOKIE = "ig_refresh_token";
-const PLATFORM_REFRESH_COOKIE = "ig_platform_refresh_token";
+export const TENANT_REFRESH_COOKIE = "ig_refresh_token";
+export const PLATFORM_REFRESH_COOKIE = "ig_platform_refresh_token";
 
-const tenantCookiePath = "/api/v1/auth";
-const platformCookiePath = "/api/v1/platform/auth";
+export const tenantCookiePath = "/api/v1/auth";
+export const platformCookiePath = "/api/v1/platform/auth";
 
 const baseCookieOptions: CookieOptions = {
   httpOnly: true,
   secure: env.isProduction,
-  sameSite: "lax",
+  sameSite: "strict",
 };
 
 const refreshCookieMaxAge = parseDurationToMs(env.jwtRefreshExpiresIn);
 
-const tenantCookieOptions: CookieOptions = {
+export const tenantRefreshCookieOptions: CookieOptions = {
   ...baseCookieOptions,
   path: tenantCookiePath,
   maxAge: refreshCookieMaxAge,
 };
 
-const platformCookieOptions: CookieOptions = {
+export const platformRefreshCookieOptions: CookieOptions = {
   ...baseCookieOptions,
   path: platformCookiePath,
   maxAge: refreshCookieMaxAge,
@@ -39,7 +39,7 @@ const platformCookieClearOptions: CookieOptions = {
 };
 
 export const setTenantRefreshCookie = (res: Response, refreshToken: string) => {
-  res.cookie(TENANT_REFRESH_COOKIE, refreshToken, tenantCookieOptions);
+  res.cookie(TENANT_REFRESH_COOKIE, refreshToken, tenantRefreshCookieOptions);
 };
 
 export const clearTenantRefreshCookie = (res: Response) => {
@@ -52,7 +52,7 @@ export const readTenantRefreshCookie = (req: Request) =>
     : undefined;
 
 export const setPlatformRefreshCookie = (res: Response, refreshToken: string) => {
-  res.cookie(PLATFORM_REFRESH_COOKIE, refreshToken, platformCookieOptions);
+  res.cookie(PLATFORM_REFRESH_COOKIE, refreshToken, platformRefreshCookieOptions);
 };
 
 export const clearPlatformRefreshCookie = (res: Response) => {

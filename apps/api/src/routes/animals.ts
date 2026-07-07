@@ -63,6 +63,37 @@ const parseOptionalDate = (value?: string | null) => {
   return new Date(value);
 };
 
+const lockAndAssertAnimalCapacity = async (
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  additionalAnimals: number
+) => {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}))`;
+  const [currentAnimals, subscription] = await Promise.all([
+    tx.animal.count({ where: { tenantId, deletedAt: null, status: "ACTIVO" } }),
+    tx.tenantSubscription.findFirst({
+      where: { tenantId, status: { in: ["ACTIVE", "TRIALING"] } },
+      include: {
+        plan: { include: { limits: { include: { usageMetric: true } } } },
+      },
+      orderBy: { startsAt: "desc" },
+    }),
+  ]);
+
+  const hardLimit = subscription?.plan.limits.find(
+    (row) => row.usageMetric.key === "ACTIVE_ANIMALS"
+  )?.hardLimit;
+  if (hardLimit !== null && hardLimit !== undefined && currentAnimals + additionalAnimals > hardLimit) {
+    throw new ApiError(409, "Tenant limit exceeded", {
+      code: "TENANT_LIMIT_EXCEEDED",
+      metric: "ACTIVE_ANIMALS",
+      hardLimit,
+      currentValue: currentAnimals + additionalAnimals,
+      tenantId,
+    });
+  }
+};
+
 const ensureAssignableEstablishment = async (tenantId: string, establishmentId?: string) => {
   if (!establishmentId) return;
   const establishment = await prisma.establishment.findFirst({
@@ -296,13 +327,11 @@ router.post(
       }
     }
 
-    const chunkSize = 500;
-    let count = 0;
-    for (let i = 0; i < animals.length; i += chunkSize) {
-      const chunk = animals.slice(i, i + chunkSize);
-      const created = await prisma.animal.createMany({ data: chunk });
-      count += created.count;
-    }
+    const count = await prisma.$transaction(async (tx) => {
+      await lockAndAssertAnimalCapacity(tx, tenantId, requestedCount);
+      const created = await tx.animal.createMany({ data: animals });
+      return created.count;
+    });
 
     await writeAudit({
       userId: req.user?.id,
@@ -441,7 +470,7 @@ router.patch(
     }
 
     const updated = await prisma.animal.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: updateData,
     });
 
@@ -474,7 +503,7 @@ router.delete(
     }
 
     const deleted = await prisma.animal.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: { deletedAt: new Date() },
     });
 
@@ -501,6 +530,10 @@ router.post(
   asyncHandler(async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "Missing file" });
+    }
+
+    if (req.file.buffer.includes(0)) {
+      throw new ApiError(400, "CSV contains invalid binary content");
     }
 
     const tenantId = req.user!.tenantId;
@@ -553,39 +586,53 @@ router.post(
       }
     }
 
-    const created: string[] = [];
-    for (const row of rows) {
-      const tag = normalizeOptionalString(row.tag);
-      const birthDate = parseOptionalDate(row.birth_date);
-      const animal = await prisma.animal.create({
-        data: {
-          internalCode: generateAnimalCode(),
-          tag,
-          sex: row.sex as "MALE" | "FEMALE",
-          breed: row.breed.trim(),
-          birthDate,
-          birthEstimated: row.birth_estimated === "true",
-          category: row.category as any,
-          status: (row.status as any) ?? "ACTIVO",
-          origin: row.origin as any,
-          establishmentId: row.establishment_id || undefined,
-          tenantId,
-          createdById: req.user?.id,
-        },
+    const animals = rows.map((row, index): Prisma.AnimalCreateManyInput => {
+      const parsed = animalCreateSchema.safeParse({
+        tag: normalizeOptionalString(row.tag) ?? undefined,
+        sex: row.sex,
+        breed: row.breed,
+        birthDate: row.birth_date || undefined,
+        birthEstimated: row.birth_estimated ? row.birth_estimated === "true" : undefined,
+        category: row.category,
+        status: row.status || "ACTIVO",
+        origin: row.origin,
+        establishmentId: row.establishment_id || undefined,
       });
-      created.push(animal.id);
-    }
+      if (!parsed.success) {
+        throw new ApiError(400, `Invalid CSV row ${index + 2}`, parsed.error.flatten());
+      }
+      return {
+        internalCode: generateAnimalCode(),
+        tag: parsed.data.tag,
+        sex: parsed.data.sex,
+        breed: parsed.data.breed.trim(),
+        birthDate: parseOptionalDate(parsed.data.birthDate),
+        birthEstimated: parsed.data.birthEstimated,
+        category: parsed.data.category,
+        status: parsed.data.status ?? "ACTIVO",
+        origin: parsed.data.origin,
+        establishmentId: parsed.data.establishmentId,
+        tenantId,
+        createdById: req.user?.id,
+      };
+    });
+
+    const createdCount = await prisma.$transaction(async (tx) => {
+      await lockAndAssertAnimalCapacity(tx, tenantId, incomingActiveCount);
+      const created = await tx.animal.createMany({ data: animals });
+      return created.count;
+    });
 
     await writeAudit({
       userId: req.user?.id,
       tenantId,
       action: "IMPORT",
       entity: "animal",
-      after: { count: created.length },
+      after: { count: createdCount },
       ip: req.ip,
     });
 
-    res.json({ count: created.length });
+    res.json({ count: createdCount });
   })
 );
 

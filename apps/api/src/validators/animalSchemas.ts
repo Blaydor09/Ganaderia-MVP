@@ -46,15 +46,25 @@ export const animalQuickCreateSchema = z.object({
       z.object({
         category: z.enum(["TERNERO", "VAQUILLA", "VACA", "TORO", "TORILLO"]),
         sex: z.enum(["MALE", "FEMALE"]),
-        count: z.number().int().min(1),
+        count: z.number().int().min(1).max(100),
       })
     )
-    .min(1),
+    .min(1)
+    .max(20),
   breed: z.string().min(1),
   registrationDate: optionalDateTimeString,
   origin: z.enum(["BORN", "BOUGHT"]),
   establishmentId: z.string().uuid(),
   notes: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const total = data.items.reduce((sum, item) => sum + item.count, 0);
+  if (total > 500) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["items"],
+      message: "A maximum of 500 animals can be created per request",
+    });
+  }
 });
 
 export const animalUpdateSchema = animalCreateSchema.partial();

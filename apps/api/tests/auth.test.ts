@@ -11,14 +11,14 @@ describe("auth refresh/logout", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns 401 for invalid refresh token", async () => {
+  it("rejects refresh tokens supplied in JSON", async () => {
     const app = createApp();
     const response = await request(app)
       .post("/api/v1/auth/refresh")
       .send({ refreshToken: "invalid-token" });
 
-    expect(response.status).toBe(401);
-    expect(response.body.message).toBe("Invalid refresh token");
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Refresh token is required");
   });
 
   it("accepts refresh token from cookie when body is empty", async () => {
@@ -31,14 +31,14 @@ describe("auth refresh/logout", () => {
     expect(response.body.message).toBe("Invalid refresh token");
   });
 
-  it("returns 401 for invalid logout token", async () => {
+  it("ignores logout tokens supplied in JSON", async () => {
     const app = createApp();
     const response = await request(app)
       .post("/api/v1/auth/logout")
       .send({ refreshToken: "invalid-token" });
 
-    expect(response.status).toBe(401);
-    expect(response.body.message).toBe("Invalid refresh token");
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
   });
 
   it("blocks refresh for inactive users", async () => {
@@ -72,7 +72,7 @@ describe("auth refresh/logout", () => {
     const app = createApp();
     const response = await request(app)
       .post("/api/v1/auth/refresh")
-      .send({ refreshToken });
+      .set("Cookie", [`ig_refresh_token=${refreshToken}`]);
 
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Invalid credentials");
@@ -118,13 +118,14 @@ describe("auth refresh/logout", () => {
       { role: { name: "ADMIN" } },
     ] as any);
 
-    const updateSpy = vi.fn().mockResolvedValue({ id: "rt-old" });
+    const updateManySpy = vi.fn().mockResolvedValue({ count: 1 });
     const createSpy = vi.fn().mockResolvedValue({ id: "rt-new" });
     vi.spyOn(prisma as any, "$transaction").mockImplementation(async (callback: any) =>
       callback({
         refreshToken: {
-          update: updateSpy,
+          updateMany: updateManySpy,
           create: createSpy,
+          findMany: vi.fn().mockResolvedValue([]),
         },
       })
     );
@@ -134,8 +135,8 @@ describe("auth refresh/logout", () => {
     expect(typeof result.accessToken).toBe("string");
     expect(typeof result.refreshToken).toBe("string");
     expect(result.refreshToken).not.toBe(currentRefreshToken);
-    expect(updateSpy).toHaveBeenCalledWith({
-      where: { id: "rt-old" },
+    expect(updateManySpy).toHaveBeenCalledWith({
+      where: { id: "rt-old", revokedAt: null },
       data: { revokedAt: expect.any(Date) },
     });
     expect(createSpy).toHaveBeenCalledWith(

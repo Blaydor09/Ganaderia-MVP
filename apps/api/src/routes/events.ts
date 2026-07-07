@@ -165,7 +165,7 @@ router.patch(
     }
 
     const updated = await prisma.animalEvent.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: {
         type: data.type,
         occurredAt: data.occurredAt ? new Date(data.occurredAt) : undefined,
@@ -204,7 +204,7 @@ router.delete(
       return res.status(404).json({ message: "Event not found" });
     }
 
-    await prisma.animalEvent.delete({ where: { id: req.params.id } });
+    await prisma.animalEvent.delete({ where: { id: req.params.id, tenantId } });
 
     await writeAudit({
       userId: req.user?.id,
@@ -220,4 +220,3 @@ router.delete(
 );
 
 export default router;
-

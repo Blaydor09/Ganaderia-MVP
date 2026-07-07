@@ -101,8 +101,19 @@ export async function getAuditReport(tenantId: string, filters: any) {
 
 export function exportToCsv(data: any[], fields: string[]) {
   try {
+    const safeData = data.map((row) =>
+      Object.fromEntries(
+        fields.map((field) => {
+          const value = row?.[field];
+          return [
+            field,
+            typeof value === "string" && /^[=+\-@\t\r]/.test(value) ? `'${value}` : value,
+          ];
+        })
+      )
+    );
     const parser = new Parser({ fields });
-    return parser.parse(data);
+    return parser.parse(safeData);
   } catch (err) {
     console.error("CSV export error", err);
     throw new Error("Failed to export to CSV");

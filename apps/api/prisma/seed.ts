@@ -107,10 +107,10 @@ const run = async () => {
     });
   }
 
-  const adminPassword = await hashPassword("admin123");
-  const vetPassword = await hashPassword("vet12345");
-  const operatorPassword = await hashPassword("oper12345");
-  const auditorPassword = await hashPassword("audit123");
+  const adminPassword = await hashPassword("LocalAdmin-2026!");
+  const vetPassword = await hashPassword("LocalVeterinario-2026!");
+  const operatorPassword = await hashPassword("LocalOperador-2026!");
+  const auditorPassword = await hashPassword("LocalAuditor-2026!");
 
   const roleByName = new Map<string, string>();
   for (const role of roles) {
@@ -576,4 +576,3 @@ run()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

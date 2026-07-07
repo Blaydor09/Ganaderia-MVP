@@ -432,7 +432,7 @@ router.patch(
     }
 
     const updated = await prisma.establishment.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: {
         name: data.name?.trim(),
         parentId: nextParentId,
@@ -537,7 +537,7 @@ router.delete(
         },
       });
     } else {
-      await prisma.establishment.delete({ where: { id: existing.id } });
+      await prisma.establishment.delete({ where: { id: existing.id, tenantId } });
     }
 
     await writeAudit({
@@ -557,7 +557,6 @@ router.delete(
 );
 
 export default router;
-
 
 
 

@@ -2,14 +2,22 @@ import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
+import { requireRoles } from "../middleware/rbac";
 import { tenantCreateSchema } from "../validators/tenantSchemas";
 import { ensureBaseRoles } from "../utils/roles";
 import { ApiError } from "../utils/errors";
 import { getUserTenants, switchTenant } from "../services/authService";
 import { writeAudit } from "../utils/audit";
 import { getTenantUsageSummary } from "../services/usageService";
+import { setTenantRefreshCookie } from "../utils/authCookies";
+import { env } from "../config/env";
 
 const router = Router();
+
+const toPublicSession = <T extends { refreshToken: string }>(session: T) => {
+  const { refreshToken, ...publicSession } = session;
+  return publicSession;
+};
 
 router.get(
   "/",
@@ -32,7 +40,12 @@ router.get(
 router.post(
   "/",
   authenticate,
+  requireRoles("ADMIN"),
   asyncHandler(async (req, res) => {
+    if (env.tenantCreationMode === "closed") {
+      throw new ApiError(403, "Tenant creation is disabled");
+    }
+
     const data = tenantCreateSchema.parse(req.body);
     await ensureBaseRoles();
 
@@ -41,34 +54,47 @@ router.post(
       throw new ApiError(500, "Missing ADMIN role");
     }
 
-    const tenant = await prisma.tenant.create({
-      data: {
-        name: data.name.trim(),
-        createdById: req.user!.id,
-        ownerId: req.user!.id,
-        status: "ACTIVE",
-      },
-    });
-
-    await prisma.userRole.create({
-      data: {
-        userId: req.user!.id,
-        roleId: adminRole.id,
-        tenantId: tenant.id,
-      },
-    });
-
     const freePlan = await prisma.plan.findUnique({ where: { code: "FREE" } });
-    if (freePlan) {
-      await prisma.tenantSubscription.create({
+    const tenant = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${req.user!.id}))`;
+      const ownedCount = await tx.tenant.count({ where: { ownerId: req.user!.id } });
+      if (ownedCount >= env.maxTenantsPerUser) {
+        throw new ApiError(409, "Tenant creation quota exceeded", {
+          code: "TENANT_CREATION_LIMIT_EXCEEDED",
+          limit: env.maxTenantsPerUser,
+        });
+      }
+
+      const created = await tx.tenant.create({
         data: {
-          tenantId: tenant.id,
-          planId: freePlan.id,
-          status: "ACTIVE",
+          name: data.name.trim(),
           createdById: req.user!.id,
+          ownerId: req.user!.id,
+          status: "ACTIVE",
         },
       });
-    }
+
+      await tx.userRole.create({
+        data: {
+          userId: req.user!.id,
+          roleId: adminRole.id,
+          tenantId: created.id,
+        },
+      });
+
+      if (freePlan) {
+        await tx.tenantSubscription.create({
+          data: {
+            tenantId: created.id,
+            planId: freePlan.id,
+            status: "ACTIVE",
+            createdById: req.user!.id,
+          },
+        });
+      }
+
+      return created;
+    });
 
     await writeAudit({
       userId: req.user!.id,
@@ -90,7 +116,8 @@ router.post(
       ip: req.ip,
     });
 
-    res.status(201).json(session);
+    setTenantRefreshCookie(res, session.refreshToken);
+    res.status(201).json(toPublicSession(session));
   })
 );
 

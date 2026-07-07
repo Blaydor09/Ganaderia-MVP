@@ -67,7 +67,7 @@ router.patch(
     }
 
     const updated = await prisma.task.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data,
     });
 

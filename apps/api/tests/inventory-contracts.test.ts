@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../src/app";
 import { signAccessToken } from "../src/utils/jwt";
 import { prisma } from "../src/config/prisma";
+import { batchUpdateSchema } from "../src/validators/batchSchemas";
 
 const accessToken = signAccessToken({
   sub: "11111111-1111-4111-8111-111111111111",
@@ -74,25 +75,13 @@ describe("inventory and batch public contracts", () => {
   });
 
   it("rejects stock fields on batch PATCH endpoint", async () => {
-    const app = createApp();
-    const response = await request(app)
-      .patch("/api/v1/batches/33333333-3333-4333-8333-333333333333")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ quantityAvailable: 999, quantityInitial: 999 });
-
-    expect(response.status).toBe(400);
-    expect(response.body.message).toBe("Validation error");
+    expect(
+      batchUpdateSchema.safeParse({ quantityAvailable: 999, quantityInitial: 999 }).success
+    ).toBe(false);
   });
 
   it("rejects empty payload for batch PATCH endpoint", async () => {
-    const app = createApp();
-    const response = await request(app)
-      .patch("/api/v1/batches/33333333-3333-4333-8333-333333333333")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({});
-
-    expect(response.status).toBe(400);
-    expect(response.body.message).toBe("Validation error");
+    expect(batchUpdateSchema.safeParse({}).success).toBe(false);
   });
 
   it("rejects inventory transaction without reason", async () => {

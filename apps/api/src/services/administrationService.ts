@@ -77,7 +77,7 @@ export const createAdministration = async (input: CreateAdministrationInput) => 
     });
 
     await tx.product.update({
-      where: { id: product.id },
+      where: { id: product.id, tenantId: input.tenantId },
       data: { stockAvailable: { decrement: requiredQuantity } },
     });
 

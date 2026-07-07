@@ -1,55 +1,86 @@
-const ACCESS_KEY = "ig_access_token";
-const REFRESH_KEY = "ig_refresh_token";
+import { useSyncExternalStore } from "react";
 
 export type Role = "ADMIN" | "VETERINARIO" | "OPERADOR" | "AUDITOR";
 
-const migrateTokens = () => {
-  if (typeof window === "undefined") return;
-  const sessionAccess = sessionStorage.getItem(ACCESS_KEY);
-  const sessionRefresh = sessionStorage.getItem(REFRESH_KEY);
-  const localAccess = localStorage.getItem(ACCESS_KEY);
-  const localRefresh = localStorage.getItem(REFRESH_KEY);
+type AuthStatus = "loading" | "authenticated" | "anonymous";
 
-  if (!sessionAccess && localAccess) {
-    sessionStorage.setItem(ACCESS_KEY, localAccess);
-  }
-  if (!sessionRefresh && localRefresh) {
-    sessionStorage.setItem(REFRESH_KEY, localRefresh);
-  }
-  if (localAccess || localRefresh) {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+type AuthSnapshot = {
+  status: AuthStatus;
+  accessToken: string | null;
+};
+
+let snapshot: AuthSnapshot = {
+  status: "loading",
+  accessToken: null,
+};
+let bootstrapPromise: Promise<string | null> | null = null;
+const listeners = new Set<() => void>();
+
+const emit = () => {
+  for (const listener of listeners) {
+    listener();
   }
 };
 
-migrateTokens();
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
 
-export const getAccessToken = () =>
-  typeof window === "undefined" ? null : sessionStorage.getItem(ACCESS_KEY);
-export const getRefreshToken = () =>
-  typeof window === "undefined" ? null : sessionStorage.getItem(REFRESH_KEY);
-
-export const setTokens = (accessToken: string, refreshToken?: string | null) => {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(ACCESS_KEY, accessToken);
-  if (typeof refreshToken === "string" && refreshToken.length > 0) {
-    sessionStorage.setItem(REFRESH_KEY, refreshToken);
+const setSnapshot = (nextSnapshot: AuthSnapshot) => {
+  if (
+    snapshot.status === nextSnapshot.status &&
+    snapshot.accessToken === nextSnapshot.accessToken
+  ) {
     return;
   }
-  if (refreshToken === null) {
-    sessionStorage.removeItem(REFRESH_KEY);
-  }
+
+  snapshot = nextSnapshot;
+  emit();
+};
+
+export const getAccessToken = () => snapshot.accessToken;
+
+export const setAccessToken = (accessToken: string) => {
+  bootstrapPromise = Promise.resolve(accessToken);
+  setSnapshot({ status: "authenticated", accessToken });
 };
 
 export const clearTokens = () => {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(ACCESS_KEY);
-  sessionStorage.removeItem(REFRESH_KEY);
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
+  bootstrapPromise = null;
+  setSnapshot({ status: "anonymous", accessToken: null });
 };
 
-export const isAuthenticated = () => Boolean(getAccessToken());
+export const initializeAuth = (restoreSession: () => Promise<string | null>) => {
+  if (snapshot.status !== "loading") {
+    return bootstrapPromise ?? Promise.resolve(snapshot.accessToken);
+  }
+
+  if (!bootstrapPromise) {
+    bootstrapPromise = restoreSession()
+      .then((accessToken) => {
+        if (accessToken) {
+          setSnapshot({ status: "authenticated", accessToken });
+          return accessToken;
+        }
+
+        setSnapshot({ status: "anonymous", accessToken: null });
+        return null;
+      })
+      .catch(() => {
+        setSnapshot({ status: "anonymous", accessToken: null });
+        return null;
+      });
+  }
+
+  return bootstrapPromise;
+};
+
+export const useAuthState = () =>
+  useSyncExternalStore(subscribe, () => snapshot, () => snapshot);
+
+export const isAuthenticated = () =>
+  snapshot.status === "authenticated" && Boolean(snapshot.accessToken);
 
 const decodeBase64 = (value: string) => {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");

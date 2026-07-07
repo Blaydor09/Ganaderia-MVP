@@ -1,5 +1,5 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./auth";
+import { clearTokens, getAccessToken, setAccessToken } from "./auth";
 
 const defaultBaseUrl = import.meta.env.PROD
   ? "/api/v1"
@@ -20,6 +20,9 @@ const shouldSkipRefresh = (url?: string) => {
     url.includes("/auth/login") ||
     url.includes("/auth/register") ||
     url.includes("/auth/refresh") ||
+    url.includes("/auth/logout") ||
+    url.includes("/auth/me/password") ||
+    url.includes("/auth/password/") ||
     url.includes("/auth/registration-status")
   );
 };
@@ -33,19 +36,15 @@ const redirectToLogin = () => {
 
 let refreshInFlight: Promise<string | null> | null = null;
 
-const refreshAccessToken = async (): Promise<string | null> => {
-  const refreshToken = getRefreshToken();
-
+export const restoreSession = async (): Promise<string | null> => {
   try {
-    const payload = refreshToken ? { refreshToken } : {};
-    const response = await api.post("/auth/refresh", payload);
+    const response = await api.post("/auth/refresh", {});
     const newAccessToken = response.data?.accessToken;
-    if (typeof newAccessToken !== "string" || !newAccessToken) return null;
-    const nextRefreshToken =
-      typeof response.data?.refreshToken === "string"
-        ? response.data.refreshToken
-        : refreshToken ?? null;
-    setTokens(newAccessToken, nextRefreshToken);
+    if (typeof newAccessToken !== "string" || !newAccessToken) {
+      return null;
+    }
+
+    setAccessToken(newAccessToken);
     return newAccessToken;
   } catch {
     return null;
@@ -78,7 +77,7 @@ api.interceptors.response.use(
     originalConfig._retry = true;
 
     if (!refreshInFlight) {
-      refreshInFlight = refreshAccessToken().finally(() => {
+      refreshInFlight = restoreSession().finally(() => {
         refreshInFlight = null;
       });
     }

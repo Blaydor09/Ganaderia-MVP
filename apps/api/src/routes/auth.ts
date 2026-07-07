@@ -1,8 +1,23 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { asyncHandler } from "../utils/asyncHandler";
-import { loginSchema, refreshSchema, registerSchema } from "../validators/authSchemas";
-import { login, logout, refresh, registerAccount, switchTenant } from "../services/authService";
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from "../validators/authSchemas";
+import {
+  changePassword,
+  login,
+  logout,
+  listSessions,
+  refresh,
+  registerAccount,
+  revokeSession,
+  switchTenant,
+} from "../services/authService";
 import { authenticate } from "../middleware/auth";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
@@ -13,6 +28,7 @@ import {
   setTenantRefreshCookie,
 } from "../utils/authCookies";
 import { ApiError } from "../utils/errors";
+import { requestPasswordReset, resetPassword } from "../services/passwordRecoveryService";
 
 const router = Router();
 
@@ -28,19 +44,35 @@ const refreshLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+const recoveryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const accountLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => String(req.body?.email ?? "unknown").trim().toLowerCase(),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-const resolveRefreshToken = (body: unknown, cookieToken?: string) => {
-  const parsed = refreshSchema.parse(body ?? {});
-  const token = parsed.refreshToken ?? cookieToken;
-  if (!token) {
-    throw new ApiError(400, "Refresh token is required");
-  }
-  return token;
+const toPublicSession = <T extends { refreshToken: string }>(session: T) => {
+  const { refreshToken, ...publicSession } = session;
+  return publicSession;
 };
 
 router.post(
   "/login",
   limiter,
+  accountLoginLimiter,
   asyncHandler(async (req, res) => {
     const data = loginSchema.parse(req.body);
     const result = await login(
@@ -51,13 +83,41 @@ router.post(
       req.ip
     );
     setTenantRefreshCookie(res, result.refreshToken);
-    res.json(result);
+    res.json(toPublicSession(result));
+  })
+);
+
+router.post(
+  "/password/forgot",
+  recoveryLimiter,
+  asyncHandler(async (req, res) => {
+    const data = forgotPasswordSchema.parse(req.body);
+    await requestPasswordReset(data.email).catch(() => undefined);
+    res.status(202).json({
+      message: "If the account exists, password recovery instructions will be sent",
+    });
+  })
+);
+
+router.post(
+  "/password/reset",
+  recoveryLimiter,
+  asyncHandler(async (req, res) => {
+    const data = resetPasswordSchema.parse(req.body);
+    await resetPassword({
+      token: data.token,
+      newPassword: data.newPassword,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    clearTenantRefreshCookie(res);
+    res.json({ success: true });
   })
 );
 
 router.post(
   "/register",
-  limiter,
+  registrationLimiter,
   asyncHandler(async (req, res) => {
     const data = registerSchema.parse(req.body);
     const result = await registerAccount({
@@ -70,7 +130,7 @@ router.post(
       ip: req.ip,
     });
     setTenantRefreshCookie(res, result.refreshToken);
-    res.status(201).json(result);
+    res.status(201).json(toPublicSession(result));
   })
 );
 
@@ -90,10 +150,13 @@ router.post(
   "/refresh",
   refreshLimiter,
   asyncHandler(async (req, res) => {
-    const refreshToken = resolveRefreshToken(req.body, readTenantRefreshCookie(req));
+    const refreshToken = readTenantRefreshCookie(req);
+    if (!refreshToken) {
+      throw new ApiError(400, "Refresh token is required");
+    }
     const result = await refresh(refreshToken, req.headers["user-agent"], req.ip);
     setTenantRefreshCookie(res, result.refreshToken);
-    res.json(result);
+    res.json(toPublicSession(result));
   })
 );
 
@@ -101,9 +164,7 @@ router.post(
   "/logout",
   refreshLimiter,
   asyncHandler(async (req, res) => {
-    const bodyToken = refreshSchema.parse(req.body ?? {}).refreshToken;
-    const cookieToken = readTenantRefreshCookie(req);
-    const refreshToken = bodyToken ?? cookieToken;
+    const refreshToken = readTenantRefreshCookie(req);
 
     if (!refreshToken) {
       clearTenantRefreshCookie(res);
@@ -130,7 +191,53 @@ router.post(
       ip: req.ip,
     });
     setTenantRefreshCookie(res, result.refreshToken);
-    res.json(result);
+    res.json(toPublicSession(result));
+  })
+);
+
+router.patch(
+  "/me/password",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const data = changePasswordSchema.parse(req.body);
+    await changePassword({
+      userId: req.user!.id,
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword,
+      scope: "tenant",
+      tenantId: req.user!.tenantId,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    clearTenantRefreshCookie(res);
+    res.json({ success: true });
+  })
+);
+
+router.get(
+  "/sessions",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const sessions = await listSessions({
+      userId: req.user!.id,
+      scope: "tenant",
+      tenantId: req.user!.tenantId,
+    });
+    res.json({ items: sessions });
+  })
+);
+
+router.delete(
+  "/sessions/:id",
+  authenticate,
+  asyncHandler(async (req, res) => {
+    await revokeSession({
+      sessionId: req.params.id,
+      userId: req.user!.id,
+      scope: "tenant",
+      tenantId: req.user!.tenantId,
+    });
+    res.json({ success: true });
   })
 );
 

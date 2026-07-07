@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import api from "@/lib/api";
-import { clearTokens, getRefreshToken } from "@/lib/auth";
+import { clearTokens } from "@/lib/auth";
 import type { AuthMeResponse } from "@/lib/types";
 
 const getInitials = (name?: string) => {
@@ -44,8 +44,7 @@ export const Topbar = ({
 
   const handleLogout = async () => {
     try {
-      const refreshToken = getRefreshToken();
-      await api.post("/auth/logout", refreshToken ? { refreshToken } : {});
+      await api.post("/auth/logout", {});
     } catch {
       // continue local logout even if server-side revocation fails
     } finally {

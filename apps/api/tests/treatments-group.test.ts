@@ -68,13 +68,11 @@ describe("grouped treatments", () => {
           { id: "animal-2", tag: "A-2", internalCode: "IC-2" },
         ]),
       },
-      batch: {
+      product: {
         findMany: vi.fn().mockResolvedValue([
           {
             id: "33333333-3333-4333-8333-333333333333",
-            productId: "product-1",
-            batchNumber: "B-1",
-            quantityAvailable: 200,
+            stockAvailable: 200,
             deletedAt: null,
             expiresAt: new Date("2027-01-01T00:00:00.000Z"),
           },
@@ -119,7 +117,7 @@ describe("grouped treatments", () => {
         scope: "ALL_FILTERED",
         medications: [
           {
-            batchId: "33333333-3333-4333-8333-333333333333",
+            productId: "33333333-3333-4333-8333-333333333333",
             dose: 2,
             doseUnit: "ml",
             route: "subcutanea",
@@ -131,10 +129,10 @@ describe("grouped treatments", () => {
     expect(response.status).toBe(201);
     expect(response.body.id).toBe("treatment-1");
     expect(response.body.selectedAnimalsCount).toBe(2);
-    expect(tx.batch.updateMany).toHaveBeenCalledWith(
+    expect(tx.product.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: {
-          quantityAvailable: { decrement: 4 },
+          stockAvailable: { decrement: 4 },
         },
       })
     );
@@ -149,13 +147,11 @@ describe("grouped treatments", () => {
           { id: "animal-3", tag: "A-3", internalCode: "IC-3" },
         ]),
       },
-      batch: {
+      product: {
         findMany: vi.fn().mockResolvedValue([
           {
             id: "33333333-3333-4333-8333-333333333333",
-            productId: "product-1",
-            batchNumber: "B-1",
-            quantityAvailable: 2,
+            stockAvailable: 2,
             deletedAt: null,
             expiresAt: new Date("2027-01-01T00:00:00.000Z"),
           },
@@ -180,7 +176,7 @@ describe("grouped treatments", () => {
         scope: "ALL_FILTERED",
         medications: [
           {
-            batchId: "33333333-3333-4333-8333-333333333333",
+            productId: "33333333-3333-4333-8333-333333333333",
             dose: 1.5,
             doseUnit: "ml",
             route: "subcutanea",

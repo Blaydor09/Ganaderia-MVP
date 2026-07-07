@@ -248,7 +248,7 @@ export const createGroupTreatment = async (input: GroupTreatmentCreateInput) => 
     }
 
     const treatmentWithRelations = await tx.treatment.findUniqueOrThrow({
-      where: { id: treatment.id },
+      where: { id: treatment.id, tenantId: input.tenantId },
       include: {
         animal: true,
         animals: {

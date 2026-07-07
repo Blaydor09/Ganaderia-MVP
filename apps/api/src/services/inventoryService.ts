@@ -31,7 +31,7 @@ export const createInventoryTransaction = async (input: CreateInventoryTxInput) 
   const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const quantityDelta = input.type === "IN" ? input.quantity : -input.quantity;
     const productUpdated = await tx.product.update({
-      where: { id: product.id },
+      where: { id: product.id, tenantId: input.tenantId },
       data: { stockAvailable: { increment: quantityDelta } },
     });
 

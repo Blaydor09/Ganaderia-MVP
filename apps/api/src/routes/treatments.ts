@@ -101,7 +101,7 @@ router.post(
       });
 
       return tx.treatment.findUniqueOrThrow({
-        where: { id: treatment.id },
+        where: { id: treatment.id, tenantId },
         include: {
           animal: true,
           animals: {
@@ -214,7 +214,7 @@ router.post(
     }
 
     const updated = await prisma.treatment.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: { status: "CLOSED", endedAt: new Date(data.endedAt) },
     });
 

@@ -113,7 +113,7 @@ router.patch(
       }
 
       return tx.administration.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id, tenantId },
         data: {
           administeredAt: data.administeredAt
             ? new Date(data.administeredAt)

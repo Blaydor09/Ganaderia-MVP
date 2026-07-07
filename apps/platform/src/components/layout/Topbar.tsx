@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import api from "@/lib/api";
-import { clearTokens, getRefreshToken } from "@/lib/auth";
+import { clearTokens } from "@/lib/auth";
 import type { PlatformMe } from "@/lib/types";
 
 export const Topbar = ({ onOpenMobile }: { onOpenMobile?: () => void }) => {
@@ -14,8 +14,7 @@ export const Topbar = ({ onOpenMobile }: { onOpenMobile?: () => void }) => {
 
   const handleLogout = async () => {
     try {
-      const refreshToken = getRefreshToken();
-      await api.post("/auth/logout", refreshToken ? { refreshToken } : {});
+      await api.post("/auth/logout", {});
     } catch {
       // ignored
     } finally {

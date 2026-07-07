@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import api from "@/lib/api";
-import { setTokens } from "@/lib/auth";
+import { setAccessToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ const LoginPage = () => {
   const onSubmit = async (values: FormValues) => {
     try {
       const response = await api.post("/auth/login", values);
-      setTokens(response.data.accessToken, response.data.refreshToken);
+      setAccessToken(response.data.accessToken);
       toast.success("Sesion iniciada");
       navigate("/");
     } catch (error: any) {

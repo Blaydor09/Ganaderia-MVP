@@ -70,7 +70,7 @@ router.delete(
       return res.status(404).json({ message: "Movement not found" });
     }
 
-    await prisma.movement.delete({ where: { id: req.params.id } });
+    await prisma.movement.delete({ where: { id: req.params.id, tenantId } });
 
     await writeAudit({
       userId: req.user?.id,

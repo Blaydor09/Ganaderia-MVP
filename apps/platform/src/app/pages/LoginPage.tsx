@@ -2,20 +2,48 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import api from "@/lib/api";
-import { setTokens } from "@/lib/auth";
+import { setAccessToken } from "@/lib/auth";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [enrollmentToken, setEnrollmentToken] = useState<string | null>(null);
+  const [mfaSecret, setMfaSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     try {
-      const response = await api.post("/auth/login", { email: email.trim(), password });
-      setTokens(response.data.accessToken, response.data.refreshToken);
+      if (enrollmentToken) {
+        const response = await api.post("/auth/mfa/confirm", {
+          enrollmentToken,
+          code: mfaCode.trim(),
+        });
+        setAccessToken(response.data.accessToken);
+        toast.success("MFA activado y acceso concedido");
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+
+      const response = await api.post("/auth/login", {
+        email: email.trim(),
+        password,
+        mfaCode: mfaCode.trim() || undefined,
+      });
+      if (response.data.mfaEnrollmentRequired) {
+        const setup = await api.post("/auth/mfa/setup", {
+          enrollmentToken: response.data.enrollmentToken,
+        });
+        setEnrollmentToken(response.data.enrollmentToken);
+        setMfaSecret(setup.data.secret);
+        setMfaCode("");
+        toast.info("Configura MFA para continuar");
+        return;
+      }
+      setAccessToken(response.data.accessToken);
       toast.success("Acceso de plataforma concedido");
       navigate("/dashboard", { replace: true });
     } catch (error: any) {
@@ -44,6 +72,28 @@ const LoginPage = () => {
               placeholder="admin@saas.com"
             />
           </div>
+          {mfaSecret && (
+            <div className="rounded-xl border border-infra-400/40 bg-infra-400/10 p-3 text-xs text-infra-100">
+              <p className="font-semibold">Configura este secreto en tu app autenticadora:</p>
+              <code className="mt-2 block break-all select-all text-white">{mfaSecret}</code>
+              <p className="mt-2 text-infra-100/70">Luego ingresa el código de 6 dígitos para confirmar.</p>
+            </div>
+          )}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-infra-100/80">
+              Código MFA {enrollmentToken ? "" : "(si está activado)"}
+            </label>
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              className="w-full rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none ring-infra-400 focus:ring"
+              value={mfaCode}
+              onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ""))}
+              placeholder="000000"
+              required={Boolean(enrollmentToken)}
+            />
+          </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-infra-100/80">Clave</label>
             <input
@@ -59,7 +109,11 @@ const LoginPage = () => {
             disabled={loading}
             className="w-full rounded-xl bg-infra-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-infra-300 disabled:opacity-60"
           >
-            {loading ? "Ingresando..." : "Entrar a plataforma"}
+            {loading
+              ? "Verificando..."
+              : enrollmentToken
+                ? "Activar MFA y entrar"
+                : "Entrar a plataforma"}
           </button>
         </form>
       </div>

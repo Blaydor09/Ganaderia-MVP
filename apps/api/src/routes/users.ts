@@ -4,12 +4,16 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth";
 import { requireRoles } from "../middleware/rbac";
 import { userCreateSchema, userUpdateSchema } from "../validators/userSchemas";
-import { hashPassword } from "../utils/password";
+import { assertStrongPassword, hashPassword } from "../utils/password";
 import { ensureBaseRoles } from "../utils/roles";
 import { ApiError } from "../utils/errors";
 import { writeAudit } from "../utils/audit";
 import { normalizeEmail } from "../utils/email";
 import { assertTenantLimit, getCurrentUsageValue } from "../services/usageService";
+import {
+  assertCanRemoveUserFromTenant,
+  assertCanUpdateTenantMembershipRoles,
+} from "../services/userMembershipService";
 
 const router = Router();
 
@@ -78,6 +82,7 @@ router.post(
       },
     });
 
+    assertStrongPassword(data.password);
     const passwordHash = await hashPassword(data.password);
 
     const created = await prisma.user.create({
@@ -126,6 +131,11 @@ router.patch(
   asyncHandler(async (req, res) => {
     const data = userUpdateSchema.parse(req.body);
     const tenantId = req.user!.tenantId;
+
+    if (!data.roles) {
+      throw new ApiError(400, "No membership changes provided");
+    }
+
     const existing = await prisma.user.findFirst({
       where: { id: req.params.id, roles: { some: { tenantId } } },
       include: { roles: { where: { tenantId }, include: { role: true } } },
@@ -134,52 +144,35 @@ router.patch(
       return res.status(404).json({ message: "User not found" });
     }
 
-    const normalizedEmail = data.email ? normalizeEmail(data.email) : undefined;
-    if (normalizedEmail) {
-      const emailOwner = await prisma.user.findFirst({
-        where: { email: { equals: normalizedEmail, mode: "insensitive" } },
-      });
-      if (emailOwner && emailOwner.id !== existing.id) {
-        throw new ApiError(409, "Email already registered");
-      }
-    }
-
-    const updateData: any = {
-      name: data.name?.trim(),
-      email: normalizedEmail,
-      isActive: data.isActive,
-    };
-
-    if (data.password) {
-      updateData.passwordHash = await hashPassword(data.password);
-    }
-
-    const updated = await prisma.user.update({
-      where: { id: req.params.id },
-      data: updateData,
-      include: { roles: { include: { role: true } } },
+    await ensureBaseRoles();
+    const roles = await prisma.role.findMany({
+      where: { name: { in: data.roles } },
     });
+    if (roles.length !== data.roles.length) {
+      throw new ApiError(400, "One or more roles are invalid");
+    }
 
-    if (data.roles) {
-      await ensureBaseRoles();
-      const roles = await prisma.role.findMany({
-        where: { name: { in: data.roles } },
+    const currentRoles = existing.roles.map((row: { role: { name: string } }) => row.role.name);
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}))`;
+      await assertCanUpdateTenantMembershipRoles({
+        tenantId,
+        currentRoles,
+        nextRoles: data.roles!,
+        store: tx,
       });
-      if (roles.length !== data.roles.length) {
-        throw new ApiError(400, "One or more roles are invalid");
-      }
-      await prisma.userRole.deleteMany({ where: { userId: updated.id, tenantId } });
-      await prisma.userRole.createMany({
+      await tx.userRole.deleteMany({ where: { userId: existing.id, tenantId } });
+      await tx.userRole.createMany({
         data: roles.map((role: { id: string }) => ({
-          userId: updated.id,
+          userId: existing.id,
           roleId: role.id,
           tenantId,
         })),
       });
-    }
+    });
 
     const fresh = await prisma.user.findFirst({
-      where: { id: updated.id, roles: { some: { tenantId } } },
+      where: { id: existing.id, roles: { some: { tenantId } } },
       include: { roles: { where: { tenantId }, include: { role: true } } },
     });
 
@@ -188,13 +181,13 @@ router.patch(
       tenantId,
       action: "UPDATE",
       entity: "user",
-      entityId: updated.id,
+      entityId: existing.id,
       before: {
         id: existing.id,
         name: existing.name,
         email: existing.email,
         isActive: existing.isActive,
-        roles: existing.roles.map((row: { role: { name: string } }) => row.role.name),
+        roles: currentRoles,
       },
       after: {
         id: fresh!.id,
@@ -230,15 +223,12 @@ router.delete(
       return res.status(404).json({ message: "User not found" });
     }
 
-    await prisma.userRole.deleteMany({ where: { userId: req.params.id, tenantId } });
-    const remaining = await prisma.userRole.count({ where: { userId: req.params.id } });
-    const updated =
-      remaining === 0
-        ? await prisma.user.update({
-            where: { id: req.params.id },
-            data: { isActive: false },
-          })
-        : existing;
+    const currentRoles = existing.roles.map((row: { role: { name: string } }) => row.role.name);
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}))`;
+      await assertCanRemoveUserFromTenant({ tenantId, currentRoles, store: tx });
+      await tx.userRole.deleteMany({ where: { userId: req.params.id, tenantId } });
+    });
 
     await writeAudit({
       userId: req.user?.id,
@@ -251,13 +241,13 @@ router.delete(
         name: existing.name,
         email: existing.email,
         isActive: existing.isActive,
-        roles: existing.roles.map((row: { role: { name: string } }) => row.role.name),
+        roles: currentRoles,
       },
       after: {
-        id: updated.id,
-        name: updated.name,
-        email: updated.email,
-        isActive: updated.isActive,
+        id: existing.id,
+        name: existing.name,
+        email: existing.email,
+        isActive: existing.isActive,
         removedFromTenant: tenantId,
       },
       ip: req.ip,

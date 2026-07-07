@@ -112,7 +112,7 @@ router.post(
       });
 
       return tx.batch.update({
-        where: { id: draftBatch.id },
+        where: { id: draftBatch.id, tenantId },
         data: {
           batchNumber: `LOTE-${String(draftBatch.batchCode).padStart(6, "0")}`,
         },
@@ -146,7 +146,7 @@ router.patch(
       return res.status(404).json({ message: "Batch not found" });
     }
     const updated = await prisma.batch.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: {
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
         receivedAt: data.receivedAt ? new Date(data.receivedAt) : undefined,
@@ -207,7 +207,7 @@ router.delete(
     }
 
     const deleted = await prisma.batch.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id, tenantId },
       data: { deletedAt: new Date() },
     });
 

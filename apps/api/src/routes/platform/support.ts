@@ -8,17 +8,18 @@ import {
   platformImpersonationStopSchema,
   platformResetAccessSchema,
 } from "../../validators/platformSchemas";
-import { hashPassword } from "../../utils/password";
+import { assertStrongPassword, hashPassword } from "../../utils/password";
 import { ApiError } from "../../utils/errors";
 import { writeAudit } from "../../utils/audit";
 import { createScopedSession } from "../../services/authService";
+import { setTenantRefreshCookie } from "../../utils/authCookies";
 
 const router = Router();
 
 router.post(
   "/reset-access",
   authenticatePlatform,
-  requirePlatformRoles("platform_super_admin", "platform_support"),
+  requirePlatformRoles("platform_super_admin"),
   asyncHandler(async (req, res) => {
     const data = platformResetAccessSchema.parse(req.body);
 
@@ -29,11 +30,12 @@ router.post(
       throw new ApiError(404, "User not found in tenant");
     }
 
+    assertStrongPassword(data.temporaryPassword);
     const passwordHash = await hashPassword(data.temporaryPassword);
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: data.userId },
-        data: { passwordHash, isActive: true },
+        data: { passwordHash },
       });
 
       await tx.refreshToken.updateMany({
@@ -146,6 +148,7 @@ router.post(
       userAgent: req.headers["user-agent"],
     });
 
+    setTenantRefreshCookie(res, tokens.refreshToken);
     res.status(201).json({
       sessionId: session.id,
       expiresAt: session.expiresAt,
@@ -156,7 +159,7 @@ router.post(
         email: membership[0].user.email,
         roles,
       },
-      ...tokens,
+      accessToken: tokens.accessToken,
     });
   })
 );

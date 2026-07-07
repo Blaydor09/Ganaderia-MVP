@@ -1,0 +1,53 @@
+name: Security CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, web, platform]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
+      - if: matrix.app == 'api'
+        run: npm run lint
+      - if: matrix.app == 'api'
+        run: npm test
+        env:
+          APP_ENV: test
+          NODE_ENV: test
+      - run: npm run build
+      - run: npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-build-and-sbom
+          path: |
+            apps/${{ matrix.app }}/dist
+            apps/${{ matrix.app }}/sbom.json
+          if-no-files-found: error

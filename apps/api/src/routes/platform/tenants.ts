@@ -9,7 +9,7 @@ import {
   platformTenantStatusSchema,
   platformTenantUpdateSchema,
 } from "../../validators/platformSchemas";
-import { hashPassword } from "../../utils/password";
+import { assertStrongPassword, hashPassword } from "../../utils/password";
 import { normalizeEmail } from "../../utils/email";
 import { ensureBaseRoles } from "../../utils/roles";
 import { ApiError } from "../../utils/errors";
@@ -132,6 +132,7 @@ router.post(
       throw new ApiError(409, "Owner email already exists");
     }
 
+    assertStrongPassword(data.ownerPassword);
     const passwordHash = await hashPassword(data.ownerPassword);
     const result = await prisma.$transaction(async (tx) => {
       const owner = await tx.user.create({
