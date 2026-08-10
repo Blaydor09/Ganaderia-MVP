@@ -17,7 +17,7 @@ Fecha de revisión: 2026-07-02.
 11. **Abuso de recursos:** límites de bulk create, cuota y creación atómicas, CSV con tamaño/filas/contenido limitados y neutralización de fórmulas, paginación máxima global.
 12. **Base de datos:** arranque productivo exige el rol runtime, las migraciones siguen siendo un comando de despliegue explícito y se añadieron migraciones para familias de sesión, MFA y recuperación.
 13. **Auditoría:** eventos sensibles de login, logout, replay, contraseña, recuperación, MFA, roles, soporte e impersonación; sin credenciales.
-14. **CI:** instalación reproducible, escaneo de secretos, auditoría runtime, tipos, pruebas, builds, SBOM y artefactos.
+14. **Verificación local:** instalación reproducible, tipos, pruebas y builds comprobables desde la terminal.
 15. **Pruebas:** regresiones para cookies/JSON, redacción, scope JWT, membresías, último administrador, límites bulk, CSV, MFA cifrado y contratos existentes.
 
 ## Acciones de infraestructura pendientes de ejecución
